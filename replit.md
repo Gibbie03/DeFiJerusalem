@@ -4,6 +4,7 @@
 A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama API and performs real-time security threat analysis to detect wallet drainers and track blacklisted projects. The scanner supports filtering across 126+ blockchain chains with cybersecurity-themed UI and persistent PostgreSQL storage.
 
 ## Recent Changes (October 26, 2025)
+- **CoinMarketCap-Style Display**: Replaced card-based layout with table format showing rank numbers, formatted TVL (billions/millions), color-coded 24h changes, and prominent numbers
 - **Sidebar Navigation**: Replaced top menu bar with expandable/collapsible sidebar navigation using shadcn sidebar component with keyboard shortcut (Cmd/Ctrl+B)
 - **Blacklist Page**: Created dedicated Blacklist page with its own route (/blacklist) for viewing flagged DApps with threat details, severity levels, and active status
 - **Ranking System**: Added TVL vs Security Score sorting toggle - users can rank protocols by Total Value Locked or Security Score
@@ -38,13 +39,13 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 - **tutorial_videos**: Educational videos (title, description, video_url, category, uploaded_at)
 
 ### Frontend (client/src)
-- **Dashboard** (`pages/Dashboard.tsx`): Main scanner with manual "Scan All" button, URL-based DApp detection, expandable chain/category filters, TVL vs Security Score ranking toggle, security rating legend, protocol listing with security badges loaded from database
+- **Dashboard** (`pages/Dashboard.tsx`): Main scanner with CoinMarketCap-style table display, manual "Scan All" button, URL-based DApp detection, expandable chain/category filters, TVL vs Security Score ranking toggle, security rating legend
 - **Blacklist** (`pages/Blacklist.tsx`): Dedicated page displaying flagged DApps with severity badges, threat details, reason field, and status indicators
-- **New DApps** (`pages/NewDApps.tsx`): Recently discovered protocols sorted by discovery date
-- **Trending DApps** (`pages/TrendingDApps.tsx`): Protocols with highest TVL growth (24h)
+- **New DApps** (`pages/NewDApps.tsx`): Recently discovered protocols in table format sorted by discovery date
+- **Trending DApps** (`pages/TrendingDApps.tsx`): Protocols with highest TVL growth displayed in table format
 - **Tutorials** (`pages/Tutorials.tsx`): Video tutorial upload and listing with YouTube integration
 - **Navigation** (`App.tsx`, `components/app-sidebar.tsx`): Expandable/collapsible sidebar navigation with keyboard shortcut (Cmd/Ctrl+B) linking all pages
-- **Components**: Header, StatsCard, SearchBar, ProtocolCard, ProtocolDetailModal, LoadingSpinner, AddDAppByUrlDialog, TrendingTicker, AdSpace, SecurityRatingLegend
+- **Components**: Header, StatsCard, SearchBar, ProtocolTable, ProtocolDetailModal, LoadingSpinner, AddDAppByUrlDialog, TrendingTicker, AdSpace, SecurityRatingLegend
 
 ### Backend (server/)
 - **Database** (`db.ts`): Neon PostgreSQL connection with Drizzle ORM
@@ -67,25 +68,26 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 - `POST /api/tutorials` - Upload new tutorial video
 
 ### Key Features
-1. **Sidebar Navigation**: Expandable/collapsible sidebar with keyboard shortcut (Cmd/Ctrl+B) for easy page navigation
-2. **Auto-Discovery**: Fetches top protocols from DeFiLlama and stores in database
-3. **URL-based Detection**: Paste any DApp link to add protocols across any blockchain with auto-fill
-4. **Manual Security Scanning**: "Scan All" button triggers threat analysis, results stored in database
-5. **Weekly Automated Scanning**: Background job scans all protocols every 7 days
-6. **Database Persistence**: All protocols, scans, blacklist entries, and tutorials persist in PostgreSQL
-7. **Page Load Hydration**: Stored scan results load automatically on page load from database
-8. **Ranking System**: Toggle between TVL and Security Score sorting for protocol rankings
-9. **Security Rating Legend**: Color-coded security score key (Critical/Low/Moderate/Good/Excellent) with descriptions
-10. **Category Filtering**: Filter DApps by category (DeFi, DEX, Lending, Yield, NFT, Gaming, Bridge, Other)
-11. **Chain Filtering**: Select dropdown with all 126+ chains
-12. **Blacklist Page**: Dedicated page displaying flagged DApps with severity, threats, and reason details
-13. **New DApps Tracking**: View recently discovered protocols sorted by discovery date
-14. **Trending Analysis**: See protocols with highest TVL growth in last 24 hours
-15. **Trending Ticker**: Auto-scrolling ticker showing trending protocols (right-to-left) across all pages
-16. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
-17. **Blacklist Management**: Automatic flagging of high-severity threats with reason field
-18. **Tutorial System**: Video upload with form validation, YouTube integration
-19. **Ad Spaces**: Monetization-ready placeholder ad spaces at top and bottom of all pages
+1. **CoinMarketCap-Style Table Display**: Professional table layout with rank numbers, formatted TVL (billions/millions/thousands), color-coded 24h changes (green/red), protocol logos, category badges, chain indicators, and security scores
+2. **Sidebar Navigation**: Expandable/collapsible sidebar with keyboard shortcut (Cmd/Ctrl+B) for easy page navigation
+3. **Auto-Discovery**: Fetches top protocols from DeFiLlama and stores in database
+4. **URL-based Detection**: Paste any DApp link to add protocols across any blockchain with auto-fill
+5. **Manual Security Scanning**: "Scan All" button triggers threat analysis, results stored in database
+6. **Weekly Automated Scanning**: Background job scans all protocols every 7 days
+7. **Database Persistence**: All protocols, scans, blacklist entries, and tutorials persist in PostgreSQL
+8. **Page Load Hydration**: Stored scan results load automatically on page load from database
+9. **Ranking System**: Toggle between TVL and Security Score sorting for protocol rankings
+10. **Security Rating Legend**: Color-coded security score key (Critical/Low/Moderate/Good/Excellent) with descriptions
+11. **Category Filtering**: Filter DApps by category (DeFi, DEX, Lending, Yield, NFT, Gaming, Bridge, Other)
+12. **Chain Filtering**: Select dropdown with all 126+ chains
+13. **Blacklist Page**: Dedicated page displaying flagged DApps with severity, threats, and reason details
+14. **New DApps Tracking**: View recently discovered protocols in table format sorted by discovery date
+15. **Trending Analysis**: See protocols with highest TVL growth in table format
+16. **Trending Ticker**: Auto-scrolling ticker showing trending protocols (right-to-left) across all pages
+17. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
+18. **Blacklist Management**: Automatic flagging of high-severity threats with reason field
+19. **Tutorial System**: Video upload with form validation, YouTube integration
+20. **Ad Spaces**: Monetization-ready placeholder ad spaces at top and bottom of all pages
 
 ### Technical Stack
 - **Frontend**: React, Wouter, TanStack Query, Shadcn UI, Tailwind CSS
