@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,15 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import AddDAppByUrlDialog from '@/components/AddDAppByUrlDialog';
 import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
+import SecurityRatingLegend from '@/components/SecurityRatingLegend';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 export default function Dashboard() {
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [searchValue, setSearchValue] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState<'tvl' | 'security'>('tvl');
   const [activeTab, setActiveTab] = useState('trending');
   const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
   
@@ -96,22 +99,40 @@ export default function Dashboard() {
     return Array.from(uniqueChains);
   }, [protocols]);
 
+  const categories = useMemo(() => {
+    const uniqueCategories = new Set<string>(['all']);
+    protocols.forEach(p => uniqueCategories.add(p.category));
+    return Array.from(uniqueCategories);
+  }, [protocols]);
+
   const filteredProtocols = useMemo(() => {
     return protocols.filter(p => {
       const chainMatch = selectedChain === 'all' || p.chains.includes(selectedChain);
+      const categoryMatch = selectedCategory === 'all' || p.category === selectedCategory;
       const searchMatch = !debouncedSearch || 
         p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         p.category.toLowerCase().includes(debouncedSearch.toLowerCase());
-      return chainMatch && searchMatch;
+      return chainMatch && categoryMatch && searchMatch;
     });
-  }, [protocols, selectedChain, debouncedSearch]);
+  }, [protocols, selectedChain, selectedCategory, debouncedSearch]);
 
   const displayProtocols = useMemo(() => {
-    if (activeTab === 'trending') {
-      return [...filteredProtocols].sort((a, b) => b.tvl - a.tvl);
+    let sorted = [...filteredProtocols];
+    
+    // Sort by selected criteria
+    if (sortBy === 'tvl') {
+      sorted.sort((a, b) => b.tvl - a.tvl);
+    } else if (sortBy === 'security') {
+      sorted.sort((a, b) => b.securityScore - a.securityScore);
     }
-    return [...filteredProtocols].sort((a, b) => (a.age || 999999) - (b.age || 999999));
-  }, [filteredProtocols, activeTab]);
+    
+    // Apply tab-specific sorting as secondary sort
+    if (activeTab === 'new') {
+      sorted.sort((a, b) => (a.age || 999999) - (b.age || 999999));
+    }
+    
+    return sorted;
+  }, [filteredProtocols, activeTab, sortBy]);
 
   const stats = useMemo(() => ({
     total: protocols.length,
@@ -208,33 +229,77 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <SearchBar value={searchValue} onChange={setSearchValue} />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-3 space-y-4">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1">
+                <SearchBar value={searchValue} onChange={setSearchValue} />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <AddDAppByUrlDialog />
+                <Button
+                  onClick={handleScanAll}
+                  disabled={scanMutation.isPending || protocols.length === 0}
+                  variant="default"
+                  data-testid="button-scan-all"
+                >
+                  <ScanSearch className="w-4 h-4 mr-2" />
+                  {scanMutation.isPending ? 'Scanning...' : 'Scan All'}
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 flex-wrap">
+              <Select value={selectedChain} onValueChange={setSelectedChain}>
+                <SelectTrigger className="w-[160px]" data-testid="select-chain">
+                  <SelectValue placeholder="Filter by chain" />
+                </SelectTrigger>
+                <SelectContent>
+                  {chains.map((chain) => (
+                    <SelectItem key={chain} value={chain} data-testid={`option-chain-${chain}`}>
+                      {chain === 'all' ? 'All Chains' : chain.charAt(0).toUpperCase() + chain.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[160px]" data-testid="select-category">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category} data-testid={`option-category-${category}`}>
+                      {category === 'all' ? 'All Categories' : category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Button
+                variant={sortBy === 'tvl' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('tvl')}
+                data-testid="button-sort-tvl"
+              >
+                <ArrowUpDown className="w-4 h-4 mr-2" />
+                Rank by TVL
+              </Button>
+              
+              <Button
+                variant={sortBy === 'security' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('security')}
+                data-testid="button-sort-security"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Rank by Security
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <AddDAppByUrlDialog />
-            <Select value={selectedChain} onValueChange={setSelectedChain}>
-              <SelectTrigger className="w-[200px]" data-testid="select-chain">
-                <SelectValue placeholder="Filter by chain" />
-              </SelectTrigger>
-              <SelectContent>
-                {chains.map((chain) => (
-                  <SelectItem key={chain} value={chain} data-testid={`option-chain-${chain}`}>
-                    {chain === 'all' ? 'All Chains' : chain.charAt(0).toUpperCase() + chain.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleScanAll}
-              disabled={scanMutation.isPending || protocols.length === 0}
-              variant="default"
-              data-testid="button-scan-all"
-            >
-              <ScanSearch className="w-4 h-4 mr-2" />
-              {scanMutation.isPending ? 'Scanning...' : 'Scan All'}
-            </Button>
+          
+          <div>
+            <SecurityRatingLegend />
           </div>
         </div>
 
