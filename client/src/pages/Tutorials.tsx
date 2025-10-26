@@ -29,7 +29,7 @@ export default function Tutorials() {
       description: '',
       videoUrl: '',
       thumbnailUrl: null,
-      category: 'Security Basics',
+      category: 'Getting Started',
       duration: null,
     },
   });
@@ -75,7 +75,7 @@ export default function Tutorials() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Tutorial Videos</h1>
             <p className="text-muted-foreground">
-              Learn how to use the JERUSALEM DeFi Security Scanner and stay safe in DeFi
+              Learn how to use DeFi protocols and decentralized applications safely
             </p>
           </div>
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
@@ -89,7 +89,7 @@ export default function Tutorials() {
               <DialogHeader>
                 <DialogTitle>Upload Tutorial Video</DialogTitle>
                 <DialogDescription>
-                  Add a new tutorial video to help users learn about DeFi security
+                  Add a new tutorial video to help users learn how to use DeFi protocols
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -103,7 +103,7 @@ export default function Tutorials() {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="How to scan for wallet drainers"
+                            placeholder="How to swap tokens on Uniswap"
                             data-testid="input-title"
                           />
                         </FormControl>
@@ -120,7 +120,7 @@ export default function Tutorials() {
                         <FormControl>
                           <Textarea
                             {...field}
-                            placeholder="Learn how to identify and avoid wallet draining scams..."
+                            placeholder="Learn how to swap tokens safely using the Uniswap DEX interface..."
                             rows={3}
                             data-testid="input-description"
                           />
@@ -176,7 +176,7 @@ export default function Tutorials() {
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="Security Basics"
+                              placeholder="Getting Started"
                               data-testid="input-category"
                             />
                           </FormControl>

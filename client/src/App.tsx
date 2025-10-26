@@ -4,15 +4,33 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Shield, Video, Home, Clock, TrendingUp } from "lucide-react";
+import { Shield, Video, Home, Clock, TrendingUp, Sun, Moon } from "lucide-react";
+import { useState, useEffect } from "react";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Tutorials from "@/pages/Tutorials";
 import NotFound from "@/pages/not-found";
+import logoImage from "@assets/generated_images/JERUSALEM_DeFi_Security_Logo_16f36794.png";
 
 function Router() {
   const [location] = useLocation();
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (stored) {
+      setTheme(stored);
+      document.documentElement.classList.toggle('dark', stored === 'dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -20,20 +38,9 @@ function Router() {
         <div className="max-w-screen-2xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary via-orange-500 to-primary rounded-md flex items-center justify-center">
-                <Shield className="w-6 h-6 text-background" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-orange-400 to-primary bg-clip-text text-transparent">
-                  Jerusalem
-                </h1>
-                <span className="flex items-center gap-1 text-xs text-green-400">
-                  <Shield className="w-3 h-3" />
-                  AI Security Scanner
-                </span>
-              </div>
+              <img src={logoImage} alt="JERUSALEM" className="h-12 w-auto object-contain" />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <Link href="/">
                 <Button 
                   variant={location === '/' ? 'default' : 'ghost'}
@@ -74,6 +81,14 @@ function Router() {
                   Tutorials
                 </Button>
               </Link>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={toggleTheme}
+                data-testid="button-theme-toggle"
+              >
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
             </div>
           </div>
         </div>
