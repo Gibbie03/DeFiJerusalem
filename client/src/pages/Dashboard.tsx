@@ -140,7 +140,11 @@ export default function Dashboard() {
 
   const handleScan = useCallback(async (protocol: Protocol) => {
     scanMutation.mutate([protocol.id]);
-  }, []);
+  }, [scanMutation]);
+
+  const handleScanProtocol = useCallback((protocolId: string) => {
+    scanMutation.mutate([protocolId]);
+  }, [scanMutation]);
 
   if (!isOnline) {
     return (
@@ -264,6 +268,8 @@ export default function Dashboard() {
         scanResult={selectedProtocol ? securityScans[selectedProtocol.id] : undefined}
         isOpen={!!selectedProtocol}
         onClose={() => setSelectedProtocol(null)}
+        onScan={handleScanProtocol}
+        isScanning={scanMutation.isPending}
       />
     </div>
   );

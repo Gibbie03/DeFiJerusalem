@@ -1,10 +1,13 @@
-import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign } from 'lucide-react';
+import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
 import SecurityBadge from './SecurityBadge';
 import SeverityIndicator from './SeverityIndicator';
+import type { TutorialVideo } from '@shared/schema';
 
 interface Protocol {
   id: string;
@@ -38,16 +41,36 @@ interface ProtocolDetailModalProps {
   scanResult?: ScanResult;
   isOpen: boolean;
   onClose: () => void;
+  onScan?: (protocolId: string) => void;
+  isScanning?: boolean;
 }
 
-export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onClose }: ProtocolDetailModalProps) {
+export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onClose, onScan, isScanning = false }: ProtocolDetailModalProps) {
   if (!protocol) return null;
+
+  const { data: allTutorials = [] } = useQuery<TutorialVideo[]>({
+    queryKey: ['/api/tutorials'],
+    enabled: isOpen,
+  });
+
+  const relatedTutorials = allTutorials.filter(tutorial => 
+    tutorial.title.toLowerCase().includes(protocol.name.toLowerCase()) ||
+    tutorial.description.toLowerCase().includes(protocol.name.toLowerCase()) ||
+    protocol.category.toLowerCase().includes(tutorial.category.toLowerCase())
+  );
 
   const formatTVL = (num: number) => {
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
     if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
     if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
     return `$${num.toFixed(2)}`;
+  };
+
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return 'N/A';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -123,6 +146,19 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             </div>
           </div>
 
+          {onScan && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => onScan(protocol.id)}
+                disabled={isScanning}
+                data-testid="button-scan-protocol"
+              >
+                <Scan className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                {isScanning ? 'Scanning...' : 'Scan Protocol'}
+              </Button>
+            </div>
+          )}
+
           {scanResult && scanResult.threats.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
@@ -138,6 +174,47 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
                     </div>
                     <p className="text-sm text-muted-foreground">{threat.message}</p>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {relatedTutorials.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
+                <Video className="w-4 h-4" />
+                Related Tutorials ({relatedTutorials.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {relatedTutorials.map((tutorial) => (
+                  <Card key={tutorial.id} className="hover-elevate" data-testid={`card-related-tutorial-${tutorial.id}`}>
+                    <CardHeader className="space-y-0 pb-3 p-4">
+                      <div className="aspect-video bg-muted rounded-md mb-2 flex items-center justify-center overflow-hidden">
+                        {tutorial.thumbnailUrl ? (
+                          <img src={tutorial.thumbnailUrl} alt={tutorial.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <Video className="w-8 h-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <CardTitle className="text-sm line-clamp-2">{tutorial.title}</CardTitle>
+                      <CardDescription className="text-xs line-clamp-1">{tutorial.category}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <span className="text-muted-foreground">{formatDuration(tutorial.duration)}</span>
+                      </div>
+                      <Button 
+                        size="sm"
+                        className="w-full" 
+                        variant="outline"
+                        onClick={() => window.open(tutorial.videoUrl, '_blank')}
+                        data-testid={`button-watch-tutorial-${tutorial.id}`}
+                      >
+                        <Play className="w-3 h-3 mr-2" />
+                        Watch Tutorial
+                      </Button>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>

@@ -1,16 +1,19 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Clock, TrendingUp } from 'lucide-react';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import type { Protocol, SecurityScan } from '@shared/schema';
+import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 export default function NewDApps() {
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [searchValue, setSearchValue] = useState('');
+  const { toast } = useToast();
 
   const { data: protocols = [], isLoading } = useQuery<Protocol[]>({
     queryKey: ['/api/protocols/new'],
@@ -19,6 +22,32 @@ export default function NewDApps() {
   const { data: securityScans = {} } = useQuery<Record<string, SecurityScan>>({
     queryKey: ['/api/scans'],
   });
+
+  const scanMutation = useMutation({
+    mutationFn: async (protocolIds: string[]) => {
+      const res = await apiRequest('POST', '/api/scan', { protocolIds });
+      return await res.json();
+    },
+    onSuccess: (data: { scanResults: Record<string, SecurityScan>; scannedCount: number; newBlacklistEntries: BlacklistEntry[] }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scans'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+      toast({
+        title: "Security Scan Complete",
+        description: `Scanned protocol successfully. Found ${data.newBlacklistEntries.length} critical threats.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Scan Failed",
+        description: error instanceof Error ? error.message : "Failed to scan protocol",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleScanProtocol = useCallback((protocolId: string) => {
+    scanMutation.mutate([protocolId]);
+  }, [scanMutation]);
 
   const filteredProtocols = protocols.filter(p =>
     p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -87,7 +116,10 @@ export default function NewDApps() {
           <ProtocolDetailModal
             isOpen={true}
             protocol={selectedProtocol}
+            scanResult={securityScans[selectedProtocol.id]}
             onClose={() => setSelectedProtocol(null)}
+            onScan={handleScanProtocol}
+            isScanning={scanMutation.isPending}
           />
         )}
       </main>
