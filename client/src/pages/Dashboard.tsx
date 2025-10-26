@@ -164,8 +164,8 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <LoadingSpinner
-        message="🤖 AI Discovery + Security Scan"
-        subtitle="Analyzing DeFi protocols across 126+ chains..."
+        message="Loading Protocols"
+        subtitle="Fetching DeFi protocols across 126+ chains..."
       />
     );
   }

@@ -22,9 +22,9 @@ export default function Header({ isOnline, lastUpdate, onRefresh, onAdd, isRefre
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
                 JERUSALEM
               </h1>
-              <span className="flex items-center gap-1 text-xs text-green-400">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Shield className="w-3 h-3" />
-                AI Security Scanner
+                DeFi Security Scanner
               </span>
             </div>
           </div>
