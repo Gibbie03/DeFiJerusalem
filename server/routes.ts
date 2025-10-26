@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const protocols = await storage.getProtocols();
       const scanResults: Record<string, any> = {};
-      const newBlacklistEntries = [];
+      const newBlacklistEntries: any[] = [];
 
       // Batch scan protocols
       const batchSize = 10;

@@ -1,6 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Database, Shield, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
@@ -8,138 +13,66 @@ import FilterChips from '@/components/FilterChips';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
-
-//todo: remove mock functionality - replace with real data from backend
-const MOCK_PROTOCOLS = [
-  {
-    id: 'uniswap',
-    name: 'Uniswap',
-    chains: ['ethereum', 'polygon', 'arbitrum'],
-    category: 'DEX',
-    tvl: 5000000000,
-    change24h: 2.5,
-    securityScore: 95,
-    logo: 'https://avatars.githubusercontent.com/u/38646891?v=4',
-    website: 'https://uniswap.org',
-    twitter: 'Uniswap',
-    github: 'Uniswap/uniswap-v3-core',
-    audited: true,
-    age: 365,
-    description: 'Decentralized trading protocol'
-  },
-  {
-    id: 'aave',
-    name: 'Aave',
-    chains: ['ethereum', 'polygon'],
-    category: 'Lending',
-    tvl: 10000000000,
-    change24h: 1.2,
-    securityScore: 92,
-    logo: 'https://avatars.githubusercontent.com/u/7634462?v=4',
-    website: 'https://aave.com',
-    twitter: 'AaveAave',
-    github: 'aave/aave-v3-core',
-    audited: true,
-    age: 730,
-    description: 'DeFi lending protocol'
-  },
-  {
-    id: 'compound',
-    name: 'Compound',
-    chains: ['ethereum'],
-    category: 'Lending',
-    tvl: 3000000000,
-    change24h: -0.8,
-    securityScore: 88,
-    logo: null,
-    website: 'https://compound.finance',
-    twitter: 'compoundfinance',
-    audited: true,
-    age: 900,
-    description: 'Algorithmic money market protocol'
-  },
-  {
-    id: 'suspicious-defi',
-    name: 'SuspiciousDeFi',
-    chains: ['bsc'],
-    category: 'Yield',
-    tvl: 25000,
-    change24h: 150.5,
-    securityScore: 35,
-    logo: null,
-    website: null,
-    twitter: null,
-    github: null,
-    audited: false,
-    age: 3,
-    description: 'High-yield farming protocol'
-  },
-  {
-    id: 'curve',
-    name: 'Curve Finance',
-    chains: ['ethereum', 'polygon', 'avalanche'],
-    category: 'DEX',
-    tvl: 4500000000,
-    change24h: 0.5,
-    securityScore: 90,
-    logo: null,
-    website: 'https://curve.fi',
-    twitter: 'CurveFinance',
-    audited: true,
-    age: 850,
-    description: 'Stablecoin-focused DEX'
-  },
-  {
-    id: 'pancakeswap',
-    name: 'PancakeSwap',
-    chains: ['bsc'],
-    category: 'DEX',
-    tvl: 2000000000,
-    change24h: 3.2,
-    securityScore: 75,
-    logo: null,
-    website: 'https://pancakeswap.finance',
-    twitter: 'pancakeswap',
-    audited: true,
-    age: 600,
-    description: 'Leading BSC DEX'
-  }
-];
-
-//todo: remove mock functionality - replace with real scanning logic
-const MOCK_SCAN_RESULTS: Record<string, any> = {
-  'suspicious-defi': {
-    severity: 'CRITICAL',
-    threats: [
-      { type: 'NEW_CONTRACT', severity: 'HIGH', message: 'Contract less than 7 days old - HIGH RISK' },
-      { type: 'NO_AUDIT', severity: 'HIGH', message: 'No security audit found' },
-      { type: 'ANONYMOUS_TEAM', severity: 'HIGH', message: 'Team is anonymous - no social presence' },
-      { type: 'LOW_LIQUIDITY', severity: 'MEDIUM', message: 'Very low liquidity (< $50k)' }
-    ],
-    score: 95
-  }
-};
-
-type Protocol = typeof MOCK_PROTOCOLS[0];
+import type { Protocol, SecurityScan } from '@shared/schema';
 
 export default function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [protocols, setProtocols] = useState(MOCK_PROTOCOLS);
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [searchValue, setSearchValue] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
   const [activeTab, setActiveTab] = useState('trending');
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [isOnline] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
+  
+  const isOnline = useOnlineStatus();
+  const { toast } = useToast();
+  const debouncedSearch = useDebounce(searchValue, 300);
 
-  //todo: remove mock functionality - replace with real API call
+  // Fetch protocols from API
+  const { data: protocols = [], isLoading, refetch } = useQuery<Protocol[]>({
+    queryKey: ['/api/protocols'],
+    enabled: isOnline,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    retry: 3,
+  });
+
+  // Fetch blacklist
+  const { data: blacklist = [] } = useQuery<any[]>({
+    queryKey: ['/api/blacklist'],
+    enabled: isOnline,
+  });
+
+  // Security scan mutation
+  const scanMutation = useMutation({
+    mutationFn: async (protocolIds: string[]) => {
+      return await apiRequest('/api/scan', {
+        method: 'POST',
+        body: JSON.stringify({ protocolIds }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+    onSuccess: (data) => {
+      setSecurityScans(prev => ({ ...prev, ...data.scanResults }));
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+      toast({
+        title: "Security Scan Complete",
+        description: `Scanned ${data.scannedCount} protocols. Found ${data.newBlacklistEntries.length} critical threats.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Scan Failed",
+        description: error instanceof Error ? error.message : "Failed to scan protocols",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-scan protocols on load
   useEffect(() => {
-    setTimeout(() => {
-      setLoading(false);
-      setLastUpdate(new Date());
-    }, 1500);
-  }, []);
+    if (protocols.length > 0 && Object.keys(securityScans).length === 0) {
+      const protocolIds = protocols.slice(0, 50).map(p => p.id);
+      scanMutation.mutate(protocolIds);
+    }
+  }, [protocols]);
 
   const chains = useMemo(() => {
     const uniqueChains = new Set<string>(['all']);
@@ -152,12 +85,12 @@ export default function Dashboard() {
   const filteredProtocols = useMemo(() => {
     return protocols.filter(p => {
       const chainMatch = selectedChain === 'all' || p.chains.includes(selectedChain);
-      const searchMatch = !searchValue || 
-        p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchValue.toLowerCase());
+      const searchMatch = !debouncedSearch || 
+        p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        p.category.toLowerCase().includes(debouncedSearch.toLowerCase());
       return chainMatch && searchMatch;
     });
-  }, [protocols, selectedChain, searchValue]);
+  }, [protocols, selectedChain, debouncedSearch]);
 
   const displayProtocols = useMemo(() => {
     if (activeTab === 'trending') {
@@ -169,37 +102,48 @@ export default function Dashboard() {
   const stats = useMemo(() => ({
     total: protocols.length,
     chains: chains.length - 1,
-    audited: Math.round((protocols.filter(p => p.audited).length / protocols.length) * 100),
-    blacklisted: protocols.filter(p => MOCK_SCAN_RESULTS[p.id]?.severity === 'CRITICAL').length,
+    audited: Math.round((protocols.filter(p => p.audited).length / protocols.length) * 100) || 0,
+    blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
     totalTVL: protocols.reduce((sum, p) => sum + p.tvl, 0)
-  }), [protocols, chains]);
+  }), [protocols, chains, blacklist]);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    //todo: remove mock functionality - replace with real refresh logic
-    setTimeout(() => {
-      setLastUpdate(new Date());
-      setIsRefreshing(false);
-      console.log('Refreshed protocols');
-    }, 2000);
-  };
+  const handleRefresh = useCallback(async () => {
+    if (!isOnline) {
+      toast({
+        title: "No Connection",
+        description: "Cannot refresh while offline",
+        variant: "destructive",
+      });
+      return;
+    }
+    await refetch();
+    toast({
+      title: "Refreshed",
+      description: "Protocol data updated successfully",
+    });
+  }, [isOnline, refetch, toast]);
 
-  const handleViewDetails = (protocol: Protocol) => {
+  const handleViewDetails = useCallback((protocol: Protocol) => {
     setSelectedProtocol(protocol);
-  };
+  }, []);
 
-  const handleScan = (protocol: Protocol) => {
-    console.log('Scanning protocol:', protocol.name);
-    //todo: remove mock functionality - replace with real scan logic
-  };
+  const handleScan = useCallback(async (protocol: Protocol) => {
+    scanMutation.mutate([protocol.id]);
+  }, []);
 
-  const formatTVL = (num: number) => {
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-    return `$${(num / 1e3).toFixed(0)}K`;
-  };
+  if (!isOnline) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">No Internet Connection</h2>
+          <p className="text-muted-foreground">Please check your connection and try again</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <LoadingSpinner
         message="🤖 AI Discovery + Security Scan"
@@ -212,10 +156,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Header
         isOnline={isOnline}
-        lastUpdate={lastUpdate}
+        lastUpdate={new Date()}
         onRefresh={handleRefresh}
         onAdd={() => console.log('Add protocol')}
-        isRefreshing={isRefreshing}
+        isRefreshing={scanMutation.isPending}
       />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
@@ -290,7 +234,7 @@ export default function Dashboard() {
 
       <ProtocolDetailModal
         protocol={selectedProtocol}
-        scanResult={selectedProtocol ? MOCK_SCAN_RESULTS[selectedProtocol.id] : undefined}
+        scanResult={selectedProtocol ? securityScans[selectedProtocol.id] : undefined}
         isOpen={!!selectedProtocol}
         onClose={() => setSelectedProtocol(null)}
       />
