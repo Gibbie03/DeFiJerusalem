@@ -1,0 +1,967 @@
+// ============================================================================
+// JERUSALEM - DeFi Security Scanner (Replit Version)
+// Corrected Code as of October 25, 2025
+// ============================================================================
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { TrendingUp, Zap, Shield, ExternalLink, Search, ChevronRight, AlertCircle, RefreshCw, Database, Sparkles, Plus, X, Twitter, Globe, Video, TrendingDown, XOctagon, Eye, Wifi, WifiOff } from 'lucide-react';
+
+// ============================================================================
+// API CACHE - In-memory caching with TTL
+// ============================================================================
+class APICache {
+  constructor(ttl = 30 * 60 * 1000, maxSize = 100) {
+    this.cache = new Map();
+    this.ttl = ttl;
+    this.maxSize = maxSize;
+  }
+  
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+    return item.data;
+  }
+  
+  set(key, data) {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    this.cache.set(key, { data, expiry: Date.now() + this.ttl });
+  }
+  
+  clear() {
+    this.cache.clear();
+  }
+}
+
+const apiCache = new APICache();
+
+// ============================================================================
+// WALLET DRAINER DETECTOR - Security scanning engine
+// ============================================================================
+class WalletDrainerDetector {
+  async scanDApp(dapp) {
+    const results = { 
+      isBlacklisted: false, 
+      severity: 'LOW', 
+      threats: [], 
+      score: 0 
+    };
+    
+    try {
+      if (dapp.age !== null && dapp.age !== undefined && dapp.age < 7) { 
+        results.threats.push({ 
+          type: 'NEW_CONTRACT', 
+          severity: 'HIGH', 
+          message: 'Contract less than 7 days old - HIGH RISK' 
+        }); 
+        results.score += 40; 
+      }
+      
+      if (!dapp.audited) { 
+        results.threats.push({ 
+          type: 'NO_AUDIT', 
+          severity: 'HIGH', 
+          message: 'No security audit found' 
+        }); 
+        results.score += 30; 
+      }
+      
+      if (!dapp.twitter && !dapp.github) { 
+        results.threats.push({ 
+          type: 'ANONYMOUS_TEAM', 
+          severity: 'HIGH', 
+          message: 'Team is anonymous - no social presence' 
+        }); 
+        results.score += 25; 
+      }
+      
+      if (dapp.tvl !== null && dapp.tvl !== undefined && dapp.tvl < 50000) { 
+        results.threats.push({ 
+          type: 'LOW_LIQUIDITY', 
+          severity: 'MEDIUM', 
+          message: 'Very low liquidity (< $50k)' 
+        }); 
+        results.score += 20; 
+      }
+      
+      if (results.score >= 80) results.severity = 'CRITICAL';
+      else if (results.score >= 50) results.severity = 'HIGH';
+      else if (results.score >= 25) results.severity = 'MEDIUM';
+      
+      results.isBlacklisted = results.severity === 'CRITICAL';
+      return results;
+      
+    } catch (error) {
+      console.error('Error scanning dApp:', error);
+      return results;
+    }
+  }
+}
+
+// ============================================================================
+// BLACKLIST MANAGER - Tracks threats
+// ============================================================================
+class BlacklistManager {
+  constructor(initialBlacklist = []) { 
+    this.blacklist = [...initialBlacklist];
+  }
+  
+  addToBlacklist(dapp, scanResult) {
+    const entry = { 
+      id: Date.now(), 
+      dappId: dapp.id, 
+      dappName: dapp.name, 
+      severity: scanResult.severity, 
+      threats: scanResult.threats, 
+      status: 'ACTIVE',
+      timestamp: new Date().toISOString()
+    };
+    this.blacklist.push(entry);
+    return { entry, updatedList: [...this.blacklist] };
+  }
+  
+  isBlacklisted(dappId) { 
+    return this.blacklist.some(e => e.dappId === dappId && e.status === 'ACTIVE'); 
+  }
+  
+  getBlacklist() {
+    return [...this.blacklist];
+  }
+}
+
+// ============================================================================
+// DAPP DISCOVERY - Fetches from DeFiLlama (126+ chains)
+// ============================================================================
+class DAppDiscovery {
+  constructor() {
+    this.maxRetries = 3;
+    this.retryDelay = 2000;
+  }
+  
+  async fetchWithRetry(url, retries = this.maxRetries) {
+    try {
+      // CORS Proxy for browser compatibility (updated for 2025)
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      if (response.status === 429) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        if (retries > 0) return this.fetchWithRetry(url, retries - 1);
+        throw new Error('Rate limit exceeded');
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+        return this.fetchWithRetry(url, retries - 1);
+      }
+      throw error;
+    }
+  }
+  
+  async fetchFromMultipleSources() {
+    const cached = apiCache.get('protocols');
+    if (cached) return cached;
+    
+    try {
+      const protocols = await this.fetchWithRetry('https://api.llama.fi/protocols');
+      
+      if (!Array.isArray(protocols)) {
+        throw new Error('Invalid API response: Expected an array');
+      }
+      
+      const processed = protocols.map(p => {
+        let chains = [];
+        if (Array.isArray(p.chains)) {
+          chains = p.chains.filter(c => c && typeof c === 'string');
+        } else if (p.chain && typeof p.chain === 'string') {
+          chains = [p.chain];
+        }
+        
+        return {
+          id: p.slug || `protocol-${Date.now()}-${Math.random()}`, 
+          name: p.name || 'Unknown Protocol', 
+          chains: chains, 
+          category: this.classifyCategory(p),
+          tvl: typeof p.tvl === 'number' ? p.tvl : 0, 
+          change24h: typeof p.change_1d === 'number' ? p.change_1d : 0, 
+          age: this.calculateAge(p.listedAt),
+          audited: typeof p.audits === 'number' ? p.audits > 0 : false,
+          securityScore: this.calculateSecurityScore(p),
+          logo: p.logo || null, 
+          website: p.url || null, 
+          twitter: p.twitter || null, 
+          github: p.github || null, 
+          description: p.description || '', 
+          autoDiscovered: true
+        };
+      });
+      
+      apiCache.set('protocols', processed);
+      return processed;
+      
+    } catch (error) {
+      console.error('Failed to fetch protocols:', error);
+      // Fallback data (updated for 2025)
+      const fallbackProtocols = [
+        {
+          slug: 'uniswap',
+          name: 'Uniswap',
+          chains: ['ethereum'],
+          category: 'DEX',
+          tvl: 5000000000,
+          change24h: 2.5,
+          listedAt: Math.floor(Date.now() / 1000 - 365 * 86400),
+          audits: 1,
+          logo: 'https://avatars.githubusercontent.com/u/38646891?v=4',
+          website: 'https://uniswap.org',
+          twitter: 'Uniswap',
+          github: 'Uniswap/uniswap-v3-core',
+          description: 'Decentralized exchange on Ethereum',
+          autoDiscovered: true
+        },
+        {
+          slug: 'aave',
+          name: 'Aave',
+          chains: ['ethereum', 'polygon'],
+          category: 'Lending',
+          tvl: 10000000000,
+          change24h: 1.2,
+          listedAt: Math.floor(Date.now() / 1000 - 730 * 86400),
+          audits: 2,
+          logo: 'https://avatars.githubusercontent.com/u/7634462?v=4',
+          website: 'https://aave.com',
+          twitter: 'AaveAave',
+          github: 'aave/aave-v3-core',
+          description: 'DeFi lending protocol',
+          autoDiscovered: true
+        }
+      ];
+      return fallbackProtocols;
+    }
+  }
+  
+  classifyCategory(p) {
+    const name = (p.name || '').toLowerCase();
+    const cat = (p.category || '').toLowerCase();
+    
+    if (cat.includes('dex') || name.includes('swap')) return 'DEX';
+    if (cat.includes('lending')) return 'Lending';
+    if (cat.includes('yield')) return 'Yield';
+    if (cat.includes('bridge')) return 'Bridge';
+    if (cat.includes('nft')) return 'NFT';
+    
+    return 'DeFi';
+  }
+  
+  calculateAge(listedAt) {
+    if (!listedAt || typeof listedAt !== 'number') return null;
+    
+    try {
+      const ageInDays = Math.floor((Date.now() / 1000 - listedAt) / 86400);
+      return ageInDays >= 0 ? ageInDays : null;
+    } catch (error) {
+      return null;
+    }
+  }
+  
+  calculateSecurityScore(p) {
+    let score = 50;
+    
+    if (typeof p.audits === 'number' && p.audits > 0) score += 25;
+    if (typeof p.tvl === 'number' && p.tvl > 100000000) score += 10;
+    if (typeof p.tvl === 'number' && p.tvl > 1000000000) score += 5;
+    if (p.twitter) score += 5;
+    if (p.github) score += 5;
+    
+    return Math.max(0, Math.min(100, score));
+  }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+const isValidUrl = (url) => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+// ============================================================================
+// ERROR BOUNDARY
+// ============================================================================
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught:', error, errorInfo);
+  }
+  
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+          <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-6 max-w-md text-center">
+            <XOctagon className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-red-400 mb-2">Something went wrong</h2>
+            <p className="text-gray-300 mb-4">The app encountered an error</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ============================================================================
+// MAIN LOGIC COMPONENT (DAppTracker)
+// ============================================================================
+
+const DAppTracker = () => {
+  const [activeTab, setActiveTab] = useState('trending');
+  const [activeChain, setActiveChain] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [protocols, setProtocols] = useState([]);
+  const [manualDapps, setManualDapps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [stats, setStats] = useState({ total: 0, chains: 0, audited: 0, blacklisted: 0, totalTVL: 0 });
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [selectedDapp, setSelectedDapp] = useState(null);
+  const [blacklistData, setBlacklistData] = useState([]);
+  const [securityScans, setSecurityScans] = useState({});
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [error, setError] = useState(null);
+  const [chains, setChains] = useState(['all']);
+
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  const [detector] = useState(() => new WalletDrainerDetector());
+  const blacklistManager = useMemo(() => new BlacklistManager(blacklistData), [blacklistData]);
+  useEffect(() => {
+    const uniqueChains = new Set(['all']);
+    protocols.forEach(d => {
+      if (Array.isArray(d.chains)) {
+        d.chains.forEach(chain => {
+          if (chain) uniqueChains.add(chain.toLowerCase());
+        });
+      }
+    });
+    setChains([...uniqueChains]);
+  }, [protocols]);
+
+  const allDapps = useMemo(() => [...protocols, ...manualDapps], [protocols, manualDapps]);
+
+  const handleError = useCallback((error, context) => {
+    console.error(`Error in ${context}:`, error);
+    setError(`${context} failed. Please try again.`);
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => { setIsOnline(true); setError(null); };
+    const handleOffline = () => { setIsOnline(false); setError('No internet connection'); };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const performSecurityScan = useCallback(async (dapps) => {
+    setScanning(true);
+    const scans = {};
+    const newBlacklistEntries = [];
+    
+    try {
+      const batchSize = 10;
+      const maxDapps = Math.min(dapps.length, 100);
+      
+      for (let i = 0; i < maxDapps; i += batchSize) {
+        const batch = dapps.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+          batch.map(async (dapp) => {
+            const scanResult = await detector.scanDApp(dapp);
+            return { dapp, scanResult };
+          })
+        );
+        
+        batchResults.forEach(({ dapp, scanResult }) => {
+          scans[dapp.id] = scanResult;
+          if (scanResult.severity === 'CRITICAL') {
+            newBlacklistEntries.push({
+              id: `${Date.now()}-${Math.random()}`,
+              dappId: dapp.id,
+              dappName: dapp.name,
+              severity: scanResult.severity,
+              threats: scanResult.threats,
+              status: 'ACTIVE',
+              timestamp: new Date().toISOString()
+            });
+          }
+        });
+        // Delay between batches to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      setSecurityScans(scans);
+      if (newBlacklistEntries.length > 0) {
+        setBlacklistData(prev => [...prev, ...newBlacklistEntries]);
+      }
+    } catch (error) {
+      handleError(error, 'Security scan');
+    } finally {
+      setScanning(false);
+    }
+  }, [detector, handleError]);
+
+  const autoDiscover = useCallback(async () => {
+    if (!isOnline) {
+      setError('No internet connection');
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const discovery = new DAppDiscovery();
+      const discovered = await discovery.fetchFromMultipleSources();
+      
+      if (discovered.length === 0) {
+        setError('No data received from API');
+      } else {
+        setProtocols(discovered);
+        setLastUpdate(new Date());
+        await performSecurityScan(discovered);
+      }
+    } catch (error) {
+      handleError(error, 'Auto-discover');
+    } finally {
+      setLoading(false);
+    }
+  }, [isOnline, performSecurityScan, handleError]);
+
+  useEffect(() => {
+    autoDiscover();
+  }, [autoDiscover]);
+
+  useEffect(() => {
+    const uniqueChains = new Set();
+    allDapps.forEach(d => {
+      if (Array.isArray(d.chains)) {
+        d.chains.forEach(chain => {
+          if (chain) uniqueChains.add(chain.toLowerCase());
+        });
+      }
+    });
+    
+    const blacklistedCount = allDapps.filter(d => blacklistManager.isBlacklisted(d.id)).length;
+    const totalTVL = allDapps.reduce((sum, p) => sum + (p.tvl || 0), 0);
+    
+    setStats({
+      total: allDapps.length,
+      chains: uniqueChains.size,
+      audited: allDapps.filter(d => d.audited).length,
+      blacklisted: blacklistedCount,
+      totalTVL: totalTVL
+    });
+  }, [allDapps, blacklistManager]);
+
+  const saveManualDapp = useCallback((dapp) => {
+    const newDapp = {
+      ...dapp,
+      id: `manual-${Date.now()}-${Math.random()}`,
+      manuallyAdded: true,
+      age: 0,
+      tvl: 0,
+      change24h: 0,
+      securityScore: 50,
+      autoDiscovered: false
+    };
+    setManualDapps(prev => [...prev, newDapp]);
+    setShowAdminPanel(false);
+  }, []);
+
+  const formatNumber = useCallback((num) => {
+    if (!num || typeof num !== 'number') return '$0';
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+    return `$${num.toFixed(2)}`;
+  }, []);
+
+  const getSecurityColor = useCallback((score) => {
+    if (score >= 80) return 'text-green-400';
+    if (score >= 60) return 'text-yellow-400';
+    if (score >= 40) return 'text-orange-400';
+    return 'text-red-400';
+  }, []);
+
+  const getSecurityBgColor = useCallback((score) => {
+    if (score >= 80) return 'bg-green-900/20';
+    if (score >= 60) return 'bg-yellow-900/20';
+    if (score >= 40) return 'bg-orange-900/20';
+    return 'bg-red-900/20';
+  }, []);
+
+  const getThreatBadge = useCallback((severity) => {
+    const badges = {
+      CRITICAL: 'bg-red-900/30 text-red-400 border-red-500/50',
+      HIGH: 'bg-orange-900/30 text-orange-400 border-orange-500/50',
+      MEDIUM: 'bg-yellow-900/30 text-yellow-400 border-yellow-500/50',
+      LOW: 'bg-blue-900/30 text-blue-400 border-blue-500/50'
+    };
+    return badges[severity] || badges.LOW;
+  }, []);
+
+  const filteredProtocols = useMemo(() => {
+    return allDapps.filter(p => {
+      const chainMatch = activeChain === 'all' || 
+        (Array.isArray(p.chains) && p.chains.some(c => c?.toLowerCase() === activeChain));
+      const searchMatch = !debouncedSearch || 
+        p.name?.toLowerCase().includes(debouncedSearch.toLowerCase());
+      return chainMatch && searchMatch;
+    });
+  }, [allDapps, activeChain, debouncedSearch]);
+
+  const trendingDapps = useMemo(() => 
+    [...filteredProtocols].sort((a, b) => (b.tvl || 0) - (a.tvl || 0)),
+    [filteredProtocols]
+  );
+
+  const newDapps = useMemo(() => 
+    [...filteredProtocols].sort((a, b) => {
+      const ageA = a.age === null ? 999999 : a.age;
+      const ageB = b.age === null ? 999999 : b.age;
+      return ageA - ageB;
+    }),
+    [filteredProtocols]
+  );
+
+  const displayDapps = activeTab === 'trending' ? trendingDapps : newDapps;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <Sparkles className="w-8 h-8 text-yellow-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          </div>
+          <p className="text-lg font-semibold text-blue-400 mb-2">🤖 AI Discovery + Security Scan</p>
+          <p className="text-gray-400">Analyzing DeFi protocols across 126+ chains...</p>
+          <p className="text-gray-500 text-sm mt-2">This may take a moment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return {
+    activeTab, setActiveTab, activeChain, setActiveChain, searchInput, setSearchInput,
+    loading, scanning, stats, lastUpdate, showAdminPanel, setShowAdminPanel,
+    selectedDapp, setSelectedDapp, isOnline, error, chains, allDapps, displayDapps,
+    securityScans, blacklistManager, autoDiscover, saveManualDapp, formatNumber, 
+    getSecurityColor, getSecurityBgColor, getThreatBadge
+  };
+};
+
+// ============================================================================
+// UI COMPONENT (DAppTrackerUI)
+// ============================================================================
+
+const DAppTrackerUI = (props) => {
+  const {
+    activeTab, setActiveTab, activeChain, setActiveChain, searchInput, setSearchInput,
+    loading, scanning, stats, lastUpdate, showAdminPanel, setShowAdminPanel,
+    selectedDapp, setSelectedDapp, isOnline, error, chains, allDapps, displayDapps,
+    securityScans, blacklistManager, autoDiscover, saveManualDapp, formatNumber, 
+    getSecurityColor, getSecurityBgColor, getThreatBadge
+  } = props;
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 via-orange-500 to-yellow-600 rounded-lg flex items-center justify-center shadow-lg">
+                <span className="text-2xl">🏛️</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent">Jerusalem</h1>
+                <span className="flex items-center gap-1 text-xs text-green-400"><Shield className="w-3 h-3" />AI Security Scanner</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className={`flex items-center gap-1 text-xs ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
+                {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isOnline ? 'Online' : 'Offline'}</span>
+              </div>
+              <div className="text-right text-sm hidden md:block">
+                <div className="flex items-center gap-2 text-gray-400"><Database className="w-4 h-4" /><span>{stats.total} DApps</span></div>
+              </div>
+              <button onClick={() => setShowAdminPanel(true)} className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 rounded-lg font-medium flex items-center gap-2 text-white transition-all">
+                <Plus className="w-4 h-4" /><span className="hidden sm:inline">Add</span>
+              </button>
+              <button onClick={autoDiscover} disabled={scanning || !isOnline} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-medium flex items-center gap-2 text-white transition-all">
+                <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} /><span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
+          </div>
+          {error && (
+            <div className="mb-3 bg-red-900/20 border-red-500/30 border rounded-lg p-2 flex items-center gap-2 text-sm">
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <span className="text-red-200">{error}</span>
+              <button
+                onClick={autoDiscover}
+                className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {scanning && <div className="mb-3 bg-blue-900/20 border-blue-500/30 border rounded-lg p-2 flex items-center gap-2 text-sm"><Eye className="w-4 h-4 text-blue-400 animate-pulse flex-shrink-0" /><span className="text-blue-200">🛡️ Running security scans...</span></div>}
+          {lastUpdate && !error && <div className="mb-3 bg-yellow-900/20 border-yellow-500/30 border rounded-lg p-2 flex items-center justify-between text-sm"><div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-yellow-400" /><span className="text-yellow-200">Last updated: {lastUpdate.toLocaleTimeString()}</span></div><span className="text-xs text-green-400">✓ Active</span></div>}
+          <div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" placeholder="Search DApps..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="w-full bg-gray-800 border-gray-700 text-white border rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" /></div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-gray-900/50 border-gray-800 border rounded-lg p-4 hover:border-blue-500/50 transition-all"><div className="text-2xl font-bold text-blue-400">{stats?.total ?? 0}</div><div className="text-sm text-gray-400">Total DApps</div></div>
+          <div className="bg-gray-900/50 border-gray-800 border rounded-lg p-4 hover:border-purple-500/50 transition-all"><div className="text-2xl font-bold text-purple-400">{stats?.chains ?? 0}</div><div className="text-sm text-gray-400">Blockchains</div></div>
+          <div className="bg-gray-900/50 border-gray-800 border rounded-lg p-4 hover:border-green-500/50 transition-all"><div className="text-2xl font-bold text-green-400">{stats?.audited ?? 0}</div><div className="text-sm text-gray-400">Audited</div></div>
+          <div className="bg-gray-900/50 border-gray-800 border rounded-lg p-4 hover:border-red-500/50 transition-all"><div className="text-2xl font-bold text-red-400">{stats?.blacklisted ?? 0}</div><div className="text-sm text-gray-400">Threats</div></div>
+          <div className="bg-gray-900/50 border-gray-800 border rounded-lg p-4 hover:border-yellow-500/50 transition-all"><div className="text-2xl font-bold text-yellow-400">{formatNumber(stats?.totalTVL ?? 0)}</div><div className="text-sm text-gray-400">Total TVL</div></div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {chains.map(chain => {
+            const count = allDapps.filter(p => chain === 'all' || (Array.isArray(p.chains) && p.chains.some(c => c?.toLowerCase() === chain))).length;
+            return (
+              <button
+                key={chain}
+                onClick={() => setActiveChain(chain)}
+                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${activeChain === chain ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+              >
+                {chain ? chain.charAt(0).toUpperCase() + chain.slice(1) : 'Unknown'} ({count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex gap-1 border-b border-gray-800">
+          <button onClick={() => setActiveTab('trending')} className={`px-6 py-3 font-medium transition-all ${activeTab === 'trending' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}><div className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Trending ({displayDapps.length})</div></button>
+          <button onClick={() => setActiveTab('new')} className={`px-6 py-3 font-medium transition-all ${activeTab === 'new' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-300'}`}><div className="flex items-center gap-2"><Zap className="w-4 h-4" />Newest ({displayDapps.length})</div></button>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="space-y-3">
+          {displayDapps.slice(0, 100).map((dapp, index) => {
+            const scanResult = securityScans[dapp.id];
+            const isBlacklisted = blacklistManager.isBlacklisted(dapp.id);
+            return (
+              <div key={dapp.id} onClick={() => setSelectedDapp(dapp)} className={`bg-gray-900/50 border ${isBlacklisted ? 'border-red-500/50 bg-red-900/10' : 'border-gray-800'} hover:border-gray-700 rounded-lg p-4 cursor-pointer group transition-all`}>
+                {isBlacklisted && <div className="mb-3 bg-red-900/30 border border-red-500/50 rounded-lg p-3 flex items-start gap-3"><XOctagon className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" /><div className="flex-1"><div className="font-semibold text-red-400 mb-1">⚠️ BLACKLISTED - HIGH RISK</div><div className="text-sm text-red-300">{scanResult?.threats.map((t, i) => <div key={i}>• {t.message}</div>)}</div></div></div>}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="text-gray-500 font-mono text-sm flex-shrink-0">#{index + 1}</div>
+                    {dapp.logo && dapp.logo.startsWith('http') ? <img src={dapp.logo} alt={dapp.name} className="w-10 h-10 rounded-full flex-shrink-0" onError={(e) => e.target.style.display = 'none'} /> : <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl font-bold flex-shrink-0">{dapp.name.charAt(0).toUpperCase()}</div>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-lg group-hover:text-blue-400 transition-colors truncate">{dapp.name}</h3>
+                        {dapp.audited && <Shield className="w-4 h-4 text-green-400 flex-shrink-0" title="Audited" />}
+                        {dapp.autoDiscovered && <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0" title="Auto-discovered" />}
+                        {dapp.website && <a href={dapp.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 flex-shrink-0" onClick={(e) => e.stopPropagation()}><ExternalLink className="w-4 h-4" /></a>}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm flex-wrap">
+                        <span className="px-2 py-0.5 bg-gray-800 rounded text-xs">{dapp.category}</span>
+                        {dapp.chains?.slice(0, 3).map(chain => <span key={chain} className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded text-xs">{chain}</span>)}
+                        {dapp.chains && dapp.chains.length > 3 && <span className="px-2 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">+{dapp.chains.length - 3} more</span>}
+                        {scanResult && <div className={`flex items-center gap-1 px-2 py-0.5 rounded border ${getThreatBadge(scanResult.severity)}`}><Eye className="w-3 h-3" /><span className="text-xs font-medium">{scanResult.severity}</span></div>}
+                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded ${getSecurityBgColor(dapp.securityScore || 50)}`}><Shield className="w-3 h-3" /><span className={`text-xs font-medium ${getSecurityColor(dapp.securityScore || 50)}`}>{dapp.securityScore || 50}/100</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6 flex-shrink-0">
+                    <div className="text-right hidden sm:block">
+                      <div className="text-sm text-gray-400">TVL</div>
+                      <div className="font-semibold text-lg">{formatNumber(dapp.tvl)}</div>
+                      {dapp.change24h !== undefined && dapp.change24h !== 0 && <div className={`text-sm flex items-center gap-1 justify-end ${dapp.change24h > 0 ? 'text-green-400' : 'text-red-400'}`}>{dapp.change24h > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}{dapp.change24h > 0 ? '+' : ''}{dapp.change24h.toFixed(2)}%</div>}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-blue-400 transition-colors" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {displayDapps.length === 0 && <div className="text-center py-12"><AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-4" /><p className="text-gray-400 text-lg">No DApps found</p><p className="text-gray-500 text-sm mt-2">Try adjusting your filters or search query</p></div>}
+      </div>
+
+      <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-gray-800 mt-12">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-3"><span className="text-2xl">🏛️</span><span className="text-lg font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">Jerusalem</span></div>
+          <p className="text-gray-500">Multi-Chain DeFi Discovery Platform</p>
+          <p className="text-gray-600 text-sm mt-1">Tracking 126+ Blockchains</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+// ============================================================================
+// ADMIN PANEL MODAL
+// ============================================================================
+
+const AdminPanel = ({ onClose, onSave }) => {
+  const [formData, setFormData] = useState({ name: '', category: 'DeFi', chains: [], website: '', twitter: '', github: '', audited: false });
+  const [errors, setErrors] = useState({});
+  const categories = ['DEX', 'Lending', 'Yield', 'Bridge', 'NFT', 'Derivatives', 'Insurance', 'DeFi'];
+  const chains = ['ethereum', 'bsc', 'polygon', 'arbitrum', 'optimism', 'avalanche', 'base', 'solana', 'fantom', 'cronos', 'gnosis', 'near', 'aptos', 'sui', 'starknet', 'linea', 'scroll', 'zksync', 'mantle', 'blast'];
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (formData.chains.length === 0) newErrors.chains = 'Select at least one chain';
+    if (formData.website && !isValidUrl(formData.website)) newErrors.website = 'Invalid URL format';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = () => {
+    if (!validateForm()) return;
+    onSave(formData);
+  };
+
+  const toggleChain = (chain) => {
+    setFormData(prev => ({ ...prev, chains: prev.chains.includes(chain) ? prev.chains.filter(c => c !== chain) : [...prev.chains, chain] }));
+    if (errors.chains) setErrors(prev => ({ ...prev, chains: null }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900 z-10">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2"><Plus className="w-6 h-6 text-yellow-400" />Add DApp Manually</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">DApp Name *</label>
+            <input type="text" value={formData.name} onChange={(e) => { setFormData({...formData, name: e.target.value}); if (errors.name) setErrors(prev => ({ ...prev, name: null })); }} placeholder="e.g., Uniswap" className={`w-full bg-gray-800 border ${errors.name ? 'border-red-500' : 'border-gray-700'} text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20`} />
+            {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Category *</label>
+            <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-800 border-gray-700 text-white border rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Blockchains * (select at least one)</label>
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-gray-800/50 rounded-lg">
+              {chains.map(chain => <button key={chain} type="button" onClick={() => toggleChain(chain)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${formData.chains.includes(chain) ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}>{chain.charAt(0).toUpperCase() + chain.slice(1)}</button>)}
+            </div>
+            {formData.chains.length > 0 ? <p className="text-xs text-gray-400 mt-2">Selected: {formData.chains.length} chain(s)</p> : errors.chains ? <p className="text-red-400 text-xs mt-2">{errors.chains}</p> : null}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Website URL</label>
+            <input type="url" value={formData.website} onChange={(e) => { setFormData({...formData, website: e.target.value}); if (errors.website) setErrors(prev => ({ ...prev, website: null })); }} placeholder="https://example.com" className={`w-full bg-gray-800 border ${errors.website ? 'border-red-500' : 'border-gray-700'} text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20`} />
+            {errors.website && <p className="text-red-400 text-xs mt-1">{errors.website}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Twitter Handle</label>
+            <input type="text" value={formData.twitter} onChange={(e) => setFormData({...formData, twitter: e.target.value})} placeholder="username (without @)" className="w-full bg-gray-800 border-gray-700 text-white border rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">GitHub Repository</label>
+            <input type="text" value={formData.github} onChange={(e) => setFormData({...formData, github: e.target.value})} placeholder="username/repo" className="w-full bg-gray-800 border-gray-700 text-white border rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="audited" checked={formData.audited} onChange={(e) => setFormData({...formData, audited: e.target.checked})} className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-700 rounded focus:ring-blue-500" />
+            <label htmlFor="audited" className="text-sm text-gray-300">This DApp has been audited</label>
+          </div>
+        </div>
+        <div className="p-6 border-t border-gray-800 flex justify-between gap-3">
+          <button onClick={onClose} className="px-6 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-white font-medium transition-all">Cancel</button>
+          <button onClick={handleSave} className="px-6 py-2.5 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 rounded-lg text-white font-medium flex items-center gap-2 transition-all"><Plus className="w-5 h-5" />Save DApp</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// DAPP DETAIL MODAL
+// ============================================================================
+
+const DAppDetail = ({ dapp, scanResult, onClose, formatNumber, getSecurityColor }) => {
+  const [guideVideos, setGuideVideos] = useState(() => {
+    const saved = localStorage.getItem(`videos_${dapp.id}`);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showAddVideo, setShowAddVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(`videos_${dapp.id}`, JSON.stringify(guideVideos));
+  }, [guideVideos, dapp.id]);
+
+  const addVideo = () => {
+    if (!videoUrl.trim() || !videoTitle.trim()) return;
+    if (!isValidUrl(videoUrl) || !videoUrl.includes('youtube.com')) {
+      alert('Please enter a valid YouTube URL');
+      return;
+    }
+    const newVideo = { id: `${Date.now()}-${Math.random()}`, url: videoUrl, title: videoTitle };
+    setGuideVideos(prev => [...prev, newVideo]);
+    setVideoUrl('');
+    setVideoTitle('');
+    setShowAddVideo(false);
+  };
+
+  const removeVideo = (videoId) => setGuideVideos(prev => prev.filter(v => v.id !== videoId));
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-800 flex items-start justify-between sticky top-0 bg-gray-900 z-10">
+          <div className="flex items-start gap-4 flex-1">
+            {dapp.logo && dapp.logo.startsWith('http') ? <img src={dapp.logo} alt={dapp.name} className="w-16 h-16 rounded-full flex-shrink-0" onError={(e) => e.target.style.display = 'none'} /> : <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">{dapp.name.charAt(0).toUpperCase()}</div>}
+            <div className="flex-1">
+              <h2 className="text-3xl font-bold text-white mb-2">{dapp.name}</h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="px-3 py-1 bg-gray-800 rounded-full text-sm">{dapp.category}</span>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-800"><Shield className="w-4 h-4" /><span className={getSecurityColor(dapp.securityScore || 50)}>{dapp.securityScore || 50}/100</span></div>
+              </div>
+              <div className="flex items-center gap-3 mt-3">
+                {dapp.website && <a href={dapp.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 transition-colors" title="Website"><Globe className="w-5 h-5" /></a>}
+                {dapp.twitter && <a href={`https://twitter.com/${dapp.twitter}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 transition-colors" title="Twitter"><Twitter className="w-5 h-5" /></a>}
+                {dapp.github && <a href={`https://github.com/${dapp.github}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 transition-colors" title="GitHub"><ExternalLink className="w-5 h-5" /></a>}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white p-2 transition-colors"><X className="w-6 h-6" /></button>
+        </div>
+        <div className="p-6">
+          {scanResult && scanResult.threats && scanResult.threats.length > 0 && (
+            <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <XOctagon className="w-6 h-6 text-red-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-red-400 mb-2">⚠️ Security Threats Detected</h3>
+                  <div className="space-y-1">{scanResult.threats.map((threat, i) => <div key={i} className="text-sm text-red-200">• {threat.message}</div>)}</div>
+                  <p className="text-xs text-red-300 mt-2">Severity: <span className="font-bold">{scanResult.severity}</span> | Risk Score: {scanResult.score}/100</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-gray-800/50 rounded-lg p-4"><div className="text-sm text-gray-400 mb-1">Total Value Locked</div><div className="text-2xl font-bold text-blue-400">{formatNumber(dapp.tvl)}</div></div>
+            <div className="bg-gray-800/50 rounded-lg p-4"><div className="text-sm text-gray-400 mb-1">Age (Days)</div><div className="text-2xl font-bold text-orange-400">{dapp.age !== null && dapp.age !== undefined ? `${dapp.age}d` : 'N/A'}</div></div>
+            <div className="bg-gray-800/50 rounded-lg p-4"><div className="text-sm text-gray-400 mb-1">Audited</div><div className="text-2xl font-bold text-green-400">{dapp.audited ? '✓ Yes' : '✗ No'}</div></div>
+            <div className="bg-gray-800/50 rounded-lg p-4"><div className="text-sm text-gray-400 mb-1">24h Change</div><div className={`text-2xl font-bold ${dapp.change24h > 0 ? 'text-green-400' : 'text-red-400'}`}>{dapp.change24h !== undefined && dapp.change24h !== 0 ? `${dapp.change24h > 0 ? '+' : ''}${dapp.change24h.toFixed(2)}%` : 'N/A'}</div></div>
+          </div>
+          {dapp.chains && dapp.chains.length > 0 && (
+            <div className="bg-gray-800/50 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-bold mb-3 text-white">Supported Blockchains</h3>
+              <div className="flex flex-wrap gap-2">{dapp.chains.map(chain => <span key={chain} className="px-3 py-1.5 bg-blue-900/30 text-blue-300 rounded-lg text-sm">{chain}</span>)}</div>
+            </div>
+          )}
+          {dapp.description && (
+            <div className="bg-gray-800/50 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-bold mb-3 text-white">About</h3>
+              <p className="text-gray-300 leading-relaxed">{dapp.description}</p>
+            </div>
+          )}
+          <div className="bg-gray-800/50 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2"><Video className="w-6 h-6 text-orange-400" /><h3 className="text-lg font-bold text-white">Tutorial Videos ({guideVideos.length})</h3></div>
+              <button onClick={() => setShowAddVideo(!showAddVideo)} className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 rounded-lg text-sm text-white font-medium transition-all">{showAddVideo ? 'Cancel' : '+ Add Video'}</button>
+            </div>
+            {showAddVideo && (
+              <div className="bg-gray-900/50 rounded-lg p-4 mb-4 border border-gray-700">
+                <input type="text" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="Video Title" className="w-full bg-gray-800 border-gray-700 text-white border rounded-lg px-4 py-2 mb-3 focus:outline-none focus:border-blue-500" />
+                <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube URL (https://youtube.com/...)" className="w-full bg-gray-800 border-gray-700 text-white border rounded-lg px-4 py-2 mb-3 focus:outline-none focus:border-blue-500" />
+                <div className="flex gap-2">
+                  <button onClick={addVideo} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-all">Add Video</button>
+                  <button onClick={() => setShowAddVideo(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-white font-medium transition-all">Cancel</button>
+                </div>
+              </div>
+            )}
+            {guideVideos.length === 0 ? (
+              <div className="text-center py-8"><Video className="w-12 h-12 text-gray-600 mx-auto mb-2" /><p className="text-gray-500">No tutorial videos yet</p><p className="text-gray-600 text-sm mt-1">Add helpful videos to guide users</p></div>
+            ) : (
+              <div className="space-y-3">{guideVideos.map(video => <div key={video.id} className="bg-gray-900/50 border-gray-700 border rounded-lg p-4 flex items-center justify-between"><div className="flex-1"><h4 className="font-bold text-white mb-1">{video.title}</h4><a href={video.url} target="_blank" rel="noopener noreferrer" className="text-sm text-orange-400 hover:text-orange-300 flex items-center gap-2 transition-colors">Watch Video <ExternalLink className="w-4 h-4" /></a></div><button onClick={() => removeVideo(video.id)} className="text-red-400 hover:text-red-300 p-2 transition-colors" title="Remove video"><X className="w-5 h-5" /></button></div>)}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// MAIN APP COMPONENT
+// ============================================================================
+
+const App = () => {
+  const trackerProps = DAppTracker();
+  
+  return (
+    <ErrorBoundary>
+      <DAppTrackerUI {...trackerProps} />
+      {trackerProps.showAdminPanel && <AdminPanel onClose={() => trackerProps.setShowAdminPanel(false)} onSave={trackerProps.saveManualDapp} />}
+      {trackerProps.selectedDapp && <DAppDetail dapp={trackerProps.selectedDapp} scanResult={trackerProps.securityScans[trackerProps.selectedDapp.id]} onClose={() => trackerProps.setSelectedDapp(null)} formatNumber={trackerProps.formatNumber} getSecurityColor={trackerProps.getSecurityColor} />}
+    </ErrorBoundary>
+  );
+};
+
+export default App;
