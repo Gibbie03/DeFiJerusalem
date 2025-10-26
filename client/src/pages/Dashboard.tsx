@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -9,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
-import FilterChips from '@/components/FilterChips';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -63,13 +64,13 @@ export default function Dashboard() {
     },
   });
 
-  // Auto-scan protocols on load
-  useEffect(() => {
-    if (protocols.length > 0 && Object.keys(securityScans).length === 0) {
+  // Manual scan function
+  const handleScanAll = useCallback(() => {
+    if (protocols.length > 0) {
       const protocolIds = protocols.slice(0, 50).map(p => p.id);
       scanMutation.mutate(protocolIds);
     }
-  }, [protocols]);
+  }, [protocols, scanMutation]);
 
   const chains = useMemo(() => {
     const uniqueChains = new Set<string>(['all']);
@@ -150,7 +151,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <Header
         isOnline={isOnline}
         lastUpdate={new Date()}
@@ -187,12 +188,28 @@ export default function Dashboard() {
           <div className="flex-1">
             <SearchBar value={searchValue} onChange={setSearchValue} />
           </div>
-          <div className="lg:w-auto">
-            <FilterChips
-              options={chains}
-              selected={selectedChain}
-              onSelect={setSelectedChain}
-            />
+          <div className="flex gap-2">
+            <Select value={selectedChain} onValueChange={setSelectedChain}>
+              <SelectTrigger className="w-[200px]" data-testid="select-chain">
+                <SelectValue placeholder="Filter by chain" />
+              </SelectTrigger>
+              <SelectContent>
+                {chains.map((chain) => (
+                  <SelectItem key={chain} value={chain} data-testid={`option-chain-${chain}`}>
+                    {chain === 'all' ? 'All Chains' : chain.charAt(0).toUpperCase() + chain.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleScanAll}
+              disabled={scanMutation.isPending || protocols.length === 0}
+              variant="default"
+              data-testid="button-scan-all"
+            >
+              <ScanSearch className="w-4 h-4 mr-2" />
+              {scanMutation.isPending ? 'Scanning...' : 'Scan All'}
+            </Button>
           </div>
         </div>
 

@@ -57,6 +57,23 @@ export const blacklistEntrySchema = z.object({
 
 export type BlacklistEntry = z.infer<typeof blacklistEntrySchema>;
 
+// Tutorial video schema
+export const tutorialVideoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  videoUrl: z.string(),
+  thumbnailUrl: z.string().nullable(),
+  duration: z.number().nullable(),
+  category: z.string(),
+  uploadedAt: z.string(),
+});
+
+export type TutorialVideo = z.infer<typeof tutorialVideoSchema>;
+
+export const insertTutorialVideoSchema = tutorialVideoSchema.omit({ id: true, uploadedAt: true });
+export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
+
 // API response types
 export const protocolsResponseSchema = z.array(protocolSchema);
 export const scanResponseSchema = z.object({

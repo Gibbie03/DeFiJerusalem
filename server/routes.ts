@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { DAppDiscovery } from "./lib/dapp-discovery";
 import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
-import { insertProtocolSchema } from "@shared/schema";
+import { insertProtocolSchema, insertTutorialVideoSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const discovery = new DAppDiscovery();
@@ -151,6 +151,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching blacklist:", error);
       res.status(500).json({ 
         error: "Failed to fetch blacklist",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/tutorials - Get all tutorial videos
+  app.get("/api/tutorials", async (req, res) => {
+    try {
+      const tutorials = await storage.getTutorials();
+      res.json(tutorials);
+    } catch (error) {
+      console.error("Error fetching tutorials:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch tutorials",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/tutorials - Upload a new tutorial video
+  app.post("/api/tutorials", async (req, res) => {
+    try {
+      const validatedData = insertTutorialVideoSchema.parse(req.body);
+      
+      const tutorial = {
+        ...validatedData,
+        id: `tutorial-${Date.now()}-${Math.random()}`,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const savedTutorial = await storage.addTutorial(tutorial);
+      res.json(savedTutorial);
+    } catch (error) {
+      console.error("Error uploading tutorial:", error);
+      res.status(400).json({ 
+        error: "Invalid tutorial data",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
