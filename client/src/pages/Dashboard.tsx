@@ -221,11 +221,13 @@ export default function Dashboard() {
             label="Audited"
             value={`${stats.audited}%`}
             icon={Shield}
+            tooltip="DeFiLlama API does not reliably provide audit information for most protocols. This data may not be accurate. Audits must be verified independently."
           />
           <StatsCard
             label="Blacklisted"
             value={stats.blacklisted}
             icon={AlertCircle}
+            tooltip="Protocols are automatically blacklisted when they reach a CRITICAL risk score (≥80 points). This includes new contracts (<7 days), no audits, anonymous teams, and low liquidity (<$50k)."
           />
         </div>
 
