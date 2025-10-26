@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
-import ProtocolCard from '@/components/ProtocolCard';
+import ProtocolTable from '@/components/ProtocolTable';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TrendingTicker from '@/components/TrendingTicker';
@@ -102,20 +102,16 @@ export default function TrendingDApps() {
           <SearchBar value={searchValue} onChange={setSearchValue} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredProtocols.map((protocol) => (
-            <ProtocolCard
-              key={protocol.id}
-              protocol={protocol}
-              onClick={() => setSelectedProtocol(protocol)}
-            />
-          ))}
-        </div>
-
-        {filteredProtocols.length === 0 && !isLoading && (
+        {filteredProtocols.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             No trending protocols found
           </div>
+        ) : (
+          <ProtocolTable
+            protocols={filteredProtocols}
+            securityScans={securityScans}
+            onViewDetails={(protocol) => setSelectedProtocol(protocol)}
+          />
         )}
 
         {selectedProtocol && (
