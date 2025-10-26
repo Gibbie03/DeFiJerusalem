@@ -22,6 +22,9 @@ interface Protocol {
   twitter?: string | null;
   github?: string | null;
   audited: boolean;
+  auditCount?: number;
+  auditNote?: string | null;
+  auditLinks?: string[] | null;
   age?: number | null;
   description?: string;
 }
@@ -138,13 +141,59 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
-                Audited
+                Audits
               </p>
-              <p className="text-lg font-bold">
-                {protocol.audited ? '✓ Yes' : '✗ No'}
+              <p className="text-lg font-bold" data-testid="text-audit-count">
+                {protocol.auditCount !== undefined && protocol.auditCount > 0 
+                  ? `${protocol.auditCount} ${protocol.auditCount === 1 ? 'Audit' : 'Audits'}` 
+                  : '✗ None'}
               </p>
             </div>
           </div>
+
+          {protocol.auditCount && protocol.auditCount > 0 && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  Audit Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Audit Count</p>
+                  <p className="text-sm font-semibold">{protocol.auditCount} {protocol.auditCount === 1 ? 'Audit' : 'Audits'} Completed</p>
+                </div>
+                {protocol.auditNote && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Note</p>
+                    <p className="text-sm">{protocol.auditNote}</p>
+                  </div>
+                )}
+                {protocol.auditLinks && protocol.auditLinks.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Audit Reports</p>
+                    <div className="flex flex-wrap gap-2">
+                      {protocol.auditLinks.map((link, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          data-testid={`button-audit-link-${index}`}
+                        >
+                          <a href={link} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Report {index + 1}
+                          </a>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {onScan && (
             <div className="flex gap-2">

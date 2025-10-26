@@ -59,6 +59,16 @@ export const tutorialVideos = pgTable('tutorial_videos', {
   uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
 });
 
+export const manualAudits = pgTable('manual_audits', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull().references(() => protocols.id),
+  auditFirm: text('audit_firm').notNull(),
+  auditDate: timestamp('audit_date').notNull(),
+  reportUrl: text('report_url'),
+  findings: text('findings'),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
+});
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -111,6 +121,16 @@ export type TutorialVideo = {
   uploadedAt: string;
 };
 
+export type ManualAudit = {
+  id: string;
+  protocolId: string;
+  auditFirm: string;
+  auditDate: string;
+  reportUrl: string | null;
+  findings: string | null;
+  addedAt: string;
+};
+
 export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -128,8 +148,14 @@ export const insertTutorialVideoSchema = createInsertSchema(tutorialVideos).omit
   uploadedAt: true 
 });
 
+export const insertManualAuditSchema = createInsertSchema(manualAudits).omit({ 
+  id: true, 
+  addedAt: true 
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
+export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());
