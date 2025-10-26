@@ -8,6 +8,8 @@ import SearchBar from '@/components/SearchBar';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import TrendingTicker from '@/components/TrendingTicker';
+import AdSpace from '@/components/AdSpace';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 export default function TrendingDApps() {
@@ -66,6 +68,10 @@ export default function TrendingDApps() {
 
   return (
     <div className="bg-background">
+      <AdSpace position="top" />
+      
+      <TrendingTicker />
+      
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">Trending DApps</h1>
@@ -123,6 +129,8 @@ export default function TrendingDApps() {
           />
         )}
       </main>
+
+      <AdSpace position="bottom" />
     </div>
   );
 }

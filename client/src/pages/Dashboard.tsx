@@ -14,6 +14,9 @@ import SearchBar from '@/components/SearchBar';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AddDAppByUrlDialog from '@/components/AddDAppByUrlDialog';
+import TrendingTicker from '@/components/TrendingTicker';
+import AdSpace from '@/components/AdSpace';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 export default function Dashboard() {
@@ -177,6 +180,10 @@ export default function Dashboard() {
         isRefreshing={scanMutation.isPending}
       />
 
+      <AdSpace position="top" />
+      
+      <TrendingTicker />
+
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
@@ -205,7 +212,8 @@ export default function Dashboard() {
           <div className="flex-1">
             <SearchBar value={searchValue} onChange={setSearchValue} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <AddDAppByUrlDialog />
             <Select value={selectedChain} onValueChange={setSelectedChain}>
               <SelectTrigger className="w-[200px]" data-testid="select-chain">
                 <SelectValue placeholder="Filter by chain" />
@@ -262,6 +270,8 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <AdSpace position="bottom" />
 
       <ProtocolDetailModal
         protocol={selectedProtocol}

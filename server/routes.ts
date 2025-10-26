@@ -18,16 +18,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
-  // GET /api/protocols - Fetch and discover protocols from DeFiLlama
+  // GET /api/protocols - Fetch protocols (from DB or DeFiLlama)
   app.get("/api/protocols", async (req, res) => {
     try {
-      const protocols = await discovery.fetchFromMultipleSources();
+      // Try to load from database first (fastest)
+      const existingProtocols = await storage.getProtocols();
       
-      // Store protocols in memory
-      for (const protocol of protocols) {
-        await storage.addProtocol(protocol);
+      // If we have protocols in DB, return them immediately
+      if (existingProtocols.length > 0) {
+        res.json(existingProtocols);
+        
+        // Optionally refresh in background (fire and forget)
+        discovery.fetchFromMultipleSources().then(async (freshProtocols) => {
+          await storage.bulkUpsertProtocols(freshProtocols);
+        }).catch(err => console.error('Background refresh failed:', err));
+        
+        return;
       }
-
+      
+      // If DB is empty, fetch and store
+      const protocols = await discovery.fetchFromMultipleSources();
+      await storage.bulkUpsertProtocols(protocols);
       res.json(protocols);
     } catch (error) {
       console.error("Error fetching protocols:", error);

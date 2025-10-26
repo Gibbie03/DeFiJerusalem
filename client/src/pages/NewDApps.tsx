@@ -8,7 +8,9 @@ import SearchBar from '@/components/SearchBar';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
+import TrendingTicker from '@/components/TrendingTicker';
+import AdSpace from '@/components/AdSpace';
+import type { Protocol, SecurityScan, BlacklistEntry} from '@shared/schema';
 
 export default function NewDApps() {
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
@@ -66,6 +68,10 @@ export default function NewDApps() {
 
   return (
     <div className="bg-background">
+      <AdSpace position="top" />
+      
+      <TrendingTicker />
+      
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">New DApps</h1>
@@ -123,6 +129,8 @@ export default function NewDApps() {
           />
         )}
       </main>
+
+      <AdSpace position="bottom" />
     </div>
   );
 }

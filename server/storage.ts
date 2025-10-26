@@ -1,11 +1,12 @@
 import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo } from "@shared/schema";
 import { protocols, securityScans, blacklistEntries, tutorialVideos } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gt } from "drizzle-orm";
+import { eq, desc, gt, sql } from "drizzle-orm";
 
 export interface IStorage {
   getProtocols(): Promise<Protocol[]>;
   addProtocol(protocol: InsertProtocol): Promise<Protocol>;
+  bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void>;
   getBlacklist(): Promise<BlacklistEntry[]>;
   addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry>;
   getSecurityScan(protocolId: string): Promise<SecurityScan | undefined>;
@@ -73,6 +74,28 @@ export class DatabaseStorage implements IStorage {
       autoDiscovered: result.autoDiscovered,
       manuallyAdded: result.manuallyAdded,
     };
+  }
+
+  async bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void> {
+    if (protocolList.length === 0) return;
+    
+    // Batch insert/update protocols in chunks of 50
+    const batchSize = 50;
+    for (let i = 0; i < protocolList.length; i += batchSize) {
+      const batch = protocolList.slice(i, i + batchSize);
+      await db
+        .insert(protocols)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: protocols.id,
+          set: {
+            tvl: sql`EXCLUDED.tvl`,
+            change24h: sql`EXCLUDED.change_24h`,
+            securityScore: sql`EXCLUDED.security_score`,
+            lastUpdated: new Date(),
+          },
+        });
+    }
   }
 
   async getBlacklist(): Promise<BlacklistEntry[]> {

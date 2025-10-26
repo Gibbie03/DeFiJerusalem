@@ -12,6 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import TrendingTicker from '@/components/TrendingTicker';
+import AdSpace from '@/components/AdSpace';
 import type { TutorialVideo, InsertTutorialVideo } from '@shared/schema';
 
 export default function Tutorials() {
@@ -70,6 +72,10 @@ export default function Tutorials() {
 
   return (
     <div className="min-h-screen bg-background">
+      <AdSpace position="top" />
+      
+      <TrendingTicker />
+      
       <div className="max-w-screen-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -270,6 +276,8 @@ export default function Tutorials() {
           </div>
         )}
       </div>
+
+      <AdSpace position="bottom" />
     </div>
   );
 }
