@@ -11,7 +11,8 @@ import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Tutorials from "@/pages/Tutorials";
 import NotFound from "@/pages/not-found";
-import logoImage from "@assets/generated_images/JERUSALEM_DeFi_Security_Logo_16f36794.png";
+import logoDark from "@assets/generated_images/JERUSALEM_Logo_Dark_Mode_bd91dd0a.png";
+import logoLight from "@assets/generated_images/JERUSALEM_Logo_Light_Mode_5d31c9ec.png";
 
 function Router() {
   const [location] = useLocation();
@@ -38,7 +39,11 @@ function Router() {
         <div className="max-w-screen-2xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <img src={logoImage} alt="JERUSALEM" className="h-12 w-auto object-contain" />
+              <img 
+                src={theme === 'dark' ? logoDark : logoLight} 
+                alt="JERUSALEM" 
+                className="h-12 w-auto object-contain" 
+              />
             </div>
             <div className="flex gap-2 flex-wrap items-center">
               <Link href="/">
