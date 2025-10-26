@@ -13,7 +13,7 @@ import FilterChips from '@/components/FilterChips';
 import ProtocolCard from '@/components/ProtocolCard';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import type { Protocol, SecurityScan } from '@shared/schema';
+import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 export default function Dashboard() {
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
@@ -35,7 +35,7 @@ export default function Dashboard() {
   });
 
   // Fetch blacklist
-  const { data: blacklist = [] } = useQuery<any[]>({
+  const { data: blacklist = [] } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
     enabled: isOnline,
   });
@@ -43,13 +43,10 @@ export default function Dashboard() {
   // Security scan mutation
   const scanMutation = useMutation({
     mutationFn: async (protocolIds: string[]) => {
-      return await apiRequest('/api/scan', {
-        method: 'POST',
-        body: JSON.stringify({ protocolIds }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/scan', { protocolIds });
+      return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: { scanResults: Record<string, SecurityScan>; scannedCount: number; newBlacklistEntries: BlacklistEntry[] }) => {
       setSecurityScans(prev => ({ ...prev, ...data.scanResults }));
       queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
       toast({

@@ -5,22 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import SecurityBadge from './SecurityBadge';
 
-interface Protocol {
-  id: string;
-  name: string;
-  chains: string[];
-  category: string;
-  tvl: number;
-  change24h: number;
-  securityScore: number;
-  logo?: string | null;
-  website?: string | null;
-  twitter?: string | null;
-  github?: string | null;
-  audited: boolean;
-  age?: number | null;
-  description?: string;
-}
+import type { Protocol } from '@shared/schema';
 
 interface ProtocolCardProps {
   protocol: Protocol;
