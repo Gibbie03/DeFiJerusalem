@@ -53,6 +53,15 @@ export class DAppDiscovery {
           chains = [p.chain];
         }
 
+        // Parse audit count (DeFiLlama returns it as a string!)
+        const auditCount = parseInt(p.audits) || 0;
+        
+        // Parse audit links if available
+        let auditLinks: string[] | null = null;
+        if (p.audit_links && Array.isArray(p.audit_links)) {
+          auditLinks = p.audit_links.filter((link: any) => typeof link === 'string');
+        }
+
         return {
           id: p.slug || `protocol-${Date.now()}-${Math.random()}`,
           name: p.name || 'Unknown Protocol',
@@ -61,7 +70,10 @@ export class DAppDiscovery {
           tvl: typeof p.tvl === 'number' ? p.tvl : 0,
           change24h: typeof p.change_1d === 'number' ? p.change_1d : 0,
           age: this.calculateAge(p.listedAt),
-          audited: typeof p.audits === 'number' ? p.audits > 0 : false,
+          audited: auditCount > 0,
+          auditCount: auditCount,
+          auditNote: p.audit_note || null,
+          auditLinks: auditLinks,
           securityScore: this.calculateSecurityScore(p),
           logo: p.logo || null,
           website: p.url || null,
@@ -93,6 +105,9 @@ export class DAppDiscovery {
         change24h: 2.5,
         age: Math.floor((Date.now() / 1000 - (Date.now() / 1000 - 365 * 86400)) / 86400),
         audited: true,
+        auditCount: 5,
+        auditNote: 'Multiple audits by leading firms',
+        auditLinks: ['https://github.com/Uniswap/v3-core/tree/main/audits'],
         securityScore: 95,
         logo: 'https://avatars.githubusercontent.com/u/38646891?v=4',
         website: 'https://uniswap.org',
@@ -111,6 +126,9 @@ export class DAppDiscovery {
         change24h: 1.2,
         age: Math.floor((Date.now() / 1000 - (Date.now() / 1000 - 730 * 86400)) / 86400),
         audited: true,
+        auditCount: 8,
+        auditNote: 'Extensively audited DeFi protocol',
+        auditLinks: ['https://github.com/aave/aave-v3-core/tree/master/audits'],
         securityScore: 92,
         logo: 'https://avatars.githubusercontent.com/u/7634462?v=4',
         website: 'https://aave.com',

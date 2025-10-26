@@ -12,6 +12,9 @@ export const protocols = pgTable('protocols', {
   change24h: real('change_24h').notNull(),
   age: integer('age'),
   audited: boolean('audited').notNull(),
+  auditCount: integer('audit_count').notNull().default(0),
+  auditNote: text('audit_note'),
+  auditLinks: json('audit_links').$type<string[]>(),
   securityScore: real('security_score').notNull(),
   logo: text('logo'),
   website: text('website'),
@@ -66,6 +69,9 @@ export type Protocol = {
   change24h: number;
   age: number | null;
   audited: boolean;
+  auditCount: number;
+  auditNote: string | null;
+  auditLinks: string[] | null;
   securityScore: number;
   logo: string | null;
   website: string | null;
