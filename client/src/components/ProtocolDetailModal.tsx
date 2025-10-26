@@ -51,16 +51,8 @@ interface ProtocolDetailModalProps {
 export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onClose, onScan, isScanning = false }: ProtocolDetailModalProps) {
   if (!protocol) return null;
 
-  const { data: allTutorials = [] } = useQuery<TutorialVideo[]>({
-    queryKey: ['/api/tutorials'],
-    enabled: isOpen,
-  });
-
-  const relatedTutorials = allTutorials.filter(tutorial => 
-    tutorial.title.toLowerCase().includes(protocol.name.toLowerCase()) ||
-    tutorial.description.toLowerCase().includes(protocol.name.toLowerCase()) ||
-    protocol.category.toLowerCase().includes(tutorial.category.toLowerCase())
-  );
+  // Removed tutorial fetching to improve performance
+  const relatedTutorials: TutorialVideo[] = [];
 
   const formatTVL = (num: number) => {
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Shield } from "lucide-react";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
@@ -23,9 +24,16 @@ function Router() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center gap-2 p-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <span className="text-sm text-muted-foreground">DeFi Security Scanner</span>
+          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+            <div className="flex items-center justify-center p-3 border-b">
+              <div className="flex items-center gap-2">
+                <Shield className="w-6 h-6 text-primary" />
+                <h1 className="text-lg font-bold">JERUSALEM DeFi Scanner</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-2">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+            </div>
           </header>
           <main className="flex-1 overflow-y-auto">
             <Switch>
