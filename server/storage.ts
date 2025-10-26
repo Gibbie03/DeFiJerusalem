@@ -1,37 +1,49 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import type { Protocol, BlacklistEntry, SecurityScan } from "@shared/schema";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getProtocols(): Promise<Protocol[]>;
+  addProtocol(protocol: Protocol): Promise<Protocol>;
+  getBlacklist(): Promise<BlacklistEntry[]>;
+  addToBlacklist(entry: BlacklistEntry): Promise<BlacklistEntry>;
+  getSecurityScan(protocolId: string): Promise<SecurityScan | undefined>;
+  addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private protocols: Map<string, Protocol>;
+  private blacklist: Map<string, BlacklistEntry>;
+  private securityScans: Map<string, SecurityScan>;
 
   constructor() {
-    this.users = new Map();
+    this.protocols = new Map();
+    this.blacklist = new Map();
+    this.securityScans = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getProtocols(): Promise<Protocol[]> {
+    return Array.from(this.protocols.values());
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async addProtocol(protocol: Protocol): Promise<Protocol> {
+    this.protocols.set(protocol.id, protocol);
+    return protocol;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async getBlacklist(): Promise<BlacklistEntry[]> {
+    return Array.from(this.blacklist.values());
+  }
+
+  async addToBlacklist(entry: BlacklistEntry): Promise<BlacklistEntry> {
+    this.blacklist.set(entry.id, entry);
+    return entry;
+  }
+
+  async getSecurityScan(protocolId: string): Promise<SecurityScan | undefined> {
+    return this.securityScans.get(protocolId);
+  }
+
+  async addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void> {
+    this.securityScans.set(protocolId, scan);
   }
 }
 
