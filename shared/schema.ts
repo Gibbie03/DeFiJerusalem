@@ -40,6 +40,7 @@ export const blacklistEntries = pgTable('blacklist_entries', {
   dappName: text('dapp_name').notNull(),
   severity: text('severity').notNull(),
   threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
+  reason: text('reason'),
   status: text('status').notNull(),
   timestamp: timestamp('timestamp').notNull().defaultNow(),
 });
@@ -88,6 +89,7 @@ export type BlacklistEntry = {
   dappName: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   threats: Threat[];
+  reason: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   timestamp: string;
 };

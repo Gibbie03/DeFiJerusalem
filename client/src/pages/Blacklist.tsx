@@ -106,7 +106,7 @@ export default function Blacklist() {
                         {entry.dappId}
                       </CardTitle>
                       <CardDescription>
-                        Flagged on {new Date(entry.flaggedAt).toLocaleDateString()}
+                        Flagged on {new Date(entry.timestamp).toLocaleDateString()}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
