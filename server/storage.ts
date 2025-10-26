@@ -9,6 +9,7 @@ export interface IStorage {
   getBlacklist(): Promise<BlacklistEntry[]>;
   addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry>;
   getSecurityScan(protocolId: string): Promise<SecurityScan | undefined>;
+  getAllSecurityScans(): Promise<Record<string, SecurityScan>>;
   addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void>;
   getTutorials(): Promise<TutorialVideo[]>;
   addTutorial(tutorial: InsertTutorialVideo): Promise<TutorialVideo>;
@@ -122,13 +123,41 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getAllSecurityScans(): Promise<Record<string, SecurityScan>> {
+    // Order by scannedAt DESC to get most recent scans first
+    const allScans = await db
+      .select()
+      .from(securityScans)
+      .orderBy(desc(securityScans.scannedAt));
+    
+    const scanMap: Record<string, SecurityScan> = {};
+    
+    // Keep only the most recent scan per protocol (first occurrence due to DESC order)
+    for (const scan of allScans) {
+      if (!scanMap[scan.protocolId]) {
+        scanMap[scan.protocolId] = {
+          isBlacklisted: scan.isBlacklisted,
+          severity: scan.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+          threats: scan.threats.map(t => ({
+            type: t.type,
+            severity: t.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+            message: t.message,
+          })),
+          score: scan.score,
+        };
+      }
+    }
+    
+    return scanMap;
+  }
+
   async addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void> {
     await db.insert(securityScans).values({
       id: `scan-${protocolId}-${Date.now()}`,
       protocolId,
       isBlacklisted: scan.isBlacklisted,
       severity: scan.severity,
-      threats: scan.threats,
+      threats: scan.threats as any,
       score: scan.score,
     });
   }

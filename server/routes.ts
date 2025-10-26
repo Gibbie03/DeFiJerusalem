@@ -217,16 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/scans - Get all security scans
   app.get("/api/scans", async (req, res) => {
     try {
-      const protocols = await storage.getProtocols();
-      const scans: Record<string, any> = {};
-      
-      for (const protocol of protocols) {
-        const scan = await storage.getSecurityScan(protocol.id);
-        if (scan) {
-          scans[protocol.id] = scan;
-        }
-      }
-      
+      const scans = await storage.getAllSecurityScans();
       res.json(scans);
     } catch (error) {
       console.error("Error fetching scans:", error);
