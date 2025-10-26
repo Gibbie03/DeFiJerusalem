@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
-import ProtocolCard from '@/components/ProtocolCard';
+import ProtocolTable from '@/components/ProtocolTable';
 import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AddDAppByUrlDialog from '@/components/AddDAppByUrlDialog';
@@ -321,16 +321,11 @@ export default function Dashboard() {
                 <p className="text-muted-foreground">No protocols found</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {displayProtocols.map((protocol) => (
-                  <ProtocolCard
-                    key={protocol.id}
-                    protocol={protocol}
-                    onViewDetails={handleViewDetails}
-                    onScan={handleScan}
-                  />
-                ))}
-              </div>
+              <ProtocolTable
+                protocols={displayProtocols}
+                securityScans={securityScans}
+                onViewDetails={handleViewDetails}
+              />
             )}
           </TabsContent>
         </Tabs>
