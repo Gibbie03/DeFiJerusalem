@@ -13,6 +13,9 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 - **Removed auto-scanning on page load**: Protocols load immediately but security scanning is triggered manually via "Scan All" button
 - **Enhanced chain filtering**: Replaced chip-based filter with expandable Select dropdown component
 - **Tutorial Videos feature**: Complete upload and listing functionality for educational DeFi security videos
+- **URL-based DApp Detection**: Added "Add DApp by URL" feature allowing users to paste DApp links and auto-detect protocol information across any blockchain
+- **Ad Spaces**: Integrated placeholder ad spaces at top and bottom of all pages for future monetization
+- **Trending Ticker**: Added auto-scrolling ticker showing trending protocols with TVL and 24h change, scrolls right-to-left across all pages
 
 ## User Preferences
 - **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)
@@ -30,12 +33,12 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 - **tutorial_videos**: Educational videos (title, description, video_url, category, uploaded_at)
 
 ### Frontend (client/src)
-- **Dashboard** (`pages/Dashboard.tsx`): Main scanner with manual "Scan All" button, expandable chain filter, protocol listing with security badges loaded from database
+- **Dashboard** (`pages/Dashboard.tsx`): Main scanner with manual "Scan All" button, URL-based DApp detection, expandable chain filter, protocol listing with security badges loaded from database
 - **New DApps** (`pages/NewDApps.tsx`): Recently discovered protocols sorted by discovery date
 - **Trending DApps** (`pages/TrendingDApps.tsx`): Protocols with highest TVL growth (24h)
 - **Tutorials** (`pages/Tutorials.tsx`): Video tutorial upload and listing with YouTube integration
 - **Navigation** (`App.tsx`): Menu bar with Home, New DApps, Trending, and Tutorials links
-- **Components**: Header, StatsCard, SearchBar, ProtocolCard, ProtocolDetailModal, LoadingSpinner
+- **Components**: Header, StatsCard, SearchBar, ProtocolCard, ProtocolDetailModal, LoadingSpinner, AddDAppByUrlDialog, TrendingTicker, AdSpace
 
 ### Backend (server/)
 - **Database** (`db.ts`): Neon PostgreSQL connection with Drizzle ORM
@@ -59,17 +62,20 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 
 ### Key Features
 1. **Auto-Discovery**: Fetches top protocols from DeFiLlama and stores in database
-2. **Manual Security Scanning**: "Scan All" button triggers threat analysis, results stored in database
-3. **Weekly Automated Scanning**: Background job scans all protocols every 7 days
-4. **Database Persistence**: All protocols, scans, blacklist entries, and tutorials persist in PostgreSQL
-5. **Page Load Hydration**: Stored scan results load automatically on page load from database
-6. **New DApps Tracking**: View recently discovered protocols
-7. **Trending Analysis**: See protocols with highest TVL growth
-8. **Chain Filtering**: Select dropdown with all 126+ chains
-9. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
-10. **Blacklist Management**: Automatic flagging of high-severity threats
-11. **Tutorial System**: Video upload with form validation, YouTube integration
-12. **Navigation Menu**: Easy access to all pages from menu bar
+2. **URL-based Detection**: Paste any DApp link to add protocols across any blockchain with auto-fill
+3. **Manual Security Scanning**: "Scan All" button triggers threat analysis, results stored in database
+4. **Weekly Automated Scanning**: Background job scans all protocols every 7 days
+5. **Database Persistence**: All protocols, scans, blacklist entries, and tutorials persist in PostgreSQL
+6. **Page Load Hydration**: Stored scan results load automatically on page load from database
+7. **New DApps Tracking**: View recently discovered protocols
+8. **Trending Analysis**: See protocols with highest TVL growth
+9. **Trending Ticker**: Auto-scrolling ticker showing trending protocols (right-to-left) across all pages
+10. **Chain Filtering**: Select dropdown with all 126+ chains
+11. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
+12. **Blacklist Management**: Automatic flagging of high-severity threats
+13. **Tutorial System**: Video upload with form validation, YouTube integration
+14. **Navigation Menu**: Easy access to all pages from menu bar
+15. **Ad Spaces**: Monetization-ready placeholder ad spaces at top and bottom of all pages
 
 ### Technical Stack
 - **Frontend**: React, Wouter, TanStack Query, Shadcn UI, Tailwind CSS
