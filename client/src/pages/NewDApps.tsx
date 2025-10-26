@@ -72,7 +72,6 @@ export default function NewDApps() {
             <ProtocolCard
               key={protocol.id}
               protocol={protocol}
-              scanResult={securityScans[protocol.id]}
               onClick={() => setSelectedProtocol(protocol)}
             />
           ))}
@@ -86,8 +85,8 @@ export default function NewDApps() {
 
         {selectedProtocol && (
           <ProtocolDetailModal
+            isOpen={true}
             protocol={selectedProtocol}
-            scanResult={securityScans[selectedProtocol.id]}
             onClose={() => setSelectedProtocol(null)}
           />
         )}

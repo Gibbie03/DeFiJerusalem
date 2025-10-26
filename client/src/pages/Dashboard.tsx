@@ -41,6 +41,19 @@ export default function Dashboard() {
     enabled: isOnline,
   });
 
+  // Fetch all existing scans from database
+  const { data: storedScans = {} } = useQuery<Record<string, SecurityScan>>({
+    queryKey: ['/api/scans'],
+    enabled: isOnline,
+  });
+
+  // Update local security scans when stored scans are loaded
+  useEffect(() => {
+    if (Object.keys(storedScans).length > 0) {
+      setSecurityScans(storedScans);
+    }
+  }, [storedScans]);
+
   // Security scan mutation
   const scanMutation = useMutation({
     mutationFn: async (protocolIds: string[]) => {
