@@ -159,24 +159,117 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             </div>
           )}
 
-          {scanResult && scanResult.threats.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                Security Threats ({scanResult.threats.length})
-              </h3>
-              <div className="space-y-2">
-                {scanResult.threats.map((threat, idx) => (
-                  <div key={idx} className="p-3 bg-card rounded-lg border">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="font-medium text-sm">{threat.type.replace(/_/g, ' ')}</span>
-                      <SeverityIndicator severity={threat.severity} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">{threat.message}</p>
+          {scanResult && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Security Analysis
+                </CardTitle>
+                <CardDescription>
+                  Automated security checks performed on this protocol
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 pb-4 border-b">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Risk Score</p>
+                    <p className="text-2xl font-bold">{scanResult.score}/100</p>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Severity</p>
+                    <SeverityIndicator severity={scanResult.severity} />
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Security Checks Performed:</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
+                        scanResult.threats.some(t => t.type === 'NEW_CONTRACT') ? 'bg-red-500' : 'bg-green-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="font-medium">Contract Age Check</p>
+                        <p className="text-muted-foreground text-xs">
+                          {scanResult.threats.some(t => t.type === 'NEW_CONTRACT') 
+                            ? '⚠️ Contract is less than 7 days old (+40 risk points)' 
+                            : '✓ Contract age verified'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
+                        scanResult.threats.some(t => t.type === 'NO_AUDIT') ? 'bg-red-500' : 'bg-green-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="font-medium">Security Audit Check</p>
+                        <p className="text-muted-foreground text-xs">
+                          {scanResult.threats.some(t => t.type === 'NO_AUDIT') 
+                            ? '⚠️ No security audit found (+30 risk points)' 
+                            : '✓ Security audit detected'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
+                        scanResult.threats.some(t => t.type === 'ANONYMOUS_TEAM') ? 'bg-red-500' : 'bg-green-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="font-medium">Team Transparency Check</p>
+                        <p className="text-muted-foreground text-xs">
+                          {scanResult.threats.some(t => t.type === 'ANONYMOUS_TEAM') 
+                            ? '⚠️ Team is anonymous - no social presence (+25 risk points)' 
+                            : '✓ Team has public social presence'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
+                        scanResult.threats.some(t => t.type === 'LOW_LIQUIDITY') ? 'bg-orange-500' : 'bg-green-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="font-medium">Liquidity Check</p>
+                        <p className="text-muted-foreground text-xs">
+                          {scanResult.threats.some(t => t.type === 'LOW_LIQUIDITY') 
+                            ? '⚠️ Very low liquidity - TVL < $50k (+20 risk points)' 
+                            : '✓ Adequate liquidity detected'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {scanResult.threats.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-semibold mb-2 text-destructive">
+                      Threats Detected ({scanResult.threats.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {scanResult.threats.map((threat, idx) => (
+                        <div key={idx} className="p-3 bg-destructive/5 rounded-lg border border-destructive/20">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <span className="font-medium text-sm">{threat.type.replace(/_/g, ' ')}</span>
+                            <SeverityIndicator severity={threat.severity} />
+                          </div>
+                          <p className="text-sm text-muted-foreground">{threat.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t bg-muted/30 p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Blacklist Criteria:</strong> Protocols with a risk score ≥ 80 (CRITICAL severity) are automatically flagged. 
+                    Current score: {scanResult.score}/100 ({scanResult.severity})
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {relatedTutorials.length > 0 && (
