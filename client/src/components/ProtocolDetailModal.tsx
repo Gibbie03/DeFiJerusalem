@@ -115,9 +115,12 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                 <Shield className="w-3 h-3" />
-                Security
+                Security Score
               </p>
-              <SecurityBadge score={protocol.securityScore} size="sm" />
+              <div className="flex flex-col gap-1">
+                <SecurityBadge score={protocol.securityScore} size="sm" />
+                <p className="text-xs text-muted-foreground">Higher = More Secure</p>
+              </div>
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
@@ -215,7 +218,8 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
                 <div className="grid grid-cols-2 gap-4 pb-4 border-b">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Risk Score</p>
-                    <p className="text-2xl font-bold">{scanResult.score}/100</p>
+                    <p className="text-2xl font-bold text-destructive">{scanResult.score}/100</p>
+                    <p className="text-xs text-muted-foreground mt-1">Higher = More Risky</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Severity</p>
