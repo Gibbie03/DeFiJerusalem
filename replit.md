@@ -1,171 +1,67 @@
 # JERUSALEM DeFi Security Scanner
 
-A fullstack JavaScript application that discovers DeFi protocols from DeFiLlama API, performs real-time security threat analysis to detect wallet drainers, tracks blacklisted projects, and supports filtering across 126+ blockchain chains.
-
 ## Overview
+A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama API and performs real-time security threat analysis to detect wallet drainers and track blacklisted projects. The scanner supports filtering across 126+ blockchain chains with cybersecurity-themed UI.
 
-This application is a comprehensive DeFi security scanner that:
-- Auto-discovers protocols from DeFiLlama API (126+ chains supported)
-- Performs real-time security threat analysis
-- Detects wallet drainers and malicious contracts
-- Tracks blacklisted projects
-- Provides filtering and search capabilities
-- Features a cybersecurity-themed dark mode UI
+## Recent Changes (October 26, 2025)
+- **Removed auto-scanning on page load**: Protocols now load immediately but security scanning is triggered manually via "Scan All" button
+- **Enhanced chain filtering**: Replaced chip-based filter with expandable Select dropdown component for better UX with 126+ chains
+- **Added Tutorial Videos feature**: Complete upload and listing functionality for educational DeFi security videos
+- **Improved navigation**: Top navigation bar with Scanner and Tutorials tabs using lucide-react icons (no emojis)
+- **Fixed design violations**: All forms now use prescribed shadcn useForm + Form pattern with zodResolver validation
 
-## Features Implemented
+## User Preferences
+- **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)
+- **Forms**: Must use shadcn useForm + Form pattern with zodResolver for validation
+- **Data Updates**: React Query mutations must invalidate relevant queries for immediate UI updates
+- **User Control**: Security scanning is manual-only, not triggered automatically on page load
 
-### Backend Features
+## Project Architecture
 
-1. **APICache** (`server/lib/api-cache.ts`)
-   - In-memory caching with 30-minute TTL
-   - Maximum cache size of 100 entries
-   - Automatic cache expiration and cleanup
+### Frontend (client/src)
+- **Dashboard** (`pages/Dashboard.tsx`): Main scanner interface with manual "Scan All" button, expandable chain filter (Select dropdown), search, and protocol listing with security visualization
+- **Tutorials** (`pages/Tutorials.tsx`): Video tutorial upload form (using Form pattern) and card-based listing with YouTube integration
+- **Navigation** (`App.tsx`): Top nav with Scanner/Tutorials tabs, Shield branding (no emoji)
+- **Components**: Header, StatsCard, SearchBar, ProtocolCard, ProtocolDetailModal, LoadingSpinner
+- **State Management**: React Query for server state, local state for UI interactions
 
-2. **WalletDrainerDetector** (`server/lib/wallet-drainer-detector.ts`)
-   - Security scanning engine with threat detection:
-     - New contracts (< 7 days old) - HIGH RISK
-     - No security audit - HIGH RISK
-     - Anonymous team (no social presence) - HIGH RISK
-     - Low liquidity (< $50k) - MEDIUM RISK
-   - Severity scoring: CRITICAL, HIGH, MEDIUM, LOW
-   - Automatic blacklisting of CRITICAL threats
+### Backend (server/)
+- **DApp Discovery** (`lib/dapp-discovery.ts`): DeFiLlama API integration with 30-minute cache (APICache)
+- **Security Analysis** (`lib/wallet-drainer-detector.ts`): Pattern-based threat detection for wallet drainers
+- **Blacklist Manager** (`lib/blacklist-manager.ts`): Manages blacklisted protocols with severity levels
+- **Storage** (`storage.ts`): In-memory storage for protocols, security scans, blacklist entries, and tutorial videos
+- **API Routes** (`routes.ts`):
+  - `GET /api/protocols` - Discover and return DeFi protocols
+  - `POST /api/scan` - Perform security analysis on protocol IDs
+  - `GET /api/blacklist` - Get blacklisted entries
+  - `GET /api/tutorials` - Get all tutorial videos
+  - `POST /api/tutorials` - Upload new tutorial video
 
-3. **BlacklistManager** (`server/lib/blacklist-manager.ts`)
-   - Tracks threats and manages blacklist entries
-   - Maintains ACTIVE/INACTIVE status
-   - Stores threat details with timestamps
+### Data Models (shared/schema.ts)
+- **Protocol**: DeFi protocol with chains, TVL, security score, audit status, social links
+- **SecurityScan**: Threat analysis result with severity, threats array, and score
+- **BlacklistEntry**: Flagged protocols with threat details and status
+- **TutorialVideo**: Educational videos with URL, thumbnail, duration, category
 
-4. **DAppDiscovery** (`server/lib/dapp-discovery.ts`)
-   - Fetches protocols from DeFiLlama API
-   - CORS proxy integration (corsproxy.io)
-   - Retry logic with exponential backoff (3 retries, 2s delay)
-   - Rate limit handling (429 status)
-   - Fallback data for offline/error scenarios
-   - Category classification (DEX, Lending, Yield, Bridge, NFT)
-   - Age calculation from listing timestamp
-   - Security score calculation based on audits, TVL, and social presence
+### Key Features
+1. **Auto-Discovery**: Fetches top protocols from DeFiLlama on page load (no auto-scan)
+2. **Manual Security Scanning**: "Scan All" button triggers threat analysis for loaded protocols
+3. **Chain Filtering**: Select dropdown with all 126+ chains from discovered protocols
+4. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
+5. **Blacklist Management**: Automatic flagging of high-severity threats
+6. **Tutorial System**: Video upload with form validation, YouTube integration
+7. **Offline Detection**: Real-time connection status monitoring
 
-5. **API Routes** (`server/routes.ts`)
-   - `GET /api/protocols` - Discover and fetch protocols
-   - `POST /api/protocols` - Add manual protocols
-   - `POST /api/scan` - Batch security scanning (10 protocols at a time)
-   - `GET /api/scan/:protocolId` - Get scan result for specific protocol
-   - `GET /api/blacklist` - Retrieve blacklist entries
+### Technical Stack
+- Frontend: React, Wouter, TanStack Query, Shadcn UI, Tailwind CSS
+- Backend: Express, in-memory storage (MemStorage)
+- Validation: Zod, drizzle-zod, react-hook-form
+- External: DeFiLlama API for protocol discovery
 
-6. **Storage** (`server/storage.ts`)
-   - In-memory storage for protocols, blacklist, and security scans
-   - Full CRUD operations for all entities
-
-### Frontend Features
-
-1. **Dashboard** (`client/src/pages/Dashboard.tsx`)
-   - Auto-discovery of protocols on page load
-   - Real-time security scanning (first 50 protocols)
-   - Protocol filtering by chain and search
-   - Trending and New Protocols tabs
-   - Stats cards: Total Protocols, Chains Supported, Audited %, Blacklisted
-   - Online/offline detection
-   - Refresh functionality
-   - Toast notifications for scan results
-
-2. **Custom Hooks**
-   - `useDebounce` - 300ms debouncing for search input
-   - `useOnlineStatus` - Detects internet connection status
-
-3. **Components**
-   - `Header` - App branding, online status, refresh button
-   - `StatsCard` - Display key metrics
-   - `SearchBar` - Filter protocols by name/category
-   - `FilterChips` - Filter by blockchain chain
-   - `ProtocolCard` - Display protocol information with security badge
-   - `ProtocolDetailModal` - Detailed protocol information and scan results
-   - `SecurityBadge` - Visual security score indicator
-   - `LoadingSpinner` - Loading state with progress message
-
-## Technical Stack
-
-- **Frontend**: React 18, TypeScript, Wouter (routing), TanStack Query, Shadcn UI, Tailwind CSS
-- **Backend**: Express.js, TypeScript
-- **Data Source**: DeFiLlama API (https://api.llama.fi/protocols)
-- **Caching**: In-memory with TTL
-- **Proxy**: corsproxy.io for CORS handling
-
-## Security Scanning Algorithm
-
-The security scanner evaluates protocols based on:
-1. **Contract Age** (40 points if < 7 days)
-2. **Audit Status** (30 points if not audited)
-3. **Team Anonymity** (25 points if no Twitter/GitHub)
-4. **Liquidity** (20 points if TVL < $50k)
-
-**Severity Levels:**
-- CRITICAL: Score ≥ 80 (auto-blacklisted)
-- HIGH: Score ≥ 50
-- MEDIUM: Score ≥ 25
-- LOW: Score < 25
-
-## Data Flow
-
-1. User loads the dashboard
-2. Frontend calls `GET /api/protocols`
-3. Backend fetches from DeFiLlama via CORS proxy
-4. Protocols are cached for 30 minutes
-5. Auto-scan runs on first 50 protocols
-6. Security results displayed in UI
-7. CRITICAL threats added to blacklist
-
-## API Integration
-
-### DeFiLlama API
-- Endpoint: `https://api.llama.fi/protocols`
-- Via CORS proxy: `https://corsproxy.io/?https://api.llama.fi/protocols`
-- Retry logic: 3 attempts with 2s delay
-- Rate limit handling: 5s backoff on 429 status
-- Fallback: Local mock data (Uniswap, Aave)
-
-### Batch Processing
-- Security scans process 10 protocols at a time
-- 1-second delay between batches
-- Maximum 100 protocols per scan request
-
-## Design System
-
-- **Theme**: Cybersecurity dark mode
-- **Colors**: Yellow/Orange accent for Jerusalem branding
-- **Typography**: Inter for UI text, JetBrains Mono for data
-- **Components**: Shadcn UI with Radix primitives
-- **Icons**: Lucide React
-
-## Running the Application
-
-The application runs on port 5000 with both frontend and backend served together:
-
-```bash
-npm run dev
-```
-
-## Environment Variables
-
-- `SESSION_SECRET` - Used for session management (already configured)
-
-## Recent Changes
-
-**October 26, 2025**
-- Implemented all Jerusalem DeFi Security Scanner features
-- Created API cache with 30-minute TTL
-- Built security scanning engine with threat detection
-- Integrated DeFiLlama API with CORS proxy and retry logic
-- Implemented batch security scanning (10 at a time)
-- Created blacklist management system
-- Built complete UI with filtering, search, and security visualization
-- Added online/offline detection and error handling
-- Improved type safety throughout the application
-
-## Future Enhancements
-
-1. Manual cache invalidation controls
-2. Self-hosted CORS proxy for better reliability
-3. Additional security heuristics (smart contract analysis, rugpull detection)
-4. Historical security scan tracking
-5. Export blacklist to CSV/JSON
-6. Email alerts for critical threats
+## Development Guidelines
+- All interactive elements must have data-testid attributes for testing
+- Forms must use shadcn Form components with useForm + zodResolver pattern
+- Mutations must call queryClient.invalidateQueries for cache updates
+- No emoji usage - use lucide-react icons only
+- Security scans are manual-only, not triggered on page load
+- Chain filter uses Select component for better UX with large lists
