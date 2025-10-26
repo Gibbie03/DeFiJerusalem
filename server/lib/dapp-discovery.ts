@@ -168,7 +168,10 @@ export class DAppDiscovery {
   private calculateSecurityScore(p: any): number {
     let score = 50;
 
-    if (typeof p.audits === 'number' && p.audits > 0) score += 25;
+    // Parse audit count (DeFiLlama returns it as a string!)
+    const auditCount = parseInt(p.audits) || 0;
+    if (auditCount > 0) score += 25;
+    
     if (typeof p.tvl === 'number' && p.tvl > 100000000) score += 10;
     if (typeof p.tvl === 'number' && p.tvl > 1000000000) score += 5;
     if (p.twitter) score += 5;
