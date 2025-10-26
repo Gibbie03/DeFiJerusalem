@@ -11,8 +11,6 @@ import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Tutorials from "@/pages/Tutorials";
 import NotFound from "@/pages/not-found";
-import logoDark from "@assets/generated_images/JERUSALEM_Logo_Dark_Mode_bd91dd0a.png";
-import logoLight from "@assets/generated_images/JERUSALEM_Logo_Light_Mode_5d31c9ec.png";
 
 function Router() {
   const [location] = useLocation();
@@ -38,12 +36,11 @@ function Router() {
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <img 
-                src={theme === 'dark' ? logoDark : logoLight} 
-                alt="JERUSALEM" 
-                className="h-12 w-auto object-contain" 
-              />
+            <div className="flex items-center gap-2">
+              <Shield className="w-7 h-7 text-primary" />
+              <span className="text-2xl font-bold text-foreground tracking-tight">
+                JERUSALEM
+              </span>
             </div>
             <div className="flex gap-2 flex-wrap items-center">
               <Link href="/">
