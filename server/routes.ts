@@ -175,13 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertTutorialVideoSchema.parse(req.body);
       
-      const tutorial = {
-        ...validatedData,
-        id: `tutorial-${Date.now()}-${Math.random()}`,
-        uploadedAt: new Date().toISOString(),
-      };
-
-      const savedTutorial = await storage.addTutorial(tutorial);
+      const savedTutorial = await storage.addTutorial(validatedData);
       res.json(savedTutorial);
     } catch (error) {
       console.error("Error uploading tutorial:", error);
@@ -191,6 +185,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // GET /api/protocols/new - Get recently discovered protocols
+  app.get("/api/protocols/new", async (req, res) => {
+    try {
+      const protocols = await storage.getProtocolsByDiscoveryDate(50);
+      res.json(protocols);
+    } catch (error) {
+      console.error("Error fetching new protocols:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch new protocols",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/protocols/trending - Get trending protocols by TVL growth
+  app.get("/api/protocols/trending", async (req, res) => {
+    try {
+      const protocols = await storage.getProtocolsByTvlGrowth(50);
+      res.json(protocols);
+    } catch (error) {
+      console.error("Error fetching trending protocols:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch trending protocols",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/scans - Get all security scans
+  app.get("/api/scans", async (req, res) => {
+    try {
+      const protocols = await storage.getProtocols();
+      const scans: Record<string, any> = {};
+      
+      for (const protocol of protocols) {
+        const scan = await storage.getSecurityScan(protocol.id);
+        if (scan) {
+          scans[protocol.id] = scan;
+        }
+      }
+      
+      res.json(scans);
+    } catch (error) {
+      console.error("Error fetching scans:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch scans",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Weekly scanning function
+  const performWeeklyScan = async () => {
+    try {
+      console.log("Starting weekly security scan...");
+      const protocols = await storage.getProtocols();
+      const protocolIds = protocols.map(p => p.id);
+      
+      const batchSize = 10;
+      for (let i = 0; i < protocolIds.length; i += batchSize) {
+        const batch = protocolIds.slice(i, i + batchSize);
+        
+        await Promise.all(
+          batch.map(async (id: string) => {
+            const protocol = protocols.find(p => p.id === id);
+            if (!protocol) return;
+
+            const scanResult = await detector.scanDApp(protocol);
+            await storage.addSecurityScan(id, scanResult);
+
+            if (scanResult.severity === 'CRITICAL') {
+              const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
+              await storage.addToBlacklist(entry);
+            }
+          })
+        );
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      console.log("Weekly security scan completed!");
+    } catch (error) {
+      console.error("Error in weekly scan:", error);
+    }
+  };
+
+  // Schedule weekly scans (every 7 days)
+  const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+  setInterval(performWeeklyScan, WEEK_IN_MS);
+  
+  // Also run on startup after a delay
+  setTimeout(performWeeklyScan, 5 * 60 * 1000); // 5 minutes after startup
 
   const httpServer = createServer(app);
   return httpServer;

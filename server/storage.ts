@@ -1,63 +1,227 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, gt } from "drizzle-orm";
 
 export interface IStorage {
   getProtocols(): Promise<Protocol[]>;
-  addProtocol(protocol: Protocol): Promise<Protocol>;
+  addProtocol(protocol: InsertProtocol): Promise<Protocol>;
   getBlacklist(): Promise<BlacklistEntry[]>;
-  addToBlacklist(entry: BlacklistEntry): Promise<BlacklistEntry>;
+  addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry>;
   getSecurityScan(protocolId: string): Promise<SecurityScan | undefined>;
   addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void>;
   getTutorials(): Promise<TutorialVideo[]>;
-  addTutorial(tutorial: TutorialVideo): Promise<TutorialVideo>;
+  addTutorial(tutorial: InsertTutorialVideo): Promise<TutorialVideo>;
+  getProtocolsByDiscoveryDate(limit?: number): Promise<Protocol[]>;
+  getProtocolsByTvlGrowth(limit?: number): Promise<Protocol[]>;
 }
 
-export class MemStorage implements IStorage {
-  private protocols: Map<string, Protocol>;
-  private blacklist: Map<string, BlacklistEntry>;
-  private securityScans: Map<string, SecurityScan>;
-  private tutorials: Map<string, TutorialVideo>;
-
-  constructor() {
-    this.protocols = new Map();
-    this.blacklist = new Map();
-    this.securityScans = new Map();
-    this.tutorials = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getProtocols(): Promise<Protocol[]> {
-    return Array.from(this.protocols.values());
+    const result = await db.select().from(protocols).orderBy(desc(protocols.tvl));
+    return result.map(p => ({
+      id: p.id,
+      name: p.name,
+      chains: p.chains,
+      category: p.category,
+      tvl: p.tvl,
+      change24h: p.change24h,
+      age: p.age,
+      audited: p.audited,
+      securityScore: p.securityScore,
+      logo: p.logo,
+      website: p.website,
+      twitter: p.twitter,
+      github: p.github,
+      description: p.description,
+      autoDiscovered: p.autoDiscovered,
+      manuallyAdded: p.manuallyAdded,
+    }));
   }
 
-  async addProtocol(protocol: Protocol): Promise<Protocol> {
-    this.protocols.set(protocol.id, protocol);
-    return protocol;
+  async addProtocol(protocol: InsertProtocol): Promise<Protocol> {
+    const [result] = await db
+      .insert(protocols)
+      .values([protocol])
+      .onConflictDoUpdate({
+        target: protocols.id,
+        set: {
+          tvl: protocol.tvl,
+          change24h: protocol.change24h,
+          securityScore: protocol.securityScore,
+          lastUpdated: new Date(),
+        },
+      })
+      .returning();
+    
+    return {
+      id: result.id,
+      name: result.name,
+      chains: result.chains,
+      category: result.category,
+      tvl: result.tvl,
+      change24h: result.change24h,
+      age: result.age,
+      audited: result.audited,
+      securityScore: result.securityScore,
+      logo: result.logo,
+      website: result.website,
+      twitter: result.twitter,
+      github: result.github,
+      description: result.description,
+      autoDiscovered: result.autoDiscovered,
+      manuallyAdded: result.manuallyAdded,
+    };
   }
 
   async getBlacklist(): Promise<BlacklistEntry[]> {
-    return Array.from(this.blacklist.values());
+    const result = await db.select().from(blacklistEntries).orderBy(desc(blacklistEntries.timestamp));
+    return result.map(entry => ({
+      id: entry.id,
+      dappId: entry.dappId,
+      dappName: entry.dappName,
+      severity: entry.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+      threats: entry.threats,
+      status: entry.status as 'ACTIVE' | 'INACTIVE',
+      timestamp: entry.timestamp.toISOString(),
+    }));
   }
 
-  async addToBlacklist(entry: BlacklistEntry): Promise<BlacklistEntry> {
-    this.blacklist.set(entry.id, entry);
-    return entry;
+  async addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry> {
+    const [result] = await db
+      .insert(blacklistEntries)
+      .values([entry])
+      .returning();
+    
+    return {
+      id: result.id,
+      dappId: result.dappId,
+      dappName: result.dappName,
+      severity: result.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+      threats: result.threats,
+      status: result.status as 'ACTIVE' | 'INACTIVE',
+      timestamp: result.timestamp.toISOString(),
+    };
   }
 
   async getSecurityScan(protocolId: string): Promise<SecurityScan | undefined> {
-    return this.securityScans.get(protocolId);
+    const [result] = await db
+      .select()
+      .from(securityScans)
+      .where(eq(securityScans.protocolId, protocolId))
+      .orderBy(desc(securityScans.scannedAt))
+      .limit(1);
+    
+    if (!result) return undefined;
+    
+    return {
+      isBlacklisted: result.isBlacklisted,
+      severity: result.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+      threats: result.threats,
+      score: result.score,
+    };
   }
 
   async addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void> {
-    this.securityScans.set(protocolId, scan);
+    await db.insert(securityScans).values({
+      id: `scan-${protocolId}-${Date.now()}`,
+      protocolId,
+      isBlacklisted: scan.isBlacklisted,
+      severity: scan.severity,
+      threats: scan.threats,
+      score: scan.score,
+    });
   }
 
   async getTutorials(): Promise<TutorialVideo[]> {
-    return Array.from(this.tutorials.values());
+    const result = await db.select().from(tutorialVideos).orderBy(desc(tutorialVideos.uploadedAt));
+    return result.map(tutorial => ({
+      id: tutorial.id,
+      title: tutorial.title,
+      description: tutorial.description,
+      videoUrl: tutorial.videoUrl,
+      thumbnailUrl: tutorial.thumbnailUrl,
+      duration: tutorial.duration,
+      category: tutorial.category,
+      uploadedAt: tutorial.uploadedAt.toISOString(),
+    }));
   }
 
-  async addTutorial(tutorial: TutorialVideo): Promise<TutorialVideo> {
-    this.tutorials.set(tutorial.id, tutorial);
-    return tutorial;
+  async addTutorial(tutorial: InsertTutorialVideo): Promise<TutorialVideo> {
+    const [result] = await db
+      .insert(tutorialVideos)
+      .values({
+        id: `tutorial-${Date.now()}-${Math.random()}`,
+        ...tutorial,
+      })
+      .returning();
+    
+    return {
+      id: result.id,
+      title: result.title,
+      description: result.description,
+      videoUrl: result.videoUrl,
+      thumbnailUrl: result.thumbnailUrl,
+      duration: result.duration,
+      category: result.category,
+      uploadedAt: result.uploadedAt.toISOString(),
+    };
+  }
+
+  async getProtocolsByDiscoveryDate(limit: number = 50): Promise<Protocol[]> {
+    const result = await db
+      .select()
+      .from(protocols)
+      .orderBy(desc(protocols.discoveredAt))
+      .limit(limit);
+    
+    return result.map(p => ({
+      id: p.id,
+      name: p.name,
+      chains: p.chains,
+      category: p.category,
+      tvl: p.tvl,
+      change24h: p.change24h,
+      age: p.age,
+      audited: p.audited,
+      securityScore: p.securityScore,
+      logo: p.logo,
+      website: p.website,
+      twitter: p.twitter,
+      github: p.github,
+      description: p.description,
+      autoDiscovered: p.autoDiscovered,
+      manuallyAdded: p.manuallyAdded,
+    }));
+  }
+
+  async getProtocolsByTvlGrowth(limit: number = 50): Promise<Protocol[]> {
+    const result = await db
+      .select()
+      .from(protocols)
+      .where(gt(protocols.change24h, 0))
+      .orderBy(desc(protocols.change24h))
+      .limit(limit);
+    
+    return result.map(p => ({
+      id: p.id,
+      name: p.name,
+      chains: p.chains,
+      category: p.category,
+      tvl: p.tvl,
+      change24h: p.change24h,
+      age: p.age,
+      audited: p.audited,
+      securityScore: p.securityScore,
+      logo: p.logo,
+      website: p.website,
+      twitter: p.twitter,
+      github: p.github,
+      description: p.description,
+      autoDiscovered: p.autoDiscovered,
+      manuallyAdded: p.manuallyAdded,
+    }));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

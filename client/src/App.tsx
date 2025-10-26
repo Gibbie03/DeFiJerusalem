@@ -4,8 +4,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Shield, Video } from "lucide-react";
+import { Shield, Video, Home, Clock, TrendingUp } from "lucide-react";
 import Dashboard from "@/pages/Dashboard";
+import NewDApps from "@/pages/NewDApps";
+import TrendingDApps from "@/pages/TrendingDApps";
 import Tutorials from "@/pages/Tutorials";
 import NotFound from "@/pages/not-found";
 
@@ -16,7 +18,7 @@ function Router() {
     <div className="min-h-screen bg-background">
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-primary via-orange-500 to-primary rounded-md flex items-center justify-center">
                 <Shield className="w-6 h-6 text-background" />
@@ -31,19 +33,41 @@ function Router() {
                 </span>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Link href="/">
                 <Button 
                   variant={location === '/' ? 'default' : 'ghost'}
-                  data-testid="nav-dashboard"
+                  size="sm"
+                  data-testid="nav-home"
                 >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Scanner
+                  <Home className="w-4 h-4 mr-2" />
+                  Home
+                </Button>
+              </Link>
+              <Link href="/new">
+                <Button 
+                  variant={location === '/new' ? 'default' : 'ghost'}
+                  size="sm"
+                  data-testid="nav-new"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  New DApps
+                </Button>
+              </Link>
+              <Link href="/trending">
+                <Button 
+                  variant={location === '/trending' ? 'default' : 'ghost'}
+                  size="sm"
+                  data-testid="nav-trending"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Trending
                 </Button>
               </Link>
               <Link href="/tutorials">
                 <Button 
                   variant={location === '/tutorials' ? 'default' : 'ghost'}
+                  size="sm"
                   data-testid="nav-tutorials"
                 >
                   <Video className="w-4 h-4 mr-2" />
@@ -56,6 +80,8 @@ function Router() {
       </nav>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/new" component={NewDApps} />
+        <Route path="/trending" component={TrendingDApps} />
         <Route path="/tutorials" component={Tutorials} />
         <Route component={NotFound} />
       </Switch>
