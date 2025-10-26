@@ -1,6 +1,7 @@
 import { Shield, TrendingUp, TrendingDown, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Protocol, SecurityScan } from '@shared/schema';
 
 interface ProtocolTableProps {
@@ -16,6 +17,7 @@ export default function ProtocolTable({
 }: ProtocolTableProps) {
   
   const formatTVL = (tvl: number): string => {
+    if (tvl === 0) return 'No Data';
     if (tvl >= 1_000_000_000) {
       return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
     } else if (tvl >= 1_000_000) {
@@ -24,6 +26,16 @@ export default function ProtocolTable({
       return `$${(tvl / 1_000).toFixed(2)}K`;
     }
     return `$${tvl.toFixed(2)}`;
+  };
+
+  const formatExactTVL = (tvl: number): string => {
+    if (tvl === 0) return '$0';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(tvl);
   };
 
   const getSecurityBadge = (score: number) => {
@@ -106,7 +118,16 @@ export default function ProtocolTable({
                 
                 {/* TVL */}
                 <td className="p-4 text-right">
-                  <div className="font-semibold text-lg">{formatTVL(protocol.tvl)}</div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="font-semibold text-lg cursor-help">{formatTVL(protocol.tvl)}</div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <p className="font-mono">{formatExactTVL(protocol.tvl)}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </td>
                 
                 {/* 24h Change */}
