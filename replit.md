@@ -5,6 +5,9 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 
 ## Recent Changes (October 26, 2025)
 - **CoinMarketCap-Style Display**: Replaced card-based layout with table format showing rank numbers, formatted TVL (billions/millions), color-coded 24h changes, and prominent numbers
+- **Enhanced TVL Display**: Added tooltips showing exact dollar amounts on hover (e.g., hover over "$193.80B" to see "$193,795,440,000"), with "No Data" shown for protocols with $0 TVL
+- **Comprehensive Security Scan Details**: Enhanced protocol detail modal with detailed security analysis showing all 4 automated checks (Contract Age, Security Audit, Team Transparency, Liquidity), risk scoring breakdown, and blacklist criteria explanation
+- **Data Transparency Tooltips**: Added informational tooltips to stats cards explaining why "Audited" might show 0% (DeFiLlama API limitation) and "Blacklisted" criteria (CRITICAL severity ≥80 points)
 - **Sidebar Navigation**: Replaced top menu bar with expandable/collapsible sidebar navigation using shadcn sidebar component with keyboard shortcut (Cmd/Ctrl+B)
 - **Blacklist Page**: Created dedicated Blacklist page with its own route (/blacklist) for viewing flagged DApps with threat details, severity levels, and active status
 - **Ranking System**: Added TVL vs Security Score sorting toggle - users can rank protocols by Total Value Locked or Security Score
@@ -68,26 +71,28 @@ A full-stack JavaScript application that discovers DeFi protocols from DeFiLlama
 - `POST /api/tutorials` - Upload new tutorial video
 
 ### Key Features
-1. **CoinMarketCap-Style Table Display**: Professional table layout with rank numbers, formatted TVL (billions/millions/thousands), color-coded 24h changes (green/red), protocol logos, category badges, chain indicators, and security scores
-2. **Sidebar Navigation**: Expandable/collapsible sidebar with keyboard shortcut (Cmd/Ctrl+B) for easy page navigation
-3. **Auto-Discovery**: Fetches top protocols from DeFiLlama and stores in database
-4. **URL-based Detection**: Paste any DApp link to add protocols across any blockchain with auto-fill
-5. **Manual Security Scanning**: "Scan All" button triggers threat analysis, results stored in database
-6. **Weekly Automated Scanning**: Background job scans all protocols every 7 days
-7. **Database Persistence**: All protocols, scans, blacklist entries, and tutorials persist in PostgreSQL
-8. **Page Load Hydration**: Stored scan results load automatically on page load from database
-9. **Ranking System**: Toggle between TVL and Security Score sorting for protocol rankings
-10. **Security Rating Legend**: Color-coded security score key (Critical/Low/Moderate/Good/Excellent) with descriptions
-11. **Category Filtering**: Filter DApps by category (DeFi, DEX, Lending, Yield, NFT, Gaming, Bridge, Other)
-12. **Chain Filtering**: Select dropdown with all 126+ chains
-13. **Blacklist Page**: Dedicated page displaying flagged DApps with severity, threats, and reason details
-14. **New DApps Tracking**: View recently discovered protocols in table format sorted by discovery date
-15. **Trending Analysis**: See protocols with highest TVL growth in table format
-16. **Trending Ticker**: Auto-scrolling ticker showing trending protocols (right-to-left) across all pages
-17. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
-18. **Blacklist Management**: Automatic flagging of high-severity threats with reason field
-19. **Tutorial System**: Video upload with form validation, YouTube integration
-20. **Ad Spaces**: Monetization-ready placeholder ad spaces at top and bottom of all pages
+1. **CoinMarketCap-Style Table Display**: Professional table layout with rank numbers, formatted TVL (billions/millions/thousands), color-coded 24h changes (green/red), protocol logos, category badges, chain indicators, and security scores. Hover over TVL values to see exact dollar amounts.
+2. **Comprehensive Security Analysis**: Detailed security scan information showing 4 automated checks: Contract Age (<7 days = +40 points), Security Audit (no audit = +30 points), Team Transparency (anonymous = +25 points), and Liquidity (<$50k TVL = +20 points). CRITICAL severity (≥80 points) triggers automatic blacklisting.
+3. **Data Transparency**: Informational tooltips explaining data limitations (e.g., DeFiLlama API doesn't provide reliable audit data) and blacklist criteria
+4. **Sidebar Navigation**: Expandable/collapsible sidebar with keyboard shortcut (Cmd/Ctrl+B) for easy page navigation
+5. **Auto-Discovery**: Fetches top protocols from DeFiLlama and stores in database
+6. **URL-based Detection**: Paste any DApp link to add protocols across any blockchain with auto-fill
+7. **Manual Security Scanning**: "Scan All" button triggers threat analysis, results stored in database
+8. **Weekly Automated Scanning**: Background job scans all protocols every 7 days
+9. **Database Persistence**: All protocols, scans, blacklist entries, and tutorials persist in PostgreSQL
+10. **Page Load Hydration**: Stored scan results load automatically on page load from database
+11. **Ranking System**: Toggle between TVL and Security Score sorting for protocol rankings
+12. **Security Rating Legend**: Color-coded security score key (Critical/Low/Moderate/Good/Excellent) with descriptions
+13. **Category Filtering**: Filter DApps by category (DeFi, DEX, Lending, Yield, NFT, Gaming, Bridge, Other)
+14. **Chain Filtering**: Select dropdown with all 126+ chains
+15. **Blacklist Page**: Dedicated page displaying flagged DApps with severity, threats, and reason details
+16. **New DApps Tracking**: View recently discovered protocols in table format sorted by discovery date
+17. **Trending Analysis**: See protocols with highest TVL growth in table format
+18. **Trending Ticker**: Auto-scrolling ticker showing trending protocols (right-to-left) across all pages
+19. **Threat Detection**: Pattern matching for suspicious domains, blacklist checking
+20. **Blacklist Management**: Automatic flagging of high-severity threats with reason field
+21. **Tutorial System**: Video upload with form validation, YouTube integration
+22. **Ad Spaces**: Monetization-ready placeholder ad spaces at top and bottom of all pages
 
 ### Technical Stack
 - **Frontend**: React, Wouter, TanStack Query, Shadcn UI, Tailwind CSS
