@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Shield, Video, Home, Clock, TrendingUp, Sun, Moon } from "lucide-react";
+import { Landmark, Video, Home, Clock, TrendingUp, Sun, Moon } from "lucide-react";
 import { useState, useEffect } from "react";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
@@ -37,7 +37,7 @@ function Router() {
         <div className="max-w-screen-2xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-2">
-              <Shield className="w-7 h-7 text-primary" />
+              <Landmark className="w-7 h-7 text-primary" />
               <span className="text-2xl font-bold text-foreground tracking-tight">
                 JERUSALEM
               </span>
