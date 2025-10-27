@@ -55,6 +55,11 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
   - Button interactions: <2s
   - Achieving CoinMarketCap-level responsiveness across all operations
 
+### Recent Updates (October 27, 2025)
+- **Enhanced Verification System**: Expanded protocol whitelist to 60+ variations including all major DeFi protocols (Uniswap V2/V3/V4, Curve DEX, PancakeSwap AMM V2/V3, Aave V2/V3, etc.) to prevent false positives
+- **Admin Blacklist Management**: Added DELETE `/api/blacklist/:id` endpoint with optimistic UI updates allowing admins to remove blacklist entries
+- **Improved Security Scoring**: Conditional penalties based on verification level - established protocols with high TVL/age/audits receive reduced penalties for missing audits or anonymous teams
+
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL, Volume, or Security Score. Includes category and chain filtering.
 - **Volume-Based Ranking**: Protocols can be sorted by estimated 24h trading volume. Since DeFiLlama's `/protocols` endpoint doesn't provide volume data, estimates are calculated using TVL × category-specific turnover rates (DEX: 30%, Lending: 5%, Bridge: 20%, Other: 10%) with activity adjustments based on 24h price change. A hover tooltip clarifies the estimated nature of volume data.
@@ -71,6 +76,7 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
   - **Overview Stats**: Total blacklisted, active threats, recent additions (24h/7d)
   - **Severity Breakdown**: Distribution by CRITICAL/HIGH/MEDIUM severity with total threat count
   - **Threat Type Analysis**: Top 5 most common threat types with visual progress bars and counts
+  - **Admin Deletion**: Each entry has a delete button allowing admins to remove false positives or resolved threats
   - The homepage displays a simple blacklist count for quick reference
 - **Test Drainer Protocols**: Three malicious test protocols (ETH Airdrop Claimer, Unisvvap, Vitalik Giveaway) are always visible in the protocol list to demonstrate the blacklisting system. These protocols are designed to trigger CRITICAL security alerts when scanned, scoring 160-215 points through detection of scam keywords, typosquatting, and known scam phrases. They persist in the database and survive background refreshes.
 - **Scanning Mechanism**: Supports manual security scanning triggered by a "Scan All" button and weekly automated scans. Scan results are stored persistently.
