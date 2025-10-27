@@ -291,6 +291,81 @@ const SCAM_PATTERNS = {
     /tumbler.*service/i,
     /anonymous.*transfer/i,
     /untraceable.*transaction/i
+  ],
+  
+  // ===== ADDITIONAL ADVANCED THREATS =====
+  
+  // Whale concentration patterns
+  whaleConcentrationPatterns: [
+    /top.*10.*holders.*50%/i,
+    /whale.*control/i,
+    /concentrated.*ownership/i,
+    /few.*holders.*majority/i,
+    /distribution.*centralized/i
+  ],
+  
+  // DNS hijacking risk patterns
+  dnsHijackingPatterns: [
+    /domain.*expiring/i,
+    /dns.*compromised/i,
+    /domain.*recently.*changed/i,
+    /suspicious.*domain.*transfer/i,
+    /registrar.*change/i
+  ],
+  
+  // NFT wash trading patterns
+  nftWashTradingPatterns: [
+    /same.*wallet.*buying.*selling/i,
+    /artificial.*volume/i,
+    /wash.*trading/i,
+    /fake.*nft.*volume/i,
+    /self.*trading/i,
+    /floor.*price.*manipulation/i
+  ],
+  
+  // Sandwich attack / MEV risk patterns
+  sandwichAttackPatterns: [
+    /no.*slippage.*protection/i,
+    /mev.*vulnerable/i,
+    /sandwich.*attack.*risk/i,
+    /front.*run.*risk/i,
+    /no.*anti.*mev/i
+  ],
+  
+  // Unlicensed securities patterns
+  unlicensedSecuritiesPatterns: [
+    /revenue.*sharing/i,
+    /profit.*distribution/i,
+    /dividend.*token/i,
+    /equity.*token/i,
+    /security.*offering/i,
+    /reg.*d.*exempt/i
+  ],
+  
+  // Deprecated dependencies patterns
+  deprecatedDependenciesPatterns: [
+    /solidity.*0\.[1-7]/i, // Old Solidity versions
+    /openzeppelin.*v2/i,
+    /outdated.*dependencies/i,
+    /legacy.*code/i,
+    /unmaintained.*library/i
+  ],
+  
+  // No emergency pause patterns
+  noEmergencyPausePatterns: [
+    /no.*circuit.*breaker/i,
+    /cannot.*pause/i,
+    /no.*emergency.*stop/i,
+    /unstoppable.*contract/i
+  ],
+  
+  // Wrapped token risk patterns
+  wrappedTokenRiskPatterns: [
+    /wrapped.*token.*unbacked/i,
+    /no.*proof.*of.*reserves/i,
+    /centralized.*wrapping/i,
+    /peg.*at.*risk/i,
+    /collateral.*mismatch/i
   ]
 };
 
@@ -678,6 +753,118 @@ export class WalletDrainerDetector {
               message: 'Bridge security risk - cross-chain bridges are #1 DeFi hack target ($2B+ stolen)',
             });
             results.score += 55;
+            break;
+          }
+        }
+      }
+
+      // ===== ADDITIONAL ADVANCED THREAT DETECTION =====
+
+      // MEDIUM: Check for whale concentration
+      for (const pattern of SCAM_PATTERNS.whaleConcentrationPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'WHALE_CONCENTRATION',
+            severity: 'MEDIUM',
+            message: 'Whale concentration risk - few holders control majority of tokens (manipulation risk)',
+          });
+          results.score += 40;
+          break;
+        }
+      }
+
+      // MEDIUM: Check for DNS hijacking risks
+      for (const pattern of SCAM_PATTERNS.dnsHijackingPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'DNS_HIJACKING',
+            severity: 'MEDIUM',
+            message: 'DNS security risk - domain vulnerable to hijacking or recently changed',
+          });
+          results.score += 45;
+          break;
+        }
+      }
+
+      // MEDIUM: Check for NFT wash trading
+      if (dapp.category === 'NFT Marketplace' || dapp.category === 'NFT Lending' || /nft/i.test(nameAndDesc)) {
+        for (const pattern of SCAM_PATTERNS.nftWashTradingPatterns) {
+          if (pattern.test(nameAndDesc)) {
+            results.threats.push({
+              type: 'NFT_WASH_TRADING',
+              severity: 'MEDIUM',
+              message: 'NFT wash trading detected - artificial volume from self-trading',
+            });
+            results.score += 35;
+            break;
+          }
+        }
+      }
+
+      // MEDIUM: Check for sandwich attack risks
+      if (dapp.category === 'Dex' || /swap|dex|exchange/i.test(nameAndDesc)) {
+        for (const pattern of SCAM_PATTERNS.sandwichAttackPatterns) {
+          if (pattern.test(nameAndDesc)) {
+            results.threats.push({
+              type: 'SANDWICH_ATTACK',
+              severity: 'MEDIUM',
+              message: 'MEV risk - no slippage protection, vulnerable to sandwich attacks',
+            });
+            results.score += 30;
+            break;
+          }
+        }
+      }
+
+      // HIGH: Check for unlicensed securities
+      for (const pattern of SCAM_PATTERNS.unlicensedSecuritiesPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'UNLICENSED_SECURITIES',
+            severity: 'HIGH',
+            message: 'Regulatory risk - offering unregistered securities (SEC enforcement risk)',
+          });
+          results.score += 55;
+          break;
+        }
+      }
+
+      // MEDIUM: Check for deprecated dependencies
+      for (const pattern of SCAM_PATTERNS.deprecatedDependenciesPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'DEPRECATED_DEPENDENCIES',
+            severity: 'MEDIUM',
+            message: 'Technical debt - uses outdated/vulnerable dependencies',
+          });
+          results.score += 35;
+          break;
+        }
+      }
+
+      // LOW: Check for no emergency pause
+      for (const pattern of SCAM_PATTERNS.noEmergencyPausePatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'NO_EMERGENCY_PAUSE',
+            severity: 'LOW',
+            message: 'No circuit breaker - cannot pause contract if exploit detected',
+          });
+          results.score += 20;
+          break;
+        }
+      }
+
+      // MEDIUM: Check for wrapped token risks
+      if (/wrapped|wbtc|weth|renbtc/i.test(nameAndDesc)) {
+        for (const pattern of SCAM_PATTERNS.wrappedTokenRiskPatterns) {
+          if (pattern.test(nameAndDesc)) {
+            results.threats.push({
+              type: 'WRAPPED_TOKEN_RISK',
+              severity: 'MEDIUM',
+              message: 'Wrapped token risk - no proof of reserves or centralized backing',
+            });
+            results.score += 40;
             break;
           }
         }
