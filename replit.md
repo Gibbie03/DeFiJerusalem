@@ -1,7 +1,7 @@
 # JERUSALEM DeFi Security Scanner
 
 ## Overview
-JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols via the DeFiLlama API, perform comprehensive real-time security threat analysis, and detect all major wallet and protocol threats. It scans for **19+ distinct threat types** including wallet drainers, phishing attacks, private key phishing, social engineering scams, rug pulls, exit scams, fake audits, honeypots, and more. The application supports filtering across over 126 blockchain chains, features a cybersecurity-themed UI, and utilizes persistent PostgreSQL storage. The project aims to provide users with the most comprehensive DeFi security tool available, protecting against all known crypto scams and malicious actors.
+JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols, perform comprehensive real-time security threat analysis, and detect all major wallet and protocol threats. It scans for over 19 distinct threat types, including wallet drainers, phishing attacks, rug pulls, and more, across over 126 blockchain chains. The project aims to provide the most comprehensive DeFi security tool available, protecting users against crypto scams and malicious actors. It features a cybersecurity-themed UI and utilizes persistent PostgreSQL storage.
 
 ## User Preferences
 - **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)
@@ -13,196 +13,44 @@ JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed 
 ## System Architecture
 
 ### UI/UX Decisions
-The application features a cybersecurity-themed dark mode with prominent Shield iconography. It uses a CoinMarketCap-style table display for protocols, offering rank numbers, formatted TVL (with tooltips for exact amounts), color-coded 24h changes, logos, and category badges. Navigation is managed via an expandable/collapsible sidebar component (shadcn) with a keyboard shortcut (Cmd/Ctrl+B). Security ratings are presented with a color-coded legend, and informational tooltips provide data transparency. Ad spaces are integrated for future monetization. The protocol table implements pagination (100 rows per page) for optimal performance and responsiveness.
+The application features a cybersecurity-themed dark mode with Shield iconography. Protocols are displayed in a CoinMarketCap-style table with rank, formatted TVL, color-coded 24h changes, logos, and category badges. Navigation uses an expandable/collapsible shadcn sidebar with a keyboard shortcut (Cmd/Ctrl+B). Security ratings have a color-coded legend and informational tooltips. Ad spaces are integrated for monetization, and the protocol table implements pagination (100 rows per page).
 
 ### Technical Implementations
-The frontend is built with React, Wouter for routing, TanStack Query for data fetching, Shadcn UI for components, and Tailwind CSS for styling. The backend uses Express.js, Drizzle ORM, and Neon PostgreSQL. Validation is handled by Zod, drizzle-zod, and react-hook-form.
+The frontend uses React, Wouter for routing, TanStack Query for data fetching, Shadcn UI for components, and Tailwind CSS for styling. The backend uses Express.js, Drizzle ORM, and Neon PostgreSQL. Validation is handled by Zod, drizzle-zod, and react-hook-form.
 
-**Performance Optimizations (CoinMarketCap-Level Speed):**
-- **Client-Side**: 
-  - React.memo for row components preventing unnecessary re-renders
-  - useCallback for stable function references
-  - Sparkline data caching at module scope
-  - Single TooltipProvider instance
-  - Pagination (100 rows/page) for efficient rendering
-  - useMemo for filtered/sorted data
-  - Debounced search (300ms) to reduce re-renders
-  
-- **Server-Side**:
-  - Multi-tier caching strategy:
-    - Protocols: 60s server cache + 60s browser cache
-    - Scans: 180s server cache + 180s browser cache
-    - Blacklist: 300s server cache + 300s browser cache
-    - Trending: 120s server cache + 120s browser cache
-  - HTTP Cache-Control headers with stale-while-revalidate
-  - Background refresh guard (5min interval) preventing redundant API calls
-  - Gzip compression for all responses (threshold: 1KB)
-  - Parallel scan execution (20 concurrent) with Promise.allSettled
-  - Reduced inter-batch delays (200ms vs 1000ms)
-  - Batch DB writes using Promise.all
-  - Database indexes on frequently queried columns (tvl, volume24h, category, change24h, discoveredAt, protocolId, scannedAt)
-  - Optimized SQL queries using DISTINCT ON instead of in-memory iteration
-  
-- **Network Optimization**:
-  - Compression reduces payload size by ~70-80%
-  - Cache headers enable browser-side caching
-  - Stale-while-revalidate serves cached data during background refresh
-  
-- **Result**: 
-  - Initial load: <3s (uncached)
-  - Subsequent loads: <100ms (cached)
-  - Scan 50 protocols: ~2-4s (was 50s+)
-  - Button interactions: <2s
-  - Achieving CoinMarketCap-level responsiveness across all operations
-
-### Recent Updates (October 27, 2025)
-- **Enhanced Verification System**: Expanded protocol whitelist to 60+ variations including all major DeFi protocols (Uniswap V2/V3/V4, Curve DEX, PancakeSwap AMM V2/V3, Aave V2/V3, etc.) to prevent false positives
-- **Admin Blacklist Management**: Added DELETE `/api/blacklist/:id` endpoint with optimistic UI updates allowing admins to remove blacklist entries
-- **Improved Security Scoring**: Conditional penalties based on verification level - established protocols with high TVL/age/audits receive reduced penalties
-- **Layout Optimization**: Restructured layout for optimal PC browser experience - header spans full width above both main content and sidebar, preventing sidebar from being covered
-- **Sidebar Cleanup**: Removed "Security Scanner" branding from sidebar header for cleaner navigation experience
-- **Interactive Trending Ticker**: Made trending protocol tokens clickable across all pages - clicks open protocol detail modals for quick access
-- **Audit Stats Clarity**: Changed audit statistics from percentage display (40%) to actual count display (2,621) for better transparency
-- **Sponsorship & Featured Listings System**: Implemented comprehensive revenue monetization system with 3 pricing tiers (Featured $500-$1K, Sponsored $2K-$5K, Promoted $5K-$10K monthly) including database schema, public guidance page, and admin management capabilities
+**Performance Optimizations:**
+The system is optimized for CoinMarketCap-level speed through client-side techniques like `React.memo`, `useCallback`, `useMemo`, debounced search, and pagination, as well as server-side multi-tier caching (protocols, scans, blacklist, trending), HTTP Cache-Control headers, background refresh guards, Gzip compression, parallel scan execution, batch DB writes, and database indexing. Network optimization includes compression and `stale-while-revalidate` caching.
 
 ### Feature Specifications
-- **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL, Volume, or Security Score. Includes category and chain filtering.
-- **Volume-Based Ranking**: Protocols can be sorted by estimated 24h trading volume. Since DeFiLlama's `/protocols` endpoint doesn't provide volume data, estimates are calculated using TVL × category-specific turnover rates (DEX: 30%, Lending: 5%, Bridge: 20%, Other: 10%) with activity adjustments based on 24h price change. A hover tooltip clarifies the estimated nature of volume data.
-- **Security Analysis**: Conducts comprehensive security scans across **19+ threat categories** covering all major wallet and protocol threats. Detects wallet drainers, phishing sites, private key phishing, social engineering, typosquatting, rug pulls, exit scams, fake audits, honeypots, and more. Each threat type has specific detection patterns and risk scores that determine overall security rating. The scanner includes **verification systems** to prevent false positives:
-  - **Protocol Whitelist**: Well-established protocols (Uniswap, Aave, PancakeSwap, etc.) are automatically verified and exempt from penalties
-  - **Age Verification**: Protocols older than 365 days receive +50 verification points, reducing false positive risk
-  - **TVL Verification**: High TVL ($100M+) indicates legitimacy and adds +40 verification points
-  - **Social Verification**: Official Twitter (+20 points) and GitHub (+15 points) presence boost verification scores
-  - **Audit Verification**: Audited protocols receive +30 verification points
-  - Verification scores are subtracted from threat scores, ensuring only genuine threats are flagged
-- **Automatic Blacklisting via Security Scoring**: DApps are automatically scanned and graded using a comprehensive security scoring system. Protocols with **CRITICAL severity (score ≥80 points)** are **automatically blacklisted** and flagged with detailed threat information. The security scoring evaluates: wallet drainer patterns (+100 pts), private key phishing (+100 pts), known scams (+95 pts), phishing attacks (+95 pts), imposter protocols (+90 pts), social engineering (+90 pts), rug pull risks (+85 pts), and more. Blacklisted protocols are persisted to the database with threat details and reasons.
-- **3-Tier Audit System**: Integrates audit data from DeFiLlama (count, notes, links) and allows for manual audit entries.
-- **Blacklist Management**: Dedicated Blacklist page shows all automatically and manually blacklisted protocols with severity levels, threat details, and reasons. Blacklist entries include status tracking (ACTIVE/INACTIVE) and timestamps. The page features detailed statistics including:
-  - **Overview Stats**: Total blacklisted, active threats, recent additions (24h/7d)
-  - **Severity Breakdown**: Distribution by CRITICAL/HIGH/MEDIUM severity with total threat count
-  - **Threat Type Analysis**: Top 5 most common threat types with visual progress bars and counts
-  - **Admin Deletion**: Each entry has a delete button allowing admins to remove false positives or resolved threats
-  - The homepage displays a simple blacklist count for quick reference
-- **Test Drainer Protocols**: Three malicious test protocols (ETH Airdrop Claimer, Unisvvap, Vitalik Giveaway) are always visible in the protocol list to demonstrate the blacklisting system. These protocols are designed to trigger CRITICAL security alerts when scanned, scoring 160-215 points through detection of scam keywords, typosquatting, and known scam phrases. They persist in the database and survive background refreshes.
-- **Scanning Mechanism**: Supports manual security scanning triggered by a "Scan All" button and weekly automated scans. Scan results are stored persistently.
-- **DApp Management**: "Add DApp by URL" feature for auto-detecting protocol information from links.
-- **Trending & New DApps**: Dedicated pages for tracking recently discovered protocols and those with the highest TVL growth.
-- **Tutorial System**: Functionality for uploading and listing educational DeFi security videos.
+- **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displaying them in a sortable, filterable table. Includes estimated volume-based ranking.
+- **Security Analysis**: Conducts comprehensive scans for 19+ threat categories, detecting wallet drainers, phishing, rug pulls, etc. Includes a verification system (protocol whitelist, age, TVL, social, audit verification) to prevent false positives.
+- **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted based on threat patterns (e.g., wallet drainer patterns, private key phishing, known scams).
+- **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
+- **Blacklist Management**: A dedicated page displays automatically and manually blacklisted protocols with severity levels, threat details, reasons, and statistics. Admins can delete entries.
+- **Test Drainer Protocols**: Three malicious test protocols (ETH Airdrop Claimer, Unisvvap, Vitalik Giveaway) are always present to demonstrate the blacklisting system.
+- **Scanning Mechanism**: Supports manual "Scan All" and automated weekly security scans with persistent results.
+- **DApp Management**: "Add DApp by URL" feature.
+- **Trending & New DApps**: Dedicated pages for tracking protocol trends.
+- **Tutorial System**: Functionality for educational DeFi security videos.
 - **Trending Ticker**: An auto-scrolling ticker displays trending protocols across all pages.
+- **Sponsorship & Featured Listings System**: A comprehensive revenue monetization system with 3 pricing tiers (Featured, Sponsored, Promoted) for enhanced protocol visibility, including database schema and a public guidance page.
 
 ### System Design Choices
-- **Database Schema**: Utilizes PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables, ensuring data persistence and scalability.
-- **Database Performance**: Indexes added on frequently queried columns (tvl, volume24h, category, change24h, discoveredAt, protocolId, scannedAt) for fast sorting and filtering. Optimized queries using SQL DISTINCT ON instead of in-memory iteration.
-- **UPSERT-Based Persistence**: Uses PostgreSQL's `ON CONFLICT DO UPDATE` for protocol storage, ensuring atomic upserts by ID without deleting unrelated records. This allows test drainer protocols to persist indefinitely while background refreshes update real protocols.
-- **API Routes**: Comprehensive RESTful API for managing protocols, security scans, blacklist entries, and tutorial videos.
-- **Storage Layer**: An `IStorage` interface implementation (`DatabaseStorage`) centralizes all CRUD operations with the database using UPSERT semantics for safe concurrent updates.
-- **Test Protocol Management**: Test drainer protocols are managed exclusively in the `/api/protocols` route, filtered from DB cache on every request, re-appended to responses, and immediately persisted to ensure availability for security scanning. Background refreshes fetch only real DeFiLlama protocols, preserving test drainers through UPSERT-by-ID behavior.
-- **Separation of Concerns**: Clear distinction between frontend (client/) and backend (server/) directories.
-- **Caching**: DeFiLlama API integration includes a 30-minute cache for efficiency. Server-side in-memory caching (2-5 minute TTL) for expensive API routes (/api/scans, /api/blacklist, /api/protocols/trending) with automatic cache invalidation on updates.
+- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables.
+- **Database Performance**: Indexes on frequently queried columns and optimized SQL queries using `DISTINCT ON`.
+- **UPSERT-Based Persistence**: Uses PostgreSQL's `ON CONFLICT DO UPDATE` for protocol storage, ensuring atomic updates and persistence of test drainer protocols.
+- **API Routes**: RESTful API for managing application data.
+- **Storage Layer**: An `IStorage` interface (`DatabaseStorage`) centralizes database operations.
+- **Test Protocol Management**: Test drainer protocols are managed and persisted to ensure constant availability for scanning demonstrations.
+- **Separation of Concerns**: Clear distinction between frontend and backend.
+- **Caching**: DeFiLlama API has a 30-minute cache. Server-side in-memory caching (2-5 minute TTL) for expensive API routes with automatic invalidation.
 
 ## External Dependencies
-- **DeFiLlama API**: Used for discovering DeFi protocols, fetching Total Value Locked (TVL) data, and retrieving audit information.
-- **Neon PostgreSQL**: Cloud-hosted PostgreSQL database for persistent data storage.
-- **Shadcn UI**: UI component library used for building interactive elements like tables, forms, and navigation.
-- **TanStack Query (React Query)**: For server state management, data fetching, caching, and synchronization.
-- **Zod**: Schema declaration and validation library.
-- **YouTube**: Integration for embedding and listing tutorial videos.
-
-## Revenue Monetization
-
-### Sponsorship & Featured Listings
-The platform offers a **3-tier sponsorship system** for protocols seeking enhanced visibility:
-
-**Tier 1: Featured ($500-$1,000/month)**
-- Verified badge on protocol listing
-- Priority placement in category
-- Highlighted in search results
-- Social media mentions (2x/month)
-- Newsletter inclusion
-- Enhanced protocol details display
-- **Target**: Growing protocols seeking visibility
-- **Requirements**: Minimum $100K TVL, security audit, verified team
-
-**Tier 2: Sponsored ($2,000-$5,000/month)** - MOST POPULAR
-- All Featured benefits
-- Top 10 trending section placement
-- Sponsored badge with custom messaging
-- Homepage featured slot
-- Dedicated blog post feature
-- Social media spotlight (4x/month)
-- Priority customer support
-- Advanced analytics dashboard
-- **Target**: Established protocols driving user acquisition
-- **Requirements**: Minimum $1M TVL, audits, active GitHub, transparent tokenomics
-
-**Tier 3: Promoted ($5,000-$10,000/month)**
-- All Sponsored benefits
-- Top 5 guaranteed trending placement
-- Homepage hero section banner
-- Custom landing page on platform
-- Video spotlight (homepage)
-- Dedicated account manager
-- Weekly performance reports
-- Social media takeover (8x/month)
-- Press release distribution
-- Partnership announcement
-- **Target**: Enterprise protocols maximizing market dominance
-- **Requirements**: Minimum $10M TVL, multiple audits, bug bounty program, doxxed founders
-
-**Technical Implementation:**
-- Database tables: `protocols` (sponsorshipTier, sponsoredUntil, featuredPosition), `sponsor_payments` (payment tracking)
-- Storage methods: `getSponsoredProtocols()`, `updateProtocolSponsorship()`
-- Public page: `/sponsorship` with pricing tiers, requirements, and contact form
-- Contact: sponsorships@jerusalem-defi.com
-
-**Revenue Potential (100K pageviews/month):**
-- 2-3 Featured sponsors: $12K-$36K/year
-- 2-3 Sponsored slots: $48K-$180K/year  
-- 1 Promoted placement: $60K-$120K/year
-- **Total potential**: $120K-$336K/year from sponsorships alone
-
-## Crypto Advertising Network
-### Dual-Network Ad Integration
-The application uses a **dual-network strategy** to maximize ad revenue from crypto-focused advertisers:
-
-**Primary Network: Bitmedia** (CPM: $2-6)
-- 7,000+ crypto publishers, 1B+ monthly impressions
-- Set your own CPM floor rates
-- Bitcoin payouts, $20 minimum withdrawal
-- Signup: https://bitmedia.io/become-a-publisher
-
-**Fallback Network: Coinzilla** (CPM: ~$2.20)
-- 650+ crypto sites, 1B+ monthly impressions
-- Daily/weekly payouts in crypto or wire
-- Signup: https://coinzilla.com/publishers/
-
-### Setup Instructions
-1. **Sign up** at both platforms (links above)
-2. **Create ad units/zones** in each dashboard:
-   - Bitmedia: Dashboard → New Ad Unit → Copy ad unit ID
-   - Coinzilla: Dashboard → Create Zone → Copy zone ID (format: C-XXXXX...)
-3. **Configure IDs** in `client/src/config/adConfig.ts`:
-   ```typescript
-   top: {
-     bitmedia: { adUnitId: 'YOUR_BITMEDIA_ID', width: 728, height: 90 },
-     coinzilla: { zoneId: 'C-YOUR_COINZILLA_ID', width: 728, height: 90 },
-   },
-   ```
-4. **Set CPM floors** in your Bitmedia dashboard ($3.50 recommended)
-5. **Ads load automatically** - Bitmedia tries first, Coinzilla as fallback
-
-### Ad Positions
-- **Top banner**: 728x90 leaderboard (above trending ticker)
-- **Bottom banner**: 728x90 leaderboard (below content)
-- **Sidebar**: 300x250 medium rectangle (right rail)
-- **Mobile**: 320x100 mobile banner
-
-### Expected Revenue (100K pageviews/month)
-- Bitmedia alone: ~$400/month
-- Dual-network: ~$500-600/month (99% fill rate)
-
-### Technical Implementation
-- **Async loading**: Ads don't block page render
-- **Smart fallback**: 3-second timeout, then switches to Coinzilla
-- **Error handling**: Graceful degradation if ads fail
-- **Privacy-friendly**: No tracking beyond ad network scripts
+- **DeFiLlama API**: For DeFi protocol discovery, TVL data, and audit information.
+- **Neon PostgreSQL**: Cloud-hosted PostgreSQL database.
+- **Shadcn UI**: UI component library.
+- **TanStack Query (React Query)**: For server state management and data fetching.
+- **Zod**: Schema declaration and validation.
+- **YouTube**: Integration for embedding tutorial videos.
+- **Bitmedia**: Primary crypto advertising network.
+- **Coinzilla**: Fallback crypto advertising network.
