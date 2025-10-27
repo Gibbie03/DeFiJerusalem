@@ -1,7 +1,7 @@
 # JERUSALEM DeFi Security Scanner
 
 ## Overview
-JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols via the DeFiLlama API, perform real-time security threat analysis, and detect wallet drainers and blacklisted projects. It supports filtering across over 126 blockchain chains, features a cybersecurity-themed UI, and utilizes persistent PostgreSQL storage. The project aims to provide users with a comprehensive tool for identifying and avoiding high-risk DeFi protocols, enhancing security in the decentralized finance space, and offering a robust platform for tracking emerging threats and market trends.
+JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols via the DeFiLlama API, perform comprehensive real-time security threat analysis, and detect all major wallet and protocol threats. It scans for **19+ distinct threat types** including wallet drainers, phishing attacks, private key phishing, social engineering scams, rug pulls, exit scams, fake audits, honeypots, and more. The application supports filtering across over 126 blockchain chains, features a cybersecurity-themed UI, and utilizes persistent PostgreSQL storage. The project aims to provide users with the most comprehensive DeFi security tool available, protecting against all known crypto scams and malicious actors.
 
 ## User Preferences
 - **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)
@@ -26,7 +26,7 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL, Volume, or Security Score. Includes category and chain filtering.
 - **Volume-Based Ranking**: Protocols can be sorted by estimated 24h trading volume. Since DeFiLlama's `/protocols` endpoint doesn't provide volume data, estimates are calculated using TVL × category-specific turnover rates (DEX: 30%, Lending: 5%, Bridge: 20%, Other: 10%) with activity adjustments based on 24h price change. A hover tooltip clarifies the estimated nature of volume data.
-- **Security Analysis**: Conducts detailed security scans based on contract age, audit status, team transparency, and liquidity. Detects wallet drainers, typosquatting, and known scam phrases.
+- **Security Analysis**: Conducts comprehensive security scans across **19+ threat categories** covering all major wallet and protocol threats. Detects wallet drainers, phishing sites, private key phishing, social engineering, typosquatting, rug pulls, exit scams, fake audits, honeypots, and more. Each threat type has specific detection patterns and risk scores that determine overall security rating.
 - **3-Tier Audit System**: Integrates audit data from DeFiLlama (count, notes, links) and allows for manual audit entries.
 - **Blacklisting**: Automatically flags and blacklists protocols with critical security scores (≥80 points), with a dedicated Blacklist page showing detailed threats and reasons.
 - **Test Drainer Protocols**: Three malicious test protocols (ETH Airdrop Claimer, Unisvvap, Vitalik Giveaway) are always visible in the protocol list to demonstrate the blacklisting system. These protocols are designed to trigger CRITICAL security alerts when scanned, scoring 160-215 points through detection of scam keywords, typosquatting, and known scam phrases. They persist in the database and survive background refreshes.
