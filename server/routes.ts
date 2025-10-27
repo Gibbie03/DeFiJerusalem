@@ -46,6 +46,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/protocols - Fetch protocols (from DB or DeFiLlama) with aggressive caching
   app.get("/api/protocols", async (req, res) => {
     try {
+      // Set HTTP cache headers for browser caching (CMC-level optimization)
+      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+      
       // Check cache first (60s TTL for CMC-level speed)
       const cached = getCache('protocols');
       if (cached) {
@@ -136,6 +139,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const protocol = await storage.addProtocol(manualProtocol);
+      
+      // Invalidate protocols cache
+      clearCache('protocols');
+      
       res.json(protocol);
     } catch (error) {
       console.error("Error adding manual protocol:", error);
@@ -253,6 +260,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/blacklist - Get all blacklist entries
   app.get("/api/blacklist", async (req, res) => {
     try {
+      // HTTP cache headers
+      res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+      
       // Check cache first (5 minute TTL)
       const cached = getCache('blacklist');
       if (cached) {
@@ -318,6 +328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/protocols/trending - Get trending protocols by TVL growth
   app.get("/api/protocols/trending", async (req, res) => {
     try {
+      // HTTP cache headers
+      res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
+      
       // Check cache first (2 minute TTL)
       const cached = getCache('trending');
       if (cached) {
@@ -339,6 +352,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/scans - Get all security scans
   app.get("/api/scans", async (req, res) => {
     try {
+      // HTTP cache headers
+      res.set('Cache-Control', 'public, max-age=180, stale-while-revalidate=360');
+      
       // Check cache first (3 minute TTL)
       const cached = getCache('scans');
       if (cached) {
