@@ -137,7 +137,7 @@ export default function Dashboard() {
   const stats = useMemo(() => ({
     total: protocols.length,
     chains: chains.length - 1,
-    audited: Math.round((protocols.filter(p => p.audited).length / protocols.length) * 100) || 0,
+    audited: Math.round((protocols.filter(p => p.auditCount && p.auditCount > 0).length / protocols.length) * 100) || 0,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
     totalTVL: protocols.reduce((sum, p) => sum + p.tvl, 0)
   }), [protocols, chains, blacklist]);
