@@ -1,4 +1,5 @@
-import { Shield, TrendingUp, Star, Check, Mail } from 'lucide-react';
+import { Shield, TrendingUp, Star, Check, Mail, Send } from 'lucide-react';
+import { SiX } from 'react-icons/si';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -235,11 +236,48 @@ export default function SponsorshipGuide() {
             <a
               href="mailto:sponsorships@jerusalem-defi.com"
               className="text-primary hover:underline font-semibold"
+              data-testid="link-email-sponsorships"
             >
               sponsorships@jerusalem-defi.com
             </a>
           </p>
-          <div className="flex flex-wrap justify-center gap-4 pt-4">
+          
+          <div className="flex flex-wrap justify-center gap-3 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              data-testid="button-social-x"
+            >
+              <a
+                href="https://x.com/defi_jerusalem"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <SiX className="w-4 h-4" />
+                Follow on X
+              </a>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              data-testid="button-social-telegram"
+            >
+              <a
+                href="https://t.me/DefiJerusalem"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Join Telegram
+              </a>
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-4 pt-6">
             <Badge variant="outline" className="px-4 py-2">
               100K+ Monthly Users
             </Badge>
