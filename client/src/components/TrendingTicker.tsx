@@ -16,7 +16,11 @@ const formatTVL = (tvl: number): string => {
   return `$${tvl.toFixed(2)}`;
 };
 
-export default function TrendingTicker() {
+interface TrendingTickerProps {
+  onProtocolClick?: (protocol: Protocol) => void;
+}
+
+export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps) {
   const { data: protocols = [] } = useQuery<Protocol[]>({
     queryKey: ['/api/protocols/trending'],
     refetchInterval: 60000, // Refresh every minute
@@ -35,7 +39,12 @@ export default function TrendingTicker() {
         <div className="flex-1 overflow-hidden">
           <div className="animate-scroll-left flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
             {[...trending, ...trending].map((protocol, index) => (
-              <div key={`${protocol.id}-${index}`} className="inline-flex items-center gap-2">
+              <button
+                key={`${protocol.id}-${index}`}
+                onClick={() => onProtocolClick?.(protocol)}
+                className="inline-flex items-center gap-2 hover-elevate active-elevate-2 px-2 py-1 rounded transition-colors"
+                data-testid={`trending-protocol-${protocol.id}`}
+              >
                 <span className="text-sm font-semibold text-foreground">{protocol.name}</span>
                 <span className={`text-xs font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                   {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
@@ -43,7 +52,7 @@ export default function TrendingTicker() {
                 <span className="text-xs text-muted-foreground font-medium">
                   {formatTVL(protocol.tvl)}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>

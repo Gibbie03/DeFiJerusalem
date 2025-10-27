@@ -146,7 +146,7 @@ export default function Dashboard() {
   const stats = useMemo(() => ({
     total: protocols.length,
     chains: chains.length - 1,
-    audited: Math.round((protocols.filter(p => p.auditCount && p.auditCount > 0).length / protocols.length) * 100) || 0,
+    audited: protocols.filter(p => p.auditCount && p.auditCount > 0).length,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
     totalTVL: protocols.reduce((sum, p) => sum + p.tvl, 0)
   }), [protocols, chains, blacklist]);
@@ -209,7 +209,7 @@ export default function Dashboard() {
     <div className="bg-background min-h-screen">
       <AdSpace position="top" />
       
-      <TrendingTicker />
+      <TrendingTicker onProtocolClick={handleViewDetails} />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -238,9 +238,9 @@ export default function Dashboard() {
           />
           <StatsCard
             label="Audited"
-            value={`${stats.audited}%`}
+            value={stats.audited.toLocaleString()}
             icon={Shield}
-            tooltip="DeFiLlama API does not reliably provide audit information for most protocols. This data may not be accurate. Audits must be verified independently."
+            tooltip="Number of protocols with verified audits. DeFiLlama API does not reliably provide audit information for most protocols. This data may not be accurate. Audits must be verified independently."
           />
           <StatsCard
             label="Blacklisted"
