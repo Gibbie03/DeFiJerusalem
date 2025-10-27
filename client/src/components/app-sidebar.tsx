@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -60,6 +61,7 @@ interface AppSidebarProps {
 export function AppSidebar({ side = "left" }: AppSidebarProps) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const { setOpenMobile } = useSidebar();
 
   useEffect(() => {
     const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
@@ -68,6 +70,11 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
       document.documentElement.classList.toggle('dark', stored === 'dark');
     }
   }, []);
+
+  // Auto-close sidebar when route changes
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [location, setOpenMobile]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -78,7 +85,7 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
 
   return (
     <Sidebar side={side} collapsible="icon" className="border-l">
-      <SidebarContent>
+      <SidebarContent className="pt-4">
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>

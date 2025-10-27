@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Footer } from "@/components/Footer";
 import { Landmark, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/pages/Dashboard";
@@ -64,18 +65,21 @@ function Router() {
         {/* Main Container below header */}
         <div className="flex flex-1 overflow-hidden">
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto">
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/new" component={NewDApps} />
-              <Route path="/trending" component={TrendingDApps} />
-              <Route path="/blacklist" component={Blacklist} />
-              <Route path="/tutorials" component={Tutorials} />
-              <Route path="/sponsorship" component={SponsorshipGuide} />
-              <Route path="/admin/login" component={AdminLogin} />
-              <Route path="/admin/dashboard" component={AdminDashboard} />
-              <Route component={NotFound} />
-            </Switch>
+          <main className="flex-1 overflow-y-auto flex flex-col">
+            <div className="flex-1">
+              <Switch>
+                <Route path="/" component={Dashboard} />
+                <Route path="/new" component={NewDApps} />
+                <Route path="/trending" component={TrendingDApps} />
+                <Route path="/blacklist" component={Blacklist} />
+                <Route path="/tutorials" component={Tutorials} />
+                <Route path="/sponsorship" component={SponsorshipGuide} />
+                <Route path="/admin/login" component={AdminLogin} />
+                <Route path="/admin/dashboard" component={AdminDashboard} />
+                <Route component={NotFound} />
+              </Switch>
+            </div>
+            <Footer />
           </main>
 
           {/* Sidebar on the Right - below header */}
