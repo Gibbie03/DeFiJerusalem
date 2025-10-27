@@ -50,14 +50,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set HTTP cache headers for browser caching (CMC-level optimization)
       res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
       
+      // Extract query parameters for filtering
+      const { category, chain, minTvl } = req.query;
+      const filters: { category?: string; chain?: string; minTvl?: number } = {};
+      
+      if (category && typeof category === 'string') {
+        filters.category = category;
+      }
+      
+      if (chain && typeof chain === 'string') {
+        filters.chain = chain;
+      }
+      
+      if (minTvl) {
+        const parsedMinTvl = parseFloat(minTvl as string);
+        if (!isNaN(parsedMinTvl)) {
+          filters.minTvl = parsedMinTvl;
+        }
+      }
+      
+      // Create cache key based on filters
+      const cacheKey = Object.keys(filters).length > 0 
+        ? `protocols-${JSON.stringify(filters)}`
+        : 'protocols';
+      
       // Check cache first (60s TTL for CMC-level speed)
-      const cached = getCache('protocols');
+      const cached = getCache(cacheKey);
       if (cached) {
         return res.json(cached);
       }
 
       // Try to load from database first (fastest)
-      const existingProtocols = await storage.getProtocols();
+      const existingProtocols = await storage.getProtocols(Object.keys(filters).length > 0 ? filters : undefined);
       
       // If we have protocols in DB, return them with test drainers appended
       if (existingProtocols.length > 0) {
@@ -71,10 +95,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const protocolsWithTestDrainers = [...realProtocols, ...testDrainers];
         
         // Cache result for 60 seconds
-        setCache('protocols', protocolsWithTestDrainers, 60 * 1000);
+        setCache(cacheKey, protocolsWithTestDrainers, 60 * 1000);
         
         // Persist test drainers to DB immediately (async, non-blocking)
-        storage.bulkUpsertProtocols(testDrainers).catch(err => 
+        storage.bulkUpsertProtocols(testDrainers as any).catch(err => 
           console.error('Failed to persist test drainers:', err)
         );
         
@@ -89,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastBackgroundRefresh = now;
           
           discovery.fetchFromMultipleSources().then(async (freshProtocols) => {
-            await storage.bulkUpsertProtocols(freshProtocols);
+            await storage.bulkUpsertProtocols(freshProtocols as any);
             clearCache('protocols'); // Clear cache so next request gets fresh data
             backgroundRefreshInProgress = false;
           }).catch(err => {
@@ -107,10 +131,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allProtocols = [...protocols, ...testDrainers];
       
       // Persist both real protocols and test drainers
-      await storage.bulkUpsertProtocols(allProtocols);
+      await storage.bulkUpsertProtocols(allProtocols as any);
       
       // Cache for 60 seconds
-      setCache('protocols', allProtocols, 60 * 1000);
+      setCache(cacheKey, allProtocols, 60 * 1000);
       
       res.json(allProtocols);
     } catch (error) {
@@ -285,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/blacklist", async (req, res) => {
     try {
       // HTTP cache headers
-      res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+      res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
       
       // Check cache first (5 minute TTL)
       const cached = getCache('blacklist');
@@ -335,6 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/tutorials - Get all tutorial videos
   app.get("/api/tutorials", async (req, res) => {
     try {
+      // HTTP cache headers
+      res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+      
       const tutorials = await storage.getTutorials();
       res.json(tutorials);
     } catch (error) {
@@ -380,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/protocols/trending", async (req, res) => {
     try {
       // HTTP cache headers
-      res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
+      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
       
       // Check cache first (2 minute TTL)
       const cached = getCache('trending');
@@ -404,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/scans", async (req, res) => {
     try {
       // HTTP cache headers
-      res.set('Cache-Control', 'public, max-age=180, stale-while-revalidate=360');
+      res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
       
       // Check cache first (3 minute TTL)
       const cached = getCache('scans');

@@ -1,10 +1,10 @@
 import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser } from "@shared/schema";
 import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gt, sql } from "drizzle-orm";
+import { eq, desc, gt, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
-  getProtocols(): Promise<Protocol[]>;
+  getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]>;
   addProtocol(protocol: InsertProtocol): Promise<Protocol>;
   bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void>;
   getBlacklist(): Promise<BlacklistEntry[]>;
@@ -33,29 +33,64 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getProtocols(): Promise<Protocol[]> {
-    const result = await db.select().from(protocols).orderBy(desc(protocols.tvl));
+  async getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]> {
+    const conditions = [];
+    
+    if (filters?.category) {
+      conditions.push(eq(protocols.category, filters.category));
+    }
+    
+    if (filters?.minTvl !== undefined) {
+      conditions.push(gte(protocols.tvl, filters.minTvl));
+    }
+    
+    if (filters?.chain) {
+      conditions.push(sql`${protocols.chains}::jsonb @> ${JSON.stringify([filters.chain])}::jsonb`);
+    }
+    
+    let query = db.select({
+      id: protocols.id,
+      name: protocols.name,
+      category: protocols.category,
+      chains: protocols.chains,
+      tvl: protocols.tvl,
+      volume24h: protocols.volume24h,
+      change24h: protocols.change24h,
+      logo: protocols.logo,
+      securityScore: protocols.securityScore,
+      audited: protocols.audited,
+      auditCount: protocols.auditCount,
+      sponsorshipTier: protocols.sponsorshipTier,
+      featuredPosition: protocols.featuredPosition,
+      sponsoredUntil: protocols.sponsoredUntil,
+    }).from(protocols);
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    const result = await query.orderBy(desc(protocols.tvl));
     return result.map(p => ({
       id: p.id,
       name: p.name,
-      chains: p.chains,
+      chains: p.chains as string[],
       category: p.category,
       tvl: p.tvl,
       volume24h: p.volume24h,
       change24h: p.change24h,
-      age: p.age,
+      age: null,
       audited: p.audited,
       auditCount: p.auditCount,
-      auditNote: p.auditNote,
-      auditLinks: p.auditLinks,
+      auditNote: null,
+      auditLinks: null,
       securityScore: p.securityScore,
       logo: p.logo,
-      website: p.website,
-      twitter: p.twitter,
-      github: p.github,
-      description: p.description,
-      autoDiscovered: p.autoDiscovered,
-      manuallyAdded: p.manuallyAdded,
+      website: null,
+      twitter: null,
+      github: null,
+      description: '',
+      autoDiscovered: false,
+      manuallyAdded: false,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
@@ -65,7 +100,7 @@ export class DatabaseStorage implements IStorage {
   async addProtocol(protocol: InsertProtocol): Promise<Protocol> {
     const [result] = await db
       .insert(protocols)
-      .values([protocol])
+      .values([protocol] as any)
       .onConflictDoUpdate({
         target: protocols.id,
         set: {
@@ -80,7 +115,7 @@ export class DatabaseStorage implements IStorage {
     return {
       id: result.id,
       name: result.name,
-      chains: result.chains,
+      chains: result.chains as string[],
       category: result.category,
       tvl: result.tvl,
       volume24h: result.volume24h,
@@ -113,7 +148,7 @@ export class DatabaseStorage implements IStorage {
       const batch = protocolList.slice(i, i + batchSize);
       await db
         .insert(protocols)
-        .values(batch)
+        .values(batch as any)
         .onConflictDoUpdate({
           target: protocols.id,
           set: {
@@ -267,7 +302,22 @@ export class DatabaseStorage implements IStorage {
 
   async getProtocolsByDiscoveryDate(limit: number = 50): Promise<Protocol[]> {
     const result = await db
-      .select()
+      .select({
+        id: protocols.id,
+        name: protocols.name,
+        category: protocols.category,
+        chains: protocols.chains,
+        tvl: protocols.tvl,
+        volume24h: protocols.volume24h,
+        change24h: protocols.change24h,
+        logo: protocols.logo,
+        securityScore: protocols.securityScore,
+        audited: protocols.audited,
+        auditCount: protocols.auditCount,
+        sponsorshipTier: protocols.sponsorshipTier,
+        featuredPosition: protocols.featuredPosition,
+        sponsoredUntil: protocols.sponsoredUntil,
+      })
       .from(protocols)
       .orderBy(desc(protocols.discoveredAt))
       .limit(limit);
@@ -275,24 +325,24 @@ export class DatabaseStorage implements IStorage {
     return result.map(p => ({
       id: p.id,
       name: p.name,
-      chains: p.chains,
+      chains: p.chains as string[],
       category: p.category,
       tvl: p.tvl,
       volume24h: p.volume24h,
       change24h: p.change24h,
-      age: p.age,
+      age: null,
       audited: p.audited,
       auditCount: p.auditCount,
-      auditNote: p.auditNote,
-      auditLinks: p.auditLinks,
+      auditNote: null,
+      auditLinks: null,
       securityScore: p.securityScore,
       logo: p.logo,
-      website: p.website,
-      twitter: p.twitter,
-      github: p.github,
-      description: p.description,
-      autoDiscovered: p.autoDiscovered,
-      manuallyAdded: p.manuallyAdded,
+      website: null,
+      twitter: null,
+      github: null,
+      description: '',
+      autoDiscovered: false,
+      manuallyAdded: false,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
@@ -301,7 +351,22 @@ export class DatabaseStorage implements IStorage {
 
   async getProtocolsByTvlGrowth(limit: number = 50): Promise<Protocol[]> {
     const result = await db
-      .select()
+      .select({
+        id: protocols.id,
+        name: protocols.name,
+        category: protocols.category,
+        chains: protocols.chains,
+        tvl: protocols.tvl,
+        volume24h: protocols.volume24h,
+        change24h: protocols.change24h,
+        logo: protocols.logo,
+        securityScore: protocols.securityScore,
+        audited: protocols.audited,
+        auditCount: protocols.auditCount,
+        sponsorshipTier: protocols.sponsorshipTier,
+        featuredPosition: protocols.featuredPosition,
+        sponsoredUntil: protocols.sponsoredUntil,
+      })
       .from(protocols)
       .where(gt(protocols.change24h, 0))
       .orderBy(desc(protocols.change24h))
@@ -310,24 +375,24 @@ export class DatabaseStorage implements IStorage {
     return result.map(p => ({
       id: p.id,
       name: p.name,
-      chains: p.chains,
+      chains: p.chains as string[],
       category: p.category,
       tvl: p.tvl,
       volume24h: p.volume24h,
       change24h: p.change24h,
-      age: p.age,
+      age: null,
       audited: p.audited,
       auditCount: p.auditCount,
-      auditNote: p.auditNote,
-      auditLinks: p.auditLinks,
+      auditNote: null,
+      auditLinks: null,
       securityScore: p.securityScore,
       logo: p.logo,
-      website: p.website,
-      twitter: p.twitter,
-      github: p.github,
-      description: p.description,
-      autoDiscovered: p.autoDiscovered,
-      manuallyAdded: p.manuallyAdded,
+      website: null,
+      twitter: null,
+      github: null,
+      description: '',
+      autoDiscovered: false,
+      manuallyAdded: false,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
@@ -337,7 +402,22 @@ export class DatabaseStorage implements IStorage {
   async getSponsoredProtocols(): Promise<Protocol[]> {
     const now = new Date();
     const result = await db
-      .select()
+      .select({
+        id: protocols.id,
+        name: protocols.name,
+        category: protocols.category,
+        chains: protocols.chains,
+        tvl: protocols.tvl,
+        volume24h: protocols.volume24h,
+        change24h: protocols.change24h,
+        logo: protocols.logo,
+        securityScore: protocols.securityScore,
+        audited: protocols.audited,
+        auditCount: protocols.auditCount,
+        sponsorshipTier: protocols.sponsorshipTier,
+        featuredPosition: protocols.featuredPosition,
+        sponsoredUntil: protocols.sponsoredUntil,
+      })
       .from(protocols)
       .where(gt(protocols.sponsoredUntil, now))
       .orderBy(protocols.featuredPosition);
@@ -345,24 +425,24 @@ export class DatabaseStorage implements IStorage {
     return result.map(p => ({
       id: p.id,
       name: p.name,
-      chains: p.chains,
+      chains: p.chains as string[],
       category: p.category,
       tvl: p.tvl,
       volume24h: p.volume24h,
       change24h: p.change24h,
-      age: p.age,
+      age: null,
       audited: p.audited,
       auditCount: p.auditCount,
-      auditNote: p.auditNote,
-      auditLinks: p.auditLinks,
+      auditNote: null,
+      auditLinks: null,
       securityScore: p.securityScore,
       logo: p.logo,
-      website: p.website,
-      twitter: p.twitter,
-      github: p.github,
-      description: p.description,
-      autoDiscovered: p.autoDiscovered,
-      manuallyAdded: p.manuallyAdded,
+      website: null,
+      twitter: null,
+      github: null,
+      description: '',
+      autoDiscovered: false,
+      manuallyAdded: false,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
