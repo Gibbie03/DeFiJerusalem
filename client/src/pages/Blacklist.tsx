@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2 } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -8,14 +8,46 @@ import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import type { BlacklistEntry } from '@shared/schema';
 
 export default function Blacklist() {
   const [searchValue, setSearchValue] = useState('');
+  const { toast } = useToast();
 
   const { data: blacklist = [], isLoading } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
   });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      const res = await apiRequest('DELETE', `/api/blacklist/${entryId}`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+      toast({
+        title: "Entry Removed",
+        description: "Blacklist entry has been successfully removed",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete blacklist entry",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (entryId: string, dappName: string) => {
+    if (confirm(`Are you sure you want to remove "${dappName}" from the blacklist?`)) {
+      deleteMutation.mutate(entryId);
+    }
+  };
 
   const filteredBlacklist = blacklist.filter(entry =>
     entry.dappId.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -209,19 +241,29 @@ export default function Blacklist() {
                     <div className="flex-1">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-red-500" />
-                        {entry.dappId}
+                        {entry.dappName || entry.dappId}
                       </CardTitle>
                       <CardDescription>
                         Flagged on {new Date(entry.timestamp).toLocaleDateString()}
                       </CardDescription>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <Badge className={getSeverityColor(entry.severity)}>
                         {entry.severity}
                       </Badge>
                       <Badge variant={entry.status === 'ACTIVE' ? 'destructive' : 'secondary'}>
                         {entry.status}
                       </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(entry.id, entry.dappName || entry.dappId)}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-${entry.id}`}
+                        className="hover:bg-red-500/10 hover:text-red-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
