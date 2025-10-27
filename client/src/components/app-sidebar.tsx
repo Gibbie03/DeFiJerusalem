@@ -43,7 +43,11 @@ const menuItems = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  side?: "left" | "right";
+}
+
+export function AppSidebar({ side = "left" }: AppSidebarProps) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
@@ -62,20 +66,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center">
-            <Landmark className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              JERUSALEM
-            </h1>
-            <p className="text-xs text-muted-foreground">DeFi Security</p>
-          </div>
-        </div>
-      </SidebarHeader>
+    <Sidebar side={side}>
       
       <SidebarContent>
         <SidebarGroup>

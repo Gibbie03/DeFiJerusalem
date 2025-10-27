@@ -1,11 +1,11 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Shield, Menu } from "lucide-react";
+import { Landmark, Menu, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
@@ -13,6 +13,7 @@ import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import Tutorials from "@/pages/Tutorials";
 import NotFound from "@/pages/not-found";
+import AddDAppByUrlDialog from "@/components/AddDAppByUrlDialog";
 
 function CustomSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
@@ -39,20 +40,31 @@ function Router() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-            <div className="flex items-center justify-center p-3 border-b">
-              <div className="flex items-center gap-2">
-                <Shield className="w-6 h-6 text-primary" />
-                <h1 className="text-lg font-bold">JERUSALEM</h1>
+      <div className="flex h-screen w-full flex-col">
+        {/* Top Header with Jerusalem Logo */}
+        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+          <div className="flex items-center justify-between px-4 py-3">
+            {/* Jerusalem Logo - Left */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
+                <Landmark className="w-6 h-6 text-primary-foreground" />
               </div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                JERUSALEM
+              </h1>
             </div>
-            <div className="flex items-center gap-2 p-2">
+
+            {/* Action Buttons - Right */}
+            <div className="flex items-center gap-2">
+              <AddDAppByUrlDialog />
               <CustomSidebarTrigger />
             </div>
-          </header>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Main Content */}
           <main className="flex-1 overflow-y-auto">
             <Switch>
               <Route path="/" component={Dashboard} />
@@ -63,6 +75,9 @@ function Router() {
               <Route component={NotFound} />
             </Switch>
           </main>
+
+          {/* Sidebar on the Right */}
+          <AppSidebar side="right" />
         </div>
       </div>
     </SidebarProvider>
