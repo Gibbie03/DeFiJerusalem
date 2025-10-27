@@ -304,6 +304,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE /api/blacklist/:id - Remove a blacklist entry (Admin only)
+  app.delete("/api/blacklist/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: "Blacklist entry ID is required" });
+      }
+
+      await storage.deleteBlacklistEntry(id);
+      
+      // Clear the blacklist cache
+      clearCache('blacklist');
+      
+      // Reinitialize blacklist manager
+      await initBlacklistManager();
+      
+      res.json({ success: true, message: "Blacklist entry removed successfully" });
+    } catch (error) {
+      console.error("Error deleting blacklist entry:", error);
+      res.status(500).json({ 
+        error: "Failed to delete blacklist entry",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/tutorials - Get all tutorial videos
   app.get("/api/tutorials", async (req, res) => {
     try {

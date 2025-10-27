@@ -9,6 +9,7 @@ export interface IStorage {
   bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void>;
   getBlacklist(): Promise<BlacklistEntry[]>;
   addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry>;
+  deleteBlacklistEntry(entryId: string): Promise<void>;
   getSecurityScan(protocolId: string): Promise<SecurityScan | undefined>;
   getAllSecurityScans(): Promise<Record<string, SecurityScan>>;
   addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void>;
@@ -142,6 +143,10 @@ export class DatabaseStorage implements IStorage {
       status: result.status as 'ACTIVE' | 'INACTIVE',
       timestamp: result.timestamp.toISOString(),
     };
+  }
+
+  async deleteBlacklistEntry(entryId: string): Promise<void> {
+    await db.delete(blacklistEntries).where(eq(blacklistEntries.id, entryId));
   }
 
   async getSecurityScan(protocolId: string): Promise<SecurityScan | undefined> {

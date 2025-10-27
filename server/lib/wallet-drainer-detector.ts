@@ -3,24 +3,30 @@ import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 // Whitelist of well-established, verified protocols
 const VERIFIED_PROTOCOLS = new Set([
   // Major DEXs
-  'uniswap', 'pancakeswap', 'sushiswap', 'curve', 'balancer', 'dydx', 
-  'quickswap', 'spookyswap', 'traderj oe', 'velodrome', '1inch',
+  'uniswap', 'uniswap v2', 'uniswap v3', 'uniswap v4',
+  'pancakeswap', 'pancakeswap amm', 'pancakeswap amm v2', 'pancakeswap amm v3',
+  'sushiswap', 'sushiswap v2', 'sushiswap v3',
+  'curve', 'curve dex', 'curve finance', 'curve.fi',
+  'balancer', 'balancer v2', 'balancer v3',
+  'dydx', 'quickswap', 'quickswap dex', 'spookyswap', 'trader joe', 'velodrome', '1inch', '1inch network',
   
   // Lending platforms
-  'aave', 'compound', 'maker', 'makerdao', 'venus', 'benqi', 'radiant',
+  'aave', 'aave v2', 'aave v3', 'aave arc',
+  'compound', 'compound v2', 'compound v3', 'compound finance',
+  'maker', 'makerdao', 'venus', 'benqi', 'radiant', 'radiant capital',
   
   // Bridges
-  'stargate', 'synapse', 'hop protocol', 'across', 'celer',
+  'stargate', 'stargate finance', 'synapse', 'synapse protocol', 'hop protocol', 'across', 'across protocol', 'celer', 'celer network',
   
   // Liquid Staking
-  'lido', 'rocket pool', 'frax', 'ankr', 'stader',
+  'lido', 'lido finance', 'rocket pool', 'frax', 'frax finance', 'ankr', 'stader',
   
   // Layer 2s / Chains
-  'arbitrum', 'optimism', 'polygon', 'base', 'avalanche', 'bnb chain',
+  'arbitrum', 'optimism', 'polygon', 'base', 'avalanche', 'bnb chain', 'zksync',
   
   // Other established protocols
-  'gmx', 'yearn', 'convex', 'olympus', 'platypus', 'joe',
-  'binance', 'coinbase', 'kraken', 'nexo', 'celsius'
+  'gmx', 'yearn', 'yearn finance', 'convex', 'convex finance', 'olympus', 'olympus dao', 'platypus', 'platypus finance', 'joe',
+  'binance', 'binance cex', 'coinbase', 'kraken', 'nexo', 'celsius'
 ]);
 
 // Trusted domain patterns for verification
