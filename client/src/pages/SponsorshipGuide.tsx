@@ -83,7 +83,7 @@ const REQUIREMENTS = [
 
 export default function SponsorshipGuide() {
   const handleContactSales = (tier: string) => {
-    const email = 'sponsorships@jerusalem-defi.com';
+    const email = 'sponsorships@Defijerusalem.com';
     const subject = `${tier} Tier Sponsorship Inquiry`;
     const body = `Hello,\n\nI'm interested in the ${tier} sponsorship tier for our protocol.\n\nProtocol Name: [Your Protocol]\nWebsite: [Your Website]\nTVL: [Current TVL]\nContact: [Your Email]\n\nPlease provide more information about the sponsorship process.\n\nBest regards`;
     
@@ -234,11 +234,11 @@ export default function SponsorshipGuide() {
           <p className="text-muted-foreground">
             Contact our partnerships team at{' '}
             <a
-              href="mailto:sponsorships@jerusalem-defi.com"
+              href="mailto:sponsorships@Defijerusalem.com"
               className="text-primary hover:underline font-semibold"
               data-testid="link-email-sponsorships"
             >
-              sponsorships@jerusalem-defi.com
+              sponsorships@Defijerusalem.com
             </a>
           </p>
           
