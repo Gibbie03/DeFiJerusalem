@@ -31,10 +31,11 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 
 ### System Design Choices
 - **Database Schema**: Utilizes PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables, ensuring data persistence and scalability.
+- **Database Performance**: Indexes added on frequently queried columns (tvl, category, change24h, discoveredAt, protocolId, scannedAt) for fast sorting and filtering. Optimized queries using SQL DISTINCT ON instead of in-memory iteration.
 - **API Routes**: Comprehensive RESTful API for managing protocols, security scans, blacklist entries, and tutorial videos.
 - **Storage Layer**: An `IStorage` interface implementation (`DatabaseStorage`) centralizes all CRUD operations with the database.
 - **Separation of Concerns**: Clear distinction between frontend (client/) and backend (server/) directories.
-- **Caching**: DeFiLlama API integration includes a 30-minute cache for efficiency.
+- **Caching**: DeFiLlama API integration includes a 30-minute cache for efficiency. Server-side in-memory caching (2-5 minute TTL) for expensive API routes (/api/scans, /api/blacklist, /api/protocols/trending) with automatic cache invalidation on updates.
 
 ## External Dependencies
 - **DeFiLlama API**: Used for discovering DeFi protocols, fetching Total Value Locked (TVL) data, and retrieving audit information.
