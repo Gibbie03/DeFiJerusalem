@@ -26,12 +26,17 @@ export const protocols = pgTable('protocols', {
   manuallyAdded: boolean('manually_added').notNull().default(false),
   discoveredAt: timestamp('discovered_at').notNull().defaultNow(),
   lastUpdated: timestamp('last_updated').notNull().defaultNow(),
+  sponsoredUntil: timestamp('sponsored_until'),
+  sponsorshipTier: text('sponsorship_tier').default('free'),
+  featuredPosition: integer('featured_position'),
 }, (table) => ({
   tvlIdx: index('protocols_tvl_idx').on(table.tvl),
   volume24hIdx: index('protocols_volume24h_idx').on(table.volume24h),
   categoryIdx: index('protocols_category_idx').on(table.category),
   change24hIdx: index('protocols_change24h_idx').on(table.change24h),
   discoveredAtIdx: index('protocols_discovered_at_idx').on(table.discoveredAt),
+  sponsoredUntilIdx: index('protocols_sponsored_until_idx').on(table.sponsoredUntil),
+  sponsorshipTierIdx: index('protocols_sponsorship_tier_idx').on(table.sponsorshipTier),
 }));
 
 export const securityScans = pgTable('security_scans', {
@@ -79,6 +84,23 @@ export const manualAudits = pgTable('manual_audits', {
   addedAt: timestamp('added_at').notNull().defaultNow(),
 });
 
+export const sponsorPayments = pgTable('sponsor_payments', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull().references(() => protocols.id),
+  tier: text('tier').notNull(),
+  startDate: timestamp('start_date').notNull().defaultNow(),
+  endDate: timestamp('end_date').notNull(),
+  amount: real('amount').notNull(),
+  status: text('status').notNull().default('pending'),
+  invoiceUrl: text('invoice_url'),
+  contactEmail: text('contact_email').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  protocolIdIdx: index('sponsor_payments_protocol_id_idx').on(table.protocolId),
+  statusIdx: index('sponsor_payments_status_idx').on(table.status),
+}));
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -101,6 +123,9 @@ export type Protocol = {
   description: string;
   autoDiscovered: boolean;
   manuallyAdded: boolean;
+  sponsoredUntil: string | null;
+  sponsorshipTier: 'free' | 'featured' | 'sponsored' | 'promoted';
+  featuredPosition: number | null;
 };
 
 export type SecurityScan = {
@@ -142,6 +167,20 @@ export type ManualAudit = {
   addedAt: string;
 };
 
+export type SponsorPayment = {
+  id: string;
+  protocolId: string;
+  tier: 'featured' | 'sponsored' | 'promoted';
+  startDate: string;
+  endDate: string;
+  amount: number;
+  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  invoiceUrl: string | null;
+  contactEmail: string;
+  notes: string | null;
+  createdAt: string;
+};
+
 export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -164,9 +203,15 @@ export const insertManualAuditSchema = createInsertSchema(manualAudits).omit({
   addedAt: true 
 });
 
+export const insertSponsorPaymentSchema = createInsertSchema(sponsorPayments).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
 export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
+export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());

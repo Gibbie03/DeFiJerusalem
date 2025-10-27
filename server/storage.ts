@@ -17,6 +17,13 @@ export interface IStorage {
   addTutorial(tutorial: InsertTutorialVideo): Promise<TutorialVideo>;
   getProtocolsByDiscoveryDate(limit?: number): Promise<Protocol[]>;
   getProtocolsByTvlGrowth(limit?: number): Promise<Protocol[]>;
+  getSponsoredProtocols(): Promise<Protocol[]>;
+  updateProtocolSponsorship(
+    protocolId: string,
+    tier: 'free' | 'featured' | 'sponsored' | 'promoted',
+    sponsoredUntil: Date | null,
+    featuredPosition: number | null
+  ): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -28,6 +35,7 @@ export class DatabaseStorage implements IStorage {
       chains: p.chains,
       category: p.category,
       tvl: p.tvl,
+      volume24h: p.volume24h,
       change24h: p.change24h,
       age: p.age,
       audited: p.audited,
@@ -42,6 +50,9 @@ export class DatabaseStorage implements IStorage {
       description: p.description,
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
+      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      featuredPosition: p.featuredPosition,
     }));
   }
 
@@ -66,6 +77,7 @@ export class DatabaseStorage implements IStorage {
       chains: result.chains,
       category: result.category,
       tvl: result.tvl,
+      volume24h: result.volume24h,
       change24h: result.change24h,
       age: result.age,
       audited: result.audited,
@@ -80,6 +92,9 @@ export class DatabaseStorage implements IStorage {
       description: result.description,
       autoDiscovered: result.autoDiscovered,
       manuallyAdded: result.manuallyAdded,
+      sponsoredUntil: result.sponsoredUntil?.toISOString() ?? null,
+      sponsorshipTier: (result.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      featuredPosition: result.featuredPosition,
     };
   }
 
@@ -257,6 +272,7 @@ export class DatabaseStorage implements IStorage {
       chains: p.chains,
       category: p.category,
       tvl: p.tvl,
+      volume24h: p.volume24h,
       change24h: p.change24h,
       age: p.age,
       audited: p.audited,
@@ -271,6 +287,9 @@ export class DatabaseStorage implements IStorage {
       description: p.description,
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
+      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      featuredPosition: p.featuredPosition,
     }));
   }
 
@@ -288,6 +307,7 @@ export class DatabaseStorage implements IStorage {
       chains: p.chains,
       category: p.category,
       tvl: p.tvl,
+      volume24h: p.volume24h,
       change24h: p.change24h,
       age: p.age,
       audited: p.audited,
@@ -302,7 +322,62 @@ export class DatabaseStorage implements IStorage {
       description: p.description,
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
+      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      featuredPosition: p.featuredPosition,
     }));
+  }
+
+  async getSponsoredProtocols(): Promise<Protocol[]> {
+    const now = new Date();
+    const result = await db
+      .select()
+      .from(protocols)
+      .where(gt(protocols.sponsoredUntil, now))
+      .orderBy(protocols.featuredPosition);
+    
+    return result.map(p => ({
+      id: p.id,
+      name: p.name,
+      chains: p.chains,
+      category: p.category,
+      tvl: p.tvl,
+      volume24h: p.volume24h,
+      change24h: p.change24h,
+      age: p.age,
+      audited: p.audited,
+      auditCount: p.auditCount,
+      auditNote: p.auditNote,
+      auditLinks: p.auditLinks,
+      securityScore: p.securityScore,
+      logo: p.logo,
+      website: p.website,
+      twitter: p.twitter,
+      github: p.github,
+      description: p.description,
+      autoDiscovered: p.autoDiscovered,
+      manuallyAdded: p.manuallyAdded,
+      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      featuredPosition: p.featuredPosition,
+    }));
+  }
+
+  async updateProtocolSponsorship(
+    protocolId: string,
+    tier: 'free' | 'featured' | 'sponsored' | 'promoted',
+    sponsoredUntil: Date | null,
+    featuredPosition: number | null
+  ): Promise<void> {
+    await db
+      .update(protocols)
+      .set({
+        sponsorshipTier: tier,
+        sponsoredUntil,
+        featuredPosition,
+        lastUpdated: new Date(),
+      })
+      .where(eq(protocols.id, protocolId));
   }
 }
 
