@@ -39,27 +39,30 @@ function Router() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full flex-col">
-        {/* Top Header */}
-        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-          <div className="flex items-center justify-between px-6 py-3">
-            {/* Jerusalem Logo - Left */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
-                <Landmark className="w-6 h-6 text-primary-foreground" />
+      <div className="flex h-screen w-full">
+        {/* Sidebar on the Right */}
+        <AppSidebar side="right" />
+        
+        {/* Main Container */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Top Header */}
+          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+            <div className="flex items-center justify-between px-6 py-3">
+              {/* Jerusalem Logo - Left */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
+                  <Landmark className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                  JERUSALEM
+                </h1>
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                JERUSALEM
-              </h1>
+
+              {/* Sidebar Toggle - Right */}
+              <CustomSidebarTrigger />
             </div>
+          </header>
 
-            {/* Sidebar Toggle - Right */}
-            <CustomSidebarTrigger />
-          </div>
-        </header>
-
-        {/* Main Content Area */}
-        <div className="flex flex-1 overflow-hidden">
           {/* Main Content */}
           <main className="flex-1 overflow-y-auto">
             <Switch>
@@ -71,9 +74,6 @@ function Router() {
               <Route component={NotFound} />
             </Switch>
           </main>
-
-          {/* Sidebar on the Right */}
-          <AppSidebar side="right" />
         </div>
       </div>
     </SidebarProvider>
