@@ -8,7 +8,6 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useToast } from '@/hooks/use-toast';
-import Header from '@/components/Header';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import ProtocolTable from '@/components/ProtocolTable';
@@ -193,14 +192,6 @@ export default function Dashboard() {
 
   return (
     <div className="bg-background">
-      <Header
-        isOnline={isOnline}
-        lastUpdate={new Date()}
-        onRefresh={handleRefresh}
-        onAdd={() => console.log('Add protocol')}
-        isRefreshing={scanMutation.isPending}
-      />
-
       <AdSpace position="top" />
       
       <TrendingTicker />
