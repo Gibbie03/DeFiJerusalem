@@ -23,6 +23,14 @@ function setCache(key: string, data: any, ttlMs: number): void {
   cache.set(key, { data, expires: Date.now() + ttlMs });
 }
 
+function clearCache(key: string): void {
+  cache.delete(key);
+}
+
+// Background refresh tracking
+let backgroundRefreshInProgress = false;
+let lastBackgroundRefresh = 0;
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const discovery = new DAppDiscovery();
   const detector = new WalletDrainerDetector();
@@ -35,9 +43,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
-  // GET /api/protocols - Fetch protocols (from DB or DeFiLlama)
+  // GET /api/protocols - Fetch protocols (from DB or DeFiLlama) with aggressive caching
   app.get("/api/protocols", async (req, res) => {
     try {
+      // Check cache first (60s TTL for CMC-level speed)
+      const cached = getCache('protocols');
+      if (cached) {
+        return res.json(cached);
+      }
+
       // Try to load from database first (fastest)
       const existingProtocols = await storage.getProtocols();
       
@@ -52,15 +66,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const testDrainers = discovery.getTestDrainerProtocols();
         const protocolsWithTestDrainers = [...realProtocols, ...testDrainers];
         
-        // Persist test drainers to DB immediately so they can be scanned
-        await storage.bulkUpsertProtocols(testDrainers);
+        // Cache result for 60 seconds
+        setCache('protocols', protocolsWithTestDrainers, 60 * 1000);
+        
+        // Persist test drainers to DB immediately (async, non-blocking)
+        storage.bulkUpsertProtocols(testDrainers).catch(err => 
+          console.error('Failed to persist test drainers:', err)
+        );
         
         res.json(protocolsWithTestDrainers);
         
-        // Optionally refresh in background (fire and forget)
-        discovery.fetchFromMultipleSources().then(async (freshProtocols) => {
-          await storage.bulkUpsertProtocols(freshProtocols);
-        }).catch(err => console.error('Background refresh failed:', err));
+        // Background refresh with guard (only once every 5 minutes)
+        const now = Date.now();
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        
+        if (!backgroundRefreshInProgress && (now - lastBackgroundRefresh) > REFRESH_INTERVAL) {
+          backgroundRefreshInProgress = true;
+          lastBackgroundRefresh = now;
+          
+          discovery.fetchFromMultipleSources().then(async (freshProtocols) => {
+            await storage.bulkUpsertProtocols(freshProtocols);
+            clearCache('protocols'); // Clear cache so next request gets fresh data
+            backgroundRefreshInProgress = false;
+          }).catch(err => {
+            console.error('Background refresh failed:', err);
+            backgroundRefreshInProgress = false;
+          });
+        }
         
         return;
       }
@@ -72,6 +104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Persist both real protocols and test drainers
       await storage.bulkUpsertProtocols(allProtocols);
+      
+      // Cache for 60 seconds
+      setCache('protocols', allProtocols, 60 * 1000);
+      
       res.json(allProtocols);
     } catch (error) {
       console.error("Error fetching protocols:", error);
@@ -110,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/scan - Perform security scan on protocols
+  // POST /api/scan - Perform security scan on protocols (optimized for speed)
   app.post("/api/scan", async (req, res) => {
     try {
       const { protocolIds } = req.body;
@@ -122,39 +158,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const protocols = await storage.getProtocols();
       const scanResults: Record<string, any> = {};
       const newBlacklistEntries: any[] = [];
+      const scansToStore: Array<{ protocolId: string; scan: any }> = [];
 
-      // Batch scan protocols
-      const batchSize = 10;
-      for (let i = 0; i < Math.min(protocolIds.length, 100); i += batchSize) {
+      // Parallel scan with controlled concurrency (20 at a time for speed)
+      const batchSize = 20;
+      const maxProtocols = Math.min(protocolIds.length, 100);
+      
+      for (let i = 0; i < maxProtocols; i += batchSize) {
         const batch = protocolIds.slice(i, i + batchSize);
         
-        await Promise.all(
+        // Use Promise.allSettled for fault tolerance
+        const results = await Promise.allSettled(
           batch.map(async (id: string) => {
             const protocol = protocols.find(p => p.id === id);
-            if (!protocol) return;
+            if (!protocol) return null;
 
             const scanResult = await detector.scanDApp(protocol);
-            scanResults[id] = scanResult;
-            
-            // Store scan result
-            await storage.addSecurityScan(id, scanResult);
-
-            // Add to blacklist if critical
-            if (scanResult.severity === 'CRITICAL') {
-              const { entry, updatedList } = blacklistManager.addToBlacklist(protocol, scanResult);
-              await storage.addToBlacklist(entry);
-              newBlacklistEntries.push(entry);
-            }
+            return { id, protocol, scanResult };
           })
         );
 
-        // Delay between batches
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Process successful scans
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value) {
+            const { id, protocol, scanResult } = result.value;
+            scanResults[id] = scanResult;
+            scansToStore.push({ protocolId: id, scan: scanResult });
+
+            // Collect blacklist entries
+            if (scanResult.severity === 'CRITICAL') {
+              const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
+              newBlacklistEntries.push(entry);
+            }
+          }
+        }
+
+        // Reduced delay for CMC-level speed (200ms instead of 1000ms)
+        if (i + batchSize < maxProtocols) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
 
+      // Batch all DB writes into single operations
+      await Promise.all([
+        // Batch store all scan results
+        Promise.all(scansToStore.map(({ protocolId, scan }) => 
+          storage.addSecurityScan(protocolId, scan)
+        )),
+        // Batch store all blacklist entries
+        newBlacklistEntries.length > 0 
+          ? Promise.all(newBlacklistEntries.map(entry => storage.addToBlacklist(entry)))
+          : Promise.resolve()
+      ]);
+
       // Invalidate cache after scanning
-      cache.delete('scans');
-      cache.delete('blacklist');
+      clearCache('scans');
+      clearCache('blacklist');
+      clearCache('protocols'); // Also clear protocols to refresh security scores
 
       res.json({ 
         scanResults,
@@ -297,36 +357,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Weekly scanning function
+  // Weekly scanning function (optimized for speed)
   const performWeeklyScan = async () => {
     try {
       console.log("Starting weekly security scan...");
       const protocols = await storage.getProtocols();
       const protocolIds = protocols.map(p => p.id);
+      const scansToStore: Array<{ protocolId: string; scan: any }> = [];
+      const blacklistEntries: any[] = [];
       
-      const batchSize = 10;
+      // Parallel scan with controlled concurrency
+      const batchSize = 20;
       for (let i = 0; i < protocolIds.length; i += batchSize) {
         const batch = protocolIds.slice(i, i + batchSize);
         
-        await Promise.all(
+        const results = await Promise.allSettled(
           batch.map(async (id: string) => {
             const protocol = protocols.find(p => p.id === id);
-            if (!protocol) return;
+            if (!protocol) return null;
 
             const scanResult = await detector.scanDApp(protocol);
-            await storage.addSecurityScan(id, scanResult);
-
-            if (scanResult.severity === 'CRITICAL') {
-              const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
-              await storage.addToBlacklist(entry);
-            }
+            return { id, protocol, scanResult };
           })
         );
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Process successful scans
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value) {
+            const { id, protocol, scanResult } = result.value;
+            scansToStore.push({ protocolId: id, scan: scanResult });
+
+            if (scanResult.severity === 'CRITICAL') {
+              const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
+              blacklistEntries.push(entry);
+            }
+          }
+        }
+
+        // Minimal delay for rate limiting
+        if (i + batchSize < protocolIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
+
+      // Batch all DB writes
+      await Promise.all([
+        Promise.all(scansToStore.map(({ protocolId, scan }) => 
+          storage.addSecurityScan(protocolId, scan)
+        )),
+        blacklistEntries.length > 0 
+          ? Promise.all(blacklistEntries.map(entry => storage.addToBlacklist(entry)))
+          : Promise.resolve()
+      ]);
       
-      console.log("Weekly security scan completed!");
+      // Clear caches
+      clearCache('scans');
+      clearCache('blacklist');
+      clearCache('protocols');
+      
+      console.log(`Weekly security scan completed! Scanned ${scansToStore.length} protocols.`);
     } catch (error) {
       console.error("Error in weekly scan:", error);
     }
