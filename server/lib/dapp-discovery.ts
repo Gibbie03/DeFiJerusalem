@@ -62,13 +62,25 @@ export class DAppDiscovery {
           auditLinks = p.audit_links.filter((link: any) => typeof link === 'string');
         }
 
+        const tvl = typeof p.tvl === 'number' ? p.tvl : 0;
+        const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
+        
+        // DeFiLlama /protocols endpoint doesn't provide volume, so we estimate it
+        // based on TVL and activity. DEXes typically have higher turnover.
+        const category = this.classifyCategory(p);
+        const turnoverMultiplier = category === 'DEX' ? 0.3 : 
+                                  category === 'Lending' ? 0.05 : 
+                                  category === 'Bridge' ? 0.2 : 0.1;
+        const estimatedVolume = tvl * turnoverMultiplier * (1 + Math.abs(change24h) / 100);
+        
         return {
           id: p.slug || `protocol-${Date.now()}-${Math.random()}`,
           name: p.name || 'Unknown Protocol',
           chains: chains,
-          category: this.classifyCategory(p),
-          tvl: typeof p.tvl === 'number' ? p.tvl : 0,
-          change24h: typeof p.change_1d === 'number' ? p.change_1d : 0,
+          category: category,
+          tvl: tvl,
+          volume24h: estimatedVolume,
+          change24h: change24h,
           age: this.calculateAge(p.listedAt),
           audited: auditCount > 0,
           auditCount: auditCount,
@@ -102,6 +114,7 @@ export class DAppDiscovery {
         chains: ['ethereum'],
         category: 'DEX',
         tvl: 5000000000,
+        volume24h: 1200000000,
         change24h: 2.5,
         age: Math.floor((Date.now() / 1000 - (Date.now() / 1000 - 365 * 86400)) / 86400),
         audited: true,
@@ -123,6 +136,7 @@ export class DAppDiscovery {
         chains: ['ethereum', 'polygon'],
         category: 'Lending',
         tvl: 10000000000,
+        volume24h: 450000000,
         change24h: 1.2,
         age: Math.floor((Date.now() / 1000 - (Date.now() / 1000 - 730 * 86400)) / 86400),
         audited: true,

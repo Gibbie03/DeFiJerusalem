@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [searchValue, setSearchValue] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState<'tvl' | 'security'>('tvl');
+  const [sortBy, setSortBy] = useState<'tvl' | 'volume' | 'security'>('tvl');
   const [activeTab, setActiveTab] = useState('trending');
   const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
   
@@ -121,6 +121,8 @@ export default function Dashboard() {
     // Sort by selected criteria
     if (sortBy === 'tvl') {
       sorted.sort((a, b) => b.tvl - a.tvl);
+    } else if (sortBy === 'volume') {
+      sorted.sort((a, b) => b.volume24h - a.volume24h);
     } else if (sortBy === 'security') {
       sorted.sort((a, b) => b.securityScore - a.securityScore);
     }
@@ -289,6 +291,21 @@ export default function Dashboard() {
                 <ArrowUpDown className="w-4 h-4 mr-2" />
                 Rank by TVL
               </Button>
+              
+              <div className="relative group">
+                <Button
+                  variant={sortBy === 'volume' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('volume')}
+                  data-testid="button-sort-volume"
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Rank by Volume
+                </Button>
+                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-64 p-2 text-xs bg-popover text-popover-foreground border border-border rounded-md shadow-lg">
+                  Estimated 24h volume based on TVL and protocol category. DEXes have higher turnover than lending protocols.
+                </div>
+              </div>
               
               <Button
                 variant={sortBy === 'security' ? 'default' : 'outline'}

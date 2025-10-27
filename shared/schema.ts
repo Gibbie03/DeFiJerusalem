@@ -9,6 +9,7 @@ export const protocols = pgTable('protocols', {
   chains: json('chains').$type<string[]>().notNull(),
   category: text('category').notNull(),
   tvl: real('tvl').notNull(),
+  volume24h: real('volume_24h').notNull().default(0),
   change24h: real('change_24h').notNull(),
   age: integer('age'),
   audited: boolean('audited').notNull(),
@@ -27,6 +28,7 @@ export const protocols = pgTable('protocols', {
   lastUpdated: timestamp('last_updated').notNull().defaultNow(),
 }, (table) => ({
   tvlIdx: index('protocols_tvl_idx').on(table.tvl),
+  volume24hIdx: index('protocols_volume24h_idx').on(table.volume24h),
   categoryIdx: index('protocols_category_idx').on(table.category),
   change24hIdx: index('protocols_change24h_idx').on(table.change24h),
   discoveredAtIdx: index('protocols_discovered_at_idx').on(table.discoveredAt),
@@ -84,6 +86,7 @@ export type Protocol = {
   chains: string[];
   category: string;
   tvl: number;
+  volume24h: number;
   change24h: number;
   age: number | null;
   audited: boolean;
