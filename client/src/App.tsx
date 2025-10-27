@@ -12,6 +12,7 @@ import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import Tutorials from "@/pages/Tutorials";
+import SponsorshipGuide from "@/pages/SponsorshipGuide";
 import NotFound from "@/pages/not-found";
 
 function CustomSidebarTrigger() {
@@ -68,6 +69,7 @@ function Router() {
               <Route path="/trending" component={TrendingDApps} />
               <Route path="/blacklist" component={Blacklist} />
               <Route path="/tutorials" component={Tutorials} />
+              <Route path="/sponsorship" component={SponsorshipGuide} />
               <Route component={NotFound} />
             </Switch>
           </main>

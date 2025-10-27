@@ -62,7 +62,8 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 - **Layout Optimization**: Restructured layout for optimal PC browser experience - header spans full width above both main content and sidebar, preventing sidebar from being covered
 - **Sidebar Cleanup**: Removed "Security Scanner" branding from sidebar header for cleaner navigation experience
 - **Interactive Trending Ticker**: Made trending protocol tokens clickable across all pages - clicks open protocol detail modals for quick access
-- **Audit Stats Clarity**: Changed audit statistics from percentage display (40%) to actual count display (2,621) for better transparency for missing audits or anonymous teams
+- **Audit Stats Clarity**: Changed audit statistics from percentage display (40%) to actual count display (2,621) for better transparency
+- **Sponsorship & Featured Listings System**: Implemented comprehensive revenue monetization system with 3 pricing tiers (Featured $500-$1K, Sponsored $2K-$5K, Promoted $5K-$10K monthly) including database schema, public guidance page, and admin management capabilities
 
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL, Volume, or Security Score. Includes category and chain filtering.
@@ -107,7 +108,60 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 - **Zod**: Schema declaration and validation library.
 - **YouTube**: Integration for embedding and listing tutorial videos.
 
-## Revenue Monetization (Crypto Ads)
+## Revenue Monetization
+
+### Sponsorship & Featured Listings
+The platform offers a **3-tier sponsorship system** for protocols seeking enhanced visibility:
+
+**Tier 1: Featured ($500-$1,000/month)**
+- Verified badge on protocol listing
+- Priority placement in category
+- Highlighted in search results
+- Social media mentions (2x/month)
+- Newsletter inclusion
+- Enhanced protocol details display
+- **Target**: Growing protocols seeking visibility
+- **Requirements**: Minimum $100K TVL, security audit, verified team
+
+**Tier 2: Sponsored ($2,000-$5,000/month)** - MOST POPULAR
+- All Featured benefits
+- Top 10 trending section placement
+- Sponsored badge with custom messaging
+- Homepage featured slot
+- Dedicated blog post feature
+- Social media spotlight (4x/month)
+- Priority customer support
+- Advanced analytics dashboard
+- **Target**: Established protocols driving user acquisition
+- **Requirements**: Minimum $1M TVL, audits, active GitHub, transparent tokenomics
+
+**Tier 3: Promoted ($5,000-$10,000/month)**
+- All Sponsored benefits
+- Top 5 guaranteed trending placement
+- Homepage hero section banner
+- Custom landing page on platform
+- Video spotlight (homepage)
+- Dedicated account manager
+- Weekly performance reports
+- Social media takeover (8x/month)
+- Press release distribution
+- Partnership announcement
+- **Target**: Enterprise protocols maximizing market dominance
+- **Requirements**: Minimum $10M TVL, multiple audits, bug bounty program, doxxed founders
+
+**Technical Implementation:**
+- Database tables: `protocols` (sponsorshipTier, sponsoredUntil, featuredPosition), `sponsor_payments` (payment tracking)
+- Storage methods: `getSponsoredProtocols()`, `updateProtocolSponsorship()`
+- Public page: `/sponsorship` with pricing tiers, requirements, and contact form
+- Contact: sponsorships@jerusalem-defi.com
+
+**Revenue Potential (100K pageviews/month):**
+- 2-3 Featured sponsors: $12K-$36K/year
+- 2-3 Sponsored slots: $48K-$180K/year  
+- 1 Promoted placement: $60K-$120K/year
+- **Total potential**: $120K-$336K/year from sponsorships alone
+
+## Crypto Advertising Network
 ### Dual-Network Ad Integration
 The application uses a **dual-network strategy** to maximize ad revenue from crypto-focused advertisers:
 
