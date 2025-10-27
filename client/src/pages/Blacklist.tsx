@@ -129,11 +129,17 @@ export default function Blacklist() {
                   {entry.threats && entry.threats.length > 0 && (
                     <div>
                       <p className="text-sm font-medium mb-2">Detected Threats:</p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="space-y-2">
                         {entry.threats.map((threat, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {threat}
-                          </Badge>
+                          <div key={idx} className="flex items-start gap-2">
+                            <Badge variant="outline" className={`text-xs ${getSeverityColor(threat.severity)}`}>
+                              {threat.severity}
+                            </Badge>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{threat.type.replace(/_/g, ' ')}</p>
+                              <p className="text-xs text-muted-foreground">{threat.message}</p>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
