@@ -207,6 +207,8 @@ export default function Dashboard() {
 
   return (
     <div className="bg-background min-h-screen">
+      <AdSpace position="top" />
+      
       <TrendingTicker />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">

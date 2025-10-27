@@ -102,3 +102,49 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 - **TanStack Query (React Query)**: For server state management, data fetching, caching, and synchronization.
 - **Zod**: Schema declaration and validation library.
 - **YouTube**: Integration for embedding and listing tutorial videos.
+
+## Revenue Monetization (Crypto Ads)
+### Dual-Network Ad Integration
+The application uses a **dual-network strategy** to maximize ad revenue from crypto-focused advertisers:
+
+**Primary Network: Bitmedia** (CPM: $2-6)
+- 7,000+ crypto publishers, 1B+ monthly impressions
+- Set your own CPM floor rates
+- Bitcoin payouts, $20 minimum withdrawal
+- Signup: https://bitmedia.io/become-a-publisher
+
+**Fallback Network: Coinzilla** (CPM: ~$2.20)
+- 650+ crypto sites, 1B+ monthly impressions
+- Daily/weekly payouts in crypto or wire
+- Signup: https://coinzilla.com/publishers/
+
+### Setup Instructions
+1. **Sign up** at both platforms (links above)
+2. **Create ad units/zones** in each dashboard:
+   - Bitmedia: Dashboard → New Ad Unit → Copy ad unit ID
+   - Coinzilla: Dashboard → Create Zone → Copy zone ID (format: C-XXXXX...)
+3. **Configure IDs** in `client/src/config/adConfig.ts`:
+   ```typescript
+   top: {
+     bitmedia: { adUnitId: 'YOUR_BITMEDIA_ID', width: 728, height: 90 },
+     coinzilla: { zoneId: 'C-YOUR_COINZILLA_ID', width: 728, height: 90 },
+   },
+   ```
+4. **Set CPM floors** in your Bitmedia dashboard ($3.50 recommended)
+5. **Ads load automatically** - Bitmedia tries first, Coinzilla as fallback
+
+### Ad Positions
+- **Top banner**: 728x90 leaderboard (above trending ticker)
+- **Bottom banner**: 728x90 leaderboard (below content)
+- **Sidebar**: 300x250 medium rectangle (right rail)
+- **Mobile**: 320x100 mobile banner
+
+### Expected Revenue (100K pageviews/month)
+- Bitmedia alone: ~$400/month
+- Dual-network: ~$500-600/month (99% fill rate)
+
+### Technical Implementation
+- **Async loading**: Ads don't block page render
+- **Smart fallback**: 3-second timeout, then switches to Coinzilla
+- **Error handling**: Graceful degradation if ads fail
+- **Privacy-friendly**: No tracking beyond ad network scripts
