@@ -2,6 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import type { Protocol } from '@shared/schema';
 import { TrendingUp } from 'lucide-react';
 
+const formatTVL = (tvl: number): string => {
+  if (tvl === 0) return 'No Data';
+  if (tvl >= 1_000_000_000_000) {
+    return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
+  } else if (tvl >= 1_000_000_000) {
+    return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
+  } else if (tvl >= 1_000_000) {
+    return `$${(tvl / 1_000_000).toFixed(2)}M`;
+  } else if (tvl >= 1_000) {
+    return `$${(tvl / 1_000).toFixed(2)}K`;
+  }
+  return `$${tvl.toFixed(2)}`;
+};
+
 export default function TrendingTicker() {
   const { data: protocols = [] } = useQuery<Protocol[]>({
     queryKey: ['/api/protocols/trending'],
@@ -27,7 +41,7 @@ export default function TrendingTicker() {
                   {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">
-                  ${(protocol.tvl / 1e9).toFixed(2)}B
+                  {formatTVL(protocol.tvl)}
                 </span>
               </div>
             ))}

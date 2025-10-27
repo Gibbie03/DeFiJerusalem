@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -195,11 +195,24 @@ export default function Dashboard() {
       <TrendingTicker />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatsCard
             label="Total Protocols"
             value={stats.total.toLocaleString()}
             icon={Database}
+          />
+          <StatsCard
+            label="Total TVL"
+            value={(() => {
+              const tvl = stats.totalTVL;
+              if (tvl >= 1_000_000_000_000) return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
+              if (tvl >= 1_000_000_000) return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
+              if (tvl >= 1_000_000) return `$${(tvl / 1_000_000).toFixed(2)}M`;
+              if (tvl >= 1_000) return `$${(tvl / 1_000).toFixed(2)}K`;
+              return `$${tvl.toFixed(2)}`;
+            })()}
+            icon={DollarSign}
+            tooltip="Total Value Locked across all tracked protocols"
           />
           <StatsCard
             label="Chains Supported"
