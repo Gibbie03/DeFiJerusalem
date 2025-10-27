@@ -2,10 +2,22 @@ import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for Vite dev server
+  crossOriginEmbedderPolicy: false, // Allow embedding
+}));
+
+// Cookie parser for CSRF tokens
+app.use(cookieParser());
 
 // Session configuration
 const MemoryStoreSession = MemoryStore(session);
@@ -29,6 +41,35 @@ app.use(compression({
   level: 6, // Balanced compression level
   threshold: 1024, // Only compress responses > 1KB
 }));
+
+// Global rate limiter - prevent DDoS
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 1000 requests per windowMs
+  message: { error: "Too many requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
+// Strict rate limiter for authentication endpoints
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login attempts per windowMs
+  skipSuccessfulRequests: true, // Don't count successful logins
+  message: { error: "Too many login attempts, please try again in 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// API rate limiter for data endpoints
+export const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // Limit each IP to 100 API requests per minute
+  message: { error: "API rate limit exceeded, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 declare module 'http' {
   interface IncomingMessage {

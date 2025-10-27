@@ -5,7 +5,9 @@ import { storage } from "./storage";
 import { DAppDiscovery } from "./lib/dapp-discovery";
 import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
+import { auditLogger } from "./lib/audit-logger";
 import { insertProtocolSchema, insertTutorialVideoSchema } from "@shared/schema";
+import { authLimiter, apiLimiter } from "./index";
 
 // Simple in-memory cache with TTL
 const cache = new Map<string, { data: any; expires: number }>();
@@ -44,8 +46,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
-  // GET /api/protocols - Fetch protocols (from DB or DeFiLlama) with aggressive caching
-  app.get("/api/protocols", async (req, res) => {
+  // GET /api/protocols - Fetch protocols (from DB or DeFiLlama) with aggressive caching and rate limiting
+  app.get("/api/protocols", apiLimiter, async (req, res) => {
     try {
       // Set HTTP cache headers for browser caching (CMC-level optimization)
       res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
@@ -305,8 +307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/blacklist - Get all blacklist entries
-  app.get("/api/blacklist", async (req, res) => {
+  // GET /api/blacklist - Get all blacklist entries (with rate limiting)
+  app.get("/api/blacklist", apiLimiter, async (req, res) => {
     try {
       // HTTP cache headers
       res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
@@ -403,8 +405,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/protocols/trending - Get trending protocols by TVL growth
-  app.get("/api/protocols/trending", async (req, res) => {
+  // GET /api/protocols/trending - Get trending protocols by TVL growth (with rate limiting)
+  app.get("/api/protocols/trending", apiLimiter, async (req, res) => {
     try {
       // HTTP cache headers
       res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
@@ -427,8 +429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/scans - Get all security scans
-  app.get("/api/scans", async (req, res) => {
+  // GET /api/scans - Get all security scans (with rate limiting)
+  app.get("/api/scans", apiLimiter, async (req, res) => {
     try {
       // HTTP cache headers
       res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
@@ -451,20 +453,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/admin/login - Authenticate admin user
-  app.post("/api/admin/login", async (req: Request, res: Response) => {
+  // POST /api/admin/login - Authenticate admin user (with rate limiting and audit logging)
+  app.post("/api/admin/login", authLimiter, async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body;
 
-      if (!username || !password) {
+      // Input validation and sanitization
+      if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
+        auditLogger.logFromRequest(req, 'ADMIN_LOGIN_INVALID_INPUT', false, { username });
         return res.status(400).json({ 
           success: false, 
           message: 'Username and password are required' 
         });
       }
 
-      const admin = await storage.getAdminByUsername(username);
+      // Sanitize username - only allow alphanumeric and underscores
+      const sanitizedUsername = username.trim().toLowerCase();
+      if (!/^[a-z0-9_]{3,50}$/.test(sanitizedUsername)) {
+        auditLogger.logFromRequest(req, 'ADMIN_LOGIN_INVALID_USERNAME', false, { username: sanitizedUsername });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid username format' 
+        });
+      }
+
+      const admin = await storage.getAdminByUsername(sanitizedUsername);
       if (!admin) {
+        auditLogger.logFromRequest(req, 'ADMIN_LOGIN_USER_NOT_FOUND', false, { username: sanitizedUsername });
         return res.json({ 
           success: false, 
           message: 'Invalid credentials' 
@@ -473,6 +488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const isValid = await bcryptjs.compare(password, admin.passwordHash);
       if (!isValid) {
+        auditLogger.logFromRequest(req, 'ADMIN_LOGIN_INVALID_PASSWORD', false, { username: sanitizedUsername });
         return res.json({ 
           success: false, 
           message: 'Invalid credentials' 
@@ -486,6 +502,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.adminEmail = admin.email;
       req.session.adminRole = admin.role;
 
+      auditLogger.logFromRequest(req, 'ADMIN_LOGIN_SUCCESS', true, { username: sanitizedUsername });
+
       res.json({ 
         success: true, 
         admin: { 
@@ -497,31 +515,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error during admin login:", error);
+      auditLogger.logFromRequest(req, 'ADMIN_LOGIN_ERROR', false, { error: error instanceof Error ? error.message : 'Unknown error' });
       res.status(500).json({ 
         success: false,
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: "Login error occurred"
       });
     }
   });
 
-  // POST /api/admin/logout - Clear admin session
+  // POST /api/admin/logout - Clear admin session (with audit logging)
   app.post("/api/admin/logout", async (req: Request, res: Response) => {
     try {
+      const username = req.session.adminUsername;
       req.session.destroy((err) => {
         if (err) {
           console.error("Error destroying session:", err);
+          auditLogger.logFromRequest(req, 'ADMIN_LOGOUT_ERROR', false, { error: err.message });
           return res.status(500).json({ 
             success: false, 
             message: "Failed to logout" 
           });
         }
+        auditLogger.log({
+          action: 'ADMIN_LOGOUT_SUCCESS',
+          username,
+          ip: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          success: true
+        });
         res.json({ success: true });
       });
     } catch (error) {
       console.error("Error during admin logout:", error);
+      auditLogger.logFromRequest(req, 'ADMIN_LOGOUT_ERROR', false, { error: error instanceof Error ? error.message : 'Unknown error' });
       res.status(500).json({ 
         success: false,
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: "Logout error occurred"
       });
     }
   });
@@ -551,43 +580,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/admin/init - Create first admin (only works if no admins exist)
-  app.post("/api/admin/init", async (req: Request, res: Response) => {
+  // POST /api/admin/init - Create first admin (SECURED with bootstrap secret and rate limiting)
+  app.post("/api/admin/init", authLimiter, async (req: Request, res: Response) => {
     try {
-      const { username, password, email } = req.body;
+      const { username, password, email, bootstrapSecret } = req.body;
 
-      if (!username || !password || !email) {
+      // CRITICAL: Require bootstrap secret to prevent unauthorized admin creation
+      const requiredBootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET || 'CHANGE_THIS_IN_PRODUCTION_OR_ADMIN_CREATION_DISABLED';
+      
+      // If no valid bootstrap secret is set, disable admin creation entirely
+      if (requiredBootstrapSecret === 'CHANGE_THIS_IN_PRODUCTION_OR_ADMIN_CREATION_DISABLED') {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_NO_BOOTSTRAP_SECRET_CONFIGURED', false);
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Admin initialization is disabled. Set ADMIN_BOOTSTRAP_SECRET environment variable to enable.' 
+        });
+      }
+
+      if (!bootstrapSecret || bootstrapSecret !== requiredBootstrapSecret) {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_INVALID_BOOTSTRAP_SECRET', false, { username });
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Invalid bootstrap secret' 
+        });
+      }
+
+      // Input validation and sanitization
+      if (!username || !password || !email || 
+          typeof username !== 'string' || typeof password !== 'string' || typeof email !== 'string') {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_INVALID_INPUT', false, { username });
         return res.status(400).json({ 
           success: false, 
           message: 'Username, password, and email are required' 
         });
       }
 
-      const existingAdmin = await storage.getAdminByUsername(username);
-      if (existingAdmin) {
+      // Sanitize username - only allow alphanumeric and underscores
+      const sanitizedUsername = username.trim().toLowerCase();
+      if (!/^[a-z0-9_]{3,50}$/.test(sanitizedUsername)) {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_INVALID_USERNAME', false, { username: sanitizedUsername });
         return res.status(400).json({ 
           success: false, 
-          message: 'Admin already exists' 
+          message: 'Username must be 3-50 characters, alphanumeric and underscores only' 
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_INVALID_EMAIL', false, { username: sanitizedUsername, email });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid email format' 
+        });
+      }
+
+      // Validate password strength (minimum 8 characters, at least one number and one letter)
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_WEAK_PASSWORD', false, { username: sanitizedUsername });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Password must be at least 8 characters with letters and numbers' 
+        });
+      }
+
+      // Check if ANY admin already exists (prevent multiple admin creation)
+      const allAdmins = await storage.getAllAdmins();
+      if (allAdmins && allAdmins.length > 0) {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_ALREADY_EXISTS', false, { username: sanitizedUsername });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Admin already exists. Use existing admin account to create additional admins.' 
+        });
+      }
+
+      const existingAdmin = await storage.getAdminByUsername(sanitizedUsername);
+      if (existingAdmin) {
+        auditLogger.logFromRequest(req, 'ADMIN_INIT_USERNAME_EXISTS', false, { username: sanitizedUsername });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Username already taken' 
         });
       }
 
       const passwordHash = await bcryptjs.hash(password, 10);
-      await storage.createAdmin(username, passwordHash, email);
+      await storage.createAdmin(sanitizedUsername, passwordHash, email.trim().toLowerCase());
 
-      res.json({ success: true });
+      auditLogger.logFromRequest(req, 'ADMIN_INIT_SUCCESS', true, { username: sanitizedUsername, email: email.trim().toLowerCase() });
+
+      res.json({ success: true, message: 'Admin account created successfully' });
     } catch (error) {
       console.error("Error creating admin:", error);
+      auditLogger.logFromRequest(req, 'ADMIN_INIT_ERROR', false, { error: error instanceof Error ? error.message : 'Unknown error' });
       res.status(500).json({ 
         success: false,
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: "Admin creation error occurred"
       });
     }
   });
 
-  // PUT /api/admin/protocols/:id - Update protocol information (requires admin authentication)
+  // PUT /api/admin/protocols/:id - Update protocol information (requires admin authentication with audit logging)
   app.put("/api/admin/protocols/:id", async (req: Request, res: Response) => {
     try {
       if (!req.session.adminId) {
+        auditLogger.logFromRequest(req, 'ADMIN_PROTOCOL_UPDATE_UNAUTHORIZED', false, { protocolId: req.params.id });
         return res.status(401).json({ 
           success: false, 
           message: 'Admin authentication required' 
@@ -604,15 +700,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const protocols = await storage.getProtocols();
       const updatedProtocol = protocols.find(p => p.id === id);
 
+      auditLogger.logFromRequest(req, 'ADMIN_PROTOCOL_UPDATE_SUCCESS', true, { 
+        protocolId: id, 
+        updates: Object.keys(updates) 
+      });
+
       res.json({ 
         success: true, 
         protocol: updatedProtocol 
       });
     } catch (error) {
       console.error("Error updating protocol:", error);
+      auditLogger.logFromRequest(req, 'ADMIN_PROTOCOL_UPDATE_ERROR', false, { 
+        protocolId: req.params.id,
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
       res.status(500).json({ 
         success: false,
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: "Protocol update error occurred"
+      });
+    }
+  });
+
+  // GET /api/admin/audit-logs - View audit logs (requires admin authentication)
+  app.get("/api/admin/audit-logs", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const type = req.query.type as string;
+
+      let logs;
+      if (type === 'failed_logins') {
+        logs = auditLogger.getFailedLogins(limit);
+      } else if (type === 'user' && req.query.userId) {
+        logs = auditLogger.getLogsByUser(req.query.userId as string, limit);
+      } else {
+        logs = auditLogger.getRecentLogs(limit);
+      }
+
+      res.json({ 
+        success: true, 
+        logs 
+      });
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch audit logs"
       });
     }
   });

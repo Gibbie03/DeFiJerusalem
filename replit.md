@@ -47,6 +47,70 @@ The system is optimized for CoinMarketCap-level speed through client-side techni
 - **Caching**: DeFiLlama API has a 30-minute cache. Server-side in-memory caching (2-5 minute TTL) for expensive API routes with automatic invalidation.
 - **Admin Authentication**: bcryptjs password hashing with express-session for secure session management.
 
+## Security Architecture
+
+### Multi-Layer Security Implementation
+The application implements comprehensive security hardening to protect against common web attacks and unauthorized access:
+
+#### 1. Rate Limiting (Anti-DDoS & Brute Force Protection)
+- **Global Rate Limiter**: 1,000 requests per 15 minutes per IP (prevents DDoS)
+- **API Rate Limiter**: 100 requests per minute per IP on data endpoints (/api/protocols, /api/blacklist, /api/scans, /api/trending)
+- **Auth Rate Limiter**: 5 login attempts per 15 minutes per IP on authentication endpoints (/api/admin/login, /api/admin/init)
+- Uses `express-rate-limit` with proper HTTP headers (RateLimit-Limit, RateLimit-Remaining)
+- Successful logins don't count against rate limits
+
+#### 2. Secure Admin Initialization
+- **Bootstrap Secret Required**: Admin creation requires `ADMIN_BOOTSTRAP_SECRET` environment variable
+- **Single Admin Creation**: Only one admin can be created via /api/admin/init endpoint
+- **Password Requirements**: Minimum 8 characters, must contain letters and numbers
+- **Username Validation**: 3-50 alphanumeric characters and underscores only
+- **Email Validation**: Proper regex validation for email format
+- Admin creation is completely disabled if bootstrap secret is not set or uses default value
+
+#### 3. Comprehensive Audit Logging
+- **All Admin Actions Logged**: Login attempts (success/failure), logout, protocol updates, admin initialization
+- **Captured Data**: Timestamp, action type, user ID, username, IP address, user agent, success status, additional details
+- **Log Retention**: Last 10,000 entries kept in memory with automatic rotation
+- **Queryable Logs**: Can filter by type (failed_logins, user-specific), viewable via /api/admin/audit-logs endpoint
+- **Console Monitoring**: All security events logged to console for real-time monitoring
+
+#### 4. Input Validation & Sanitization
+- **Username**: Sanitized with trim(), toLowerCase(), regex validation (alphanumeric + underscores, 3-50 chars)
+- **Email**: Sanitized with trim(), toLowerCase(), regex validation
+- **Password**: Strength validation (8+ chars, letters + numbers required)
+- **All Inputs**: Type checking (typeof validation) before processing
+- **SQL Injection Protection**: Using Drizzle ORM with parameterized queries
+
+#### 5. Security Headers (Helmet Middleware)
+- **X-Content-Type-Options**: nosniff (prevents MIME-type sniffing)
+- **X-Frame-Options**: DENY (prevents clickjacking)
+- **X-XSS-Protection**: 1; mode=block (enables XSS filter)
+- **Strict-Transport-Security**: Enforces HTTPS in production
+- **Content Security Policy**: Disabled for Vite dev server compatibility
+
+#### 6. Session Security
+- **Secure Cookies**: HttpOnly, SameSite=Lax, Secure flag in production
+- **Session Secret**: Uses SESSION_SECRET environment variable (fallback warns if using default)
+- **Session Expiration**: 7-day session lifetime
+- **Memory Store**: MemoryStore with 24-hour cleanup cycle (suitable for single-instance deployment)
+
+#### 7. Error Message Security
+- **No Information Leakage**: Generic error messages returned to clients ("Login error occurred" vs specific errors)
+- **Detailed Logging**: Full errors logged server-side for debugging
+- **Credential Hiding**: No sensitive data (passwords, hashes, tokens) in responses or logs
+
+### Environment Variables for Security
+- `SESSION_SECRET`: Strong random string for session encryption (CRITICAL - change in production)
+- `ADMIN_BOOTSTRAP_SECRET`: Required for admin creation (prevents unauthorized admin accounts)
+- `DATABASE_URL`: PostgreSQL connection string (auto-managed by Replit)
+
+### Security Best Practices
+- **Never expose SESSION_SECRET or ADMIN_BOOTSTRAP_SECRET**
+- **Monitor audit logs regularly** for suspicious activity via /api/admin/audit-logs
+- **Rate limits are per-IP** - attackers using multiple IPs can still attempt attacks
+- **Frontend code is always visible** - only backend logic and secrets are protected
+- **Database credentials** are secured via environment variables and never exposed in API responses
+
 ## External Dependencies
 - **DeFiLlama API**: For DeFi protocol discovery, TVL data, and audit information.
 - **Neon PostgreSQL**: Cloud-hosted PostgreSQL database.
