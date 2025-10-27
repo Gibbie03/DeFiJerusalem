@@ -27,7 +27,13 @@ export default function Blacklist() {
       const res = await apiRequest('DELETE', `/api/blacklist/${entryId}`);
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, entryId) => {
+      // Optimistically update the cache by removing the deleted entry
+      queryClient.setQueryData(['/api/blacklist'], (oldData: BlacklistEntry[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.filter(entry => entry.id !== entryId);
+      });
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
       toast({
         title: "Entry Removed",
