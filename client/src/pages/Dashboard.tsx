@@ -313,6 +313,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <ProtocolTable
+                key={`${selectedChain}-${selectedCategory}-${sortBy}-${activeTab}-${debouncedSearch}`}
                 protocols={displayProtocols}
                 securityScans={securityScans}
                 onViewDetails={handleViewDetails}
