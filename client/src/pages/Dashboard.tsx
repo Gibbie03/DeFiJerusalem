@@ -224,11 +224,11 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-3 space-y-4">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <SearchBar value={searchValue} onChange={setSearchValue} />
               </div>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2">
                 <AddDAppByUrlDialog />
                 <Button
                   onClick={handleScanAll}
