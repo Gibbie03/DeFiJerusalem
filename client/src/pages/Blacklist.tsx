@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Shield, AlertTriangle, Search } from 'lucide-react';
+import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -22,12 +22,39 @@ export default function Blacklist() {
     (entry.reason?.toLowerCase().includes(searchValue.toLowerCase()))
   );
 
-  const stats = {
-    total: blacklist.length,
-    critical: blacklist.filter(e => e.severity === 'CRITICAL').length,
-    high: blacklist.filter(e => e.severity === 'HIGH').length,
-    active: blacklist.filter(e => e.status === 'ACTIVE').length,
-  };
+  // Calculate detailed stats
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const week = 7 * day;
+
+    // Count threat types
+    const threatTypeCounts: Record<string, number> = {};
+    blacklist.forEach(entry => {
+      entry.threats.forEach(threat => {
+        threatTypeCounts[threat.type] = (threatTypeCounts[threat.type] || 0) + 1;
+      });
+    });
+
+    // Get top 5 threat types
+    const topThreats = Object.entries(threatTypeCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([type, count]) => ({ type, count }));
+
+    return {
+      total: blacklist.length,
+      critical: blacklist.filter(e => e.severity === 'CRITICAL').length,
+      high: blacklist.filter(e => e.severity === 'HIGH').length,
+      medium: blacklist.filter(e => e.severity === 'MEDIUM').length,
+      active: blacklist.filter(e => e.status === 'ACTIVE').length,
+      inactive: blacklist.filter(e => e.status === 'INACTIVE').length,
+      last24h: blacklist.filter(e => now - new Date(e.timestamp).getTime() < day).length,
+      last7days: blacklist.filter(e => now - new Date(e.timestamp).getTime() < week).length,
+      topThreats,
+      totalThreats: blacklist.reduce((sum, e) => sum + e.threats.length, 0),
+    };
+  }, [blacklist]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -64,22 +91,101 @@ export default function Blacklist() {
             label="Total Blacklisted"
             value={stats.total.toLocaleString()}
             icon={Shield}
-          />
-          <StatsCard
-            label="Critical"
-            value={stats.critical.toLocaleString()}
-            icon={AlertTriangle}
-          />
-          <StatsCard
-            label="High Severity"
-            value={stats.high.toLocaleString()}
-            icon={AlertTriangle}
+            data-testid="stat-total-blacklisted"
           />
           <StatsCard
             label="Active Threats"
             value={stats.active.toLocaleString()}
-            icon={Shield}
+            icon={AlertOctagon}
+            data-testid="stat-active-threats"
           />
+          <StatsCard
+            label="Last 24 Hours"
+            value={stats.last24h.toLocaleString()}
+            icon={Clock}
+            data-testid="stat-last-24h"
+          />
+          <StatsCard
+            label="Last 7 Days"
+            value={stats.last7days.toLocaleString()}
+            icon={TrendingUp}
+            data-testid="stat-last-7-days"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card data-testid="card-severity-breakdown">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Severity Breakdown
+              </CardTitle>
+              <CardDescription>Distribution of threats by severity level</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-red-500/10 text-red-500 border-red-500/20">CRITICAL</Badge>
+                    <span className="text-sm text-muted-foreground">Immediate danger</span>
+                  </div>
+                  <span className="font-semibold" data-testid="count-critical">{stats.critical}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">HIGH</Badge>
+                    <span className="text-sm text-muted-foreground">Significant risk</span>
+                  </div>
+                  <span className="font-semibold" data-testid="count-high">{stats.high}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">MEDIUM</Badge>
+                    <span className="text-sm text-muted-foreground">Moderate risk</span>
+                  </div>
+                  <span className="font-semibold" data-testid="count-medium">{stats.medium}</span>
+                </div>
+              </div>
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total Detected Threats</span>
+                  <span className="font-semibold" data-testid="count-total-threats">{stats.totalThreats}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-top-threats">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Top Threat Types
+              </CardTitle>
+              <CardDescription>Most common security threats detected</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {stats.topThreats.length > 0 ? (
+                  stats.topThreats.map(({ type, count }, idx) => (
+                    <div key={type} className="flex items-center justify-between" data-testid={`threat-type-${idx}`}>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{type.replace(/_/g, ' ')}</p>
+                        <div className="w-full bg-muted rounded-full h-2 mt-1">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all"
+                            style={{ width: `${(count / stats.totalThreats) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="ml-4 font-semibold text-sm" data-testid={`threat-count-${idx}`}>{count}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No threat data available</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="flex flex-col gap-4">
