@@ -114,12 +114,10 @@ export class DAppDiscovery {
           description: p.description || '',
           autoDiscovered: true,
           manuallyAdded: false,
-          discoveredAt: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
           sponsoredUntil: null,
           sponsorshipTier: 'free' as const,
           featuredPosition: null,
-        };
+        } as any;
       });
 
       // NOTE: Test drainers are NOT added here - they're managed in the API route
