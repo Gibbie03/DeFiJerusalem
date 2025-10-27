@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<'tvl' | 'volume' | 'security'>('tvl');
   const [activeTab, setActiveTab] = useState('trending');
   const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
@@ -115,6 +116,13 @@ export default function Dashboard() {
     });
   }, [protocols, selectedChain, selectedCategory, debouncedSearch]);
 
+  // Show processing indicator when sort/filter changes
+  useEffect(() => {
+    setIsProcessing(true);
+    const timer = setTimeout(() => setIsProcessing(false), 150);
+    return () => clearTimeout(timer);
+  }, [sortBy, selectedChain, selectedCategory]);
+
   const displayProtocols = useMemo(() => {
     let sorted = [...filteredProtocols];
     
@@ -160,7 +168,12 @@ export default function Dashboard() {
   }, [isOnline, refetch, toast]);
 
   const handleViewDetails = useCallback((protocol: Protocol) => {
-    setSelectedProtocol(protocol);
+    // Show brief loading state for better UX feedback
+    setIsProcessing(true);
+    setTimeout(() => {
+      setSelectedProtocol(protocol);
+      setIsProcessing(false);
+    }, 50); // Minimal delay to show visual feedback
   }, []);
 
   const handleScan = useCallback(async (protocol: Protocol) => {
@@ -337,6 +350,12 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-6">
+            {isProcessing && (
+              <div className="fixed top-4 right-4 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm font-medium">Processing...</span>
+              </div>
+            )}
             {displayProtocols.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No protocols found</p>
