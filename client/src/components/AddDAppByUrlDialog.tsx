@@ -49,17 +49,7 @@ export default function AddDAppByUrlDialog() {
         website: data.website || data.url,
         category: data.category,
         chains: data.chains,
-        description: data.description,
-        tvl: 0,
-        change24h: 0,
-        age: 0,
-        audited: false,
-        securityScore: 50,
-        logo: null,
-        twitter: null,
-        github: null,
-        autoDiscovered: false,
-        manuallyAdded: true,
+        description: data.description || `${data.name} - A DeFi protocol on ${data.chains.join(', ')}`,
       };
       const res = await apiRequest('POST', '/api/protocols', protocol);
       return await res.json();

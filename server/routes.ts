@@ -124,18 +124,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/protocols - Add a manual protocol
   app.post("/api/protocols", async (req, res) => {
     try {
-      const validatedData = insertProtocolSchema.parse(req.body);
+      // Custom validation schema for manual protocol addition (id is auto-generated)
+      const manualProtocolSchema = insertProtocolSchema.partial().required({
+        name: true,
+        category: true,
+        chains: true,
+        description: true,
+      });
       
-      // Create manual protocol with unique ID
+      const validatedData = manualProtocolSchema.parse(req.body);
+      
+      // Create manual protocol with unique ID and all required defaults
       const manualProtocol = {
-        ...validatedData,
         id: `manual-${Date.now()}-${Math.random()}`,
+        name: validatedData.name!,
+        category: validatedData.category!,
+        chains: validatedData.chains!,
+        description: validatedData.description!,
+        website: validatedData.website || null,
+        logo: validatedData.logo || null,
+        twitter: validatedData.twitter || null,
+        github: validatedData.github || null,
+        tvl: validatedData.tvl ?? 0,
+        volume24h: validatedData.volume24h ?? 0,
+        change24h: validatedData.change24h ?? 0,
+        age: validatedData.age ?? null,
+        audited: validatedData.audited ?? false,
+        auditCount: validatedData.auditCount ?? 0,
+        auditNote: validatedData.auditNote ?? null,
+        auditLinks: validatedData.auditLinks ?? null,
+        securityScore: validatedData.securityScore ?? 50,
         manuallyAdded: true,
         autoDiscovered: false,
-        tvl: validatedData.tvl || 0,
-        change24h: validatedData.change24h || 0,
-        securityScore: validatedData.securityScore || 50,
-        age: validatedData.age || 0,
       };
 
       const protocol = await storage.addProtocol(manualProtocol);
