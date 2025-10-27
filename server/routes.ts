@@ -1,5 +1,6 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import bcryptjs from "bcryptjs";
 import { storage } from "./storage";
 import { DAppDiscovery } from "./lib/dapp-discovery";
 import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
@@ -418,6 +419,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching scans:", error);
       res.status(500).json({ 
         error: "Failed to fetch scans",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/admin/login - Authenticate admin user
+  app.post("/api/admin/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Username and password are required' 
+        });
+      }
+
+      const admin = await storage.getAdminByUsername(username);
+      if (!admin) {
+        return res.json({ 
+          success: false, 
+          message: 'Invalid credentials' 
+        });
+      }
+
+      const isValid = await bcryptjs.compare(password, admin.passwordHash);
+      if (!isValid) {
+        return res.json({ 
+          success: false, 
+          message: 'Invalid credentials' 
+        });
+      }
+
+      await storage.updateAdminLastLogin(admin.id);
+
+      req.session.adminId = admin.id;
+      req.session.adminUsername = admin.username;
+      req.session.adminEmail = admin.email;
+      req.session.adminRole = admin.role;
+
+      res.json({ 
+        success: true, 
+        admin: { 
+          id: admin.id, 
+          username: admin.username, 
+          email: admin.email, 
+          role: admin.role 
+        } 
+      });
+    } catch (error) {
+      console.error("Error during admin login:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/admin/logout - Clear admin session
+  app.post("/api/admin/logout", async (req: Request, res: Response) => {
+    try {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Error destroying session:", err);
+          return res.status(500).json({ 
+            success: false, 
+            message: "Failed to logout" 
+          });
+        }
+        res.json({ success: true });
+      });
+    } catch (error) {
+      console.error("Error during admin logout:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/admin/session - Check current session
+  app.get("/api/admin/session", async (req: Request, res: Response) => {
+    try {
+      if (req.session.adminId) {
+        res.json({ 
+          authenticated: true, 
+          admin: { 
+            id: req.session.adminId, 
+            username: req.session.adminUsername, 
+            email: req.session.adminEmail, 
+            role: req.session.adminRole 
+          } 
+        });
+      } else {
+        res.json({ authenticated: false });
+      }
+    } catch (error) {
+      console.error("Error checking admin session:", error);
+      res.status(500).json({ 
+        authenticated: false,
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/admin/init - Create first admin (only works if no admins exist)
+  app.post("/api/admin/init", async (req: Request, res: Response) => {
+    try {
+      const { username, password, email } = req.body;
+
+      if (!username || !password || !email) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Username, password, and email are required' 
+        });
+      }
+
+      const existingAdmin = await storage.getAdminByUsername(username);
+      if (existingAdmin) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Admin already exists' 
+        });
+      }
+
+      const passwordHash = await bcryptjs.hash(password, 10);
+      await storage.createAdmin(username, passwordHash, email);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error creating admin:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // PUT /api/admin/protocols/:id - Update protocol information (requires admin authentication)
+  app.put("/api/admin/protocols/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const { id } = req.params;
+      const updates = req.body;
+
+      await storage.updateProtocol(id, updates);
+
+      clearCache('protocols');
+      
+      const protocols = await storage.getProtocols();
+      const updatedProtocol = protocols.find(p => p.id === id);
+
+      res.json({ 
+        success: true, 
+        protocol: updatedProtocol 
+      });
+    } catch (error) {
+      console.error("Error updating protocol:", error);
+      res.status(500).json({ 
+        success: false,
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }

@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql } from "drizzle-orm";
 
@@ -24,6 +24,12 @@ export interface IStorage {
     sponsoredUntil: Date | null,
     featuredPosition: number | null
   ): Promise<void>;
+  
+  // Admin methods
+  getAdminByUsername(username: string): Promise<AdminUser | undefined>;
+  createAdmin(username: string, passwordHash: string, email: string): Promise<AdminUser>;
+  updateAdminLastLogin(adminId: string): Promise<void>;
+  updateProtocol(protocolId: string, updates: Partial<Protocol>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -377,6 +383,65 @@ export class DatabaseStorage implements IStorage {
         featuredPosition,
         lastUpdated: new Date(),
       })
+      .where(eq(protocols.id, protocolId));
+  }
+
+  async getAdminByUsername(username: string): Promise<AdminUser | undefined> {
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.username, username));
+    if (!admin) return undefined;
+    
+    return {
+      id: admin.id,
+      username: admin.username,
+      passwordHash: admin.passwordHash,
+      email: admin.email,
+      role: admin.role,
+      createdAt: admin.createdAt.toISOString(),
+      lastLogin: admin.lastLogin?.toISOString() ?? null,
+    };
+  }
+
+  async createAdmin(username: string, passwordHash: string, email: string): Promise<AdminUser> {
+    const [admin] = await db
+      .insert(adminUsers)
+      .values({
+        id: `admin-${Date.now()}-${Math.random()}`,
+        username,
+        passwordHash,
+        email,
+        role: 'admin',
+      })
+      .returning();
+    
+    return {
+      id: admin.id,
+      username: admin.username,
+      passwordHash: admin.passwordHash,
+      email: admin.email,
+      role: admin.role,
+      createdAt: admin.createdAt.toISOString(),
+      lastLogin: admin.lastLogin?.toISOString() ?? null,
+    };
+  }
+
+  async updateAdminLastLogin(adminId: string): Promise<void> {
+    await db
+      .update(adminUsers)
+      .set({ lastLogin: new Date() })
+      .where(eq(adminUsers.id, adminId));
+  }
+
+  async updateProtocol(protocolId: string, updates: Partial<Protocol>): Promise<void> {
+    const dbUpdates: any = { ...updates, lastUpdated: new Date() };
+    
+    // Convert timestamp strings back to Date objects for database
+    if (updates.sponsoredUntil) {
+      dbUpdates.sponsoredUntil = new Date(updates.sponsoredUntil);
+    }
+    
+    await db
+      .update(protocols)
+      .set(dbUpdates)
       .where(eq(protocols.id, protocolId));
   }
 }

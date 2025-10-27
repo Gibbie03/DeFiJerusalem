@@ -101,6 +101,18 @@ export const sponsorPayments = pgTable('sponsor_payments', {
   statusIdx: index('sponsor_payments_status_idx').on(table.status),
 }));
 
+export const adminUsers = pgTable('admin_users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('admin'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  lastLogin: timestamp('last_login'),
+}, (table) => ({
+  usernameIdx: index('admin_users_username_idx').on(table.username),
+}));
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -179,6 +191,16 @@ export type SponsorPayment = {
   contactEmail: string;
   notes: string | null;
   createdAt: string;
+};
+
+export type AdminUser = {
+  id: string;
+  username: string;
+  passwordHash: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  lastLogin: string | null;
 };
 
 export type Threat = {

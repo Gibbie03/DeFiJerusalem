@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -45,6 +45,11 @@ const menuItems = [
     title: "Sponsorship",
     url: "/sponsorship",
     icon: Star,
+  },
+  {
+    title: "Admin",
+    url: "/admin/dashboard",
+    icon: Lock,
   },
 ];
 

@@ -13,6 +13,8 @@ import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import Tutorials from "@/pages/Tutorials";
 import SponsorshipGuide from "@/pages/SponsorshipGuide";
+import AdminLogin from "@/pages/AdminLogin";
+import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/not-found";
 
 function CustomSidebarTrigger() {
@@ -70,6 +72,8 @@ function Router() {
               <Route path="/blacklist" component={Blacklist} />
               <Route path="/tutorials" component={Tutorials} />
               <Route path="/sponsorship" component={SponsorshipGuide} />
+              <Route path="/admin/login" component={AdminLogin} />
+              <Route path="/admin/dashboard" component={AdminDashboard} />
               <Route component={NotFound} />
             </Switch>
           </main>

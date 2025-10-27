@@ -64,14 +64,34 @@ export class DAppDiscovery {
 
         const tvl = typeof p.tvl === 'number' ? p.tvl : 0;
         const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
-        
-        // DeFiLlama /protocols endpoint doesn't provide volume, so we estimate it
-        // based on TVL and activity. DEXes typically have higher turnover.
         const category = this.classifyCategory(p);
-        const turnoverMultiplier = category === 'DEX' ? 0.3 : 
-                                  category === 'Lending' ? 0.05 : 
-                                  category === 'Bridge' ? 0.2 : 0.1;
-        const estimatedVolume = tvl * turnoverMultiplier * (1 + Math.abs(change24h) / 100);
+        
+        // Try to get real volume data from DeFiLlama
+        // Check multiple possible volume fields that DeFiLlama might provide
+        let volume24h = 0;
+        if (typeof p.volume24h === 'number') {
+          volume24h = p.volume24h;
+        } else if (typeof p.total24h === 'number') {
+          volume24h = p.total24h;
+        } else if (typeof p.dailyVolume === 'number') {
+          volume24h = p.dailyVolume;
+        } else if (typeof p.totalVolume24h === 'number') {
+          volume24h = p.totalVolume24h;
+        } else {
+          // Fallback: estimate volume based on TVL and activity
+          // Different protocols have different turnover rates
+          const turnoverMultiplier = 
+            category === 'DEX' ? 0.3 : 
+            category === 'Derivatives' ? 0.5 :
+            category === 'Options' ? 0.4 :
+            category === 'Lending' ? 0.05 : 
+            category === 'Liquid Staking' ? 0.03 :
+            category === 'Bridge' ? 0.2 : 
+            category === 'Gaming' ? 0.15 :
+            category === 'NFT' ? 0.1 :
+            0.08; // Default for other categories
+          volume24h = tvl * turnoverMultiplier * (1 + Math.abs(change24h) / 100);
+        }
         
         return {
           id: p.slug || `protocol-${Date.now()}-${Math.random()}`,
@@ -79,7 +99,7 @@ export class DAppDiscovery {
           chains: chains,
           category: category,
           tvl: tvl,
-          volume24h: estimatedVolume,
+          volume24h: volume24h,
           change24h: change24h,
           age: this.calculateAge(p.listedAt),
           audited: auditCount > 0,
@@ -94,6 +114,11 @@ export class DAppDiscovery {
           description: p.description || '',
           autoDiscovered: true,
           manuallyAdded: false,
+          discoveredAt: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+          sponsoredUntil: null,
+          sponsorshipTier: 'free' as const,
+          featuredPosition: null,
         };
       });
 
@@ -110,6 +135,7 @@ export class DAppDiscovery {
 
   private getFallbackProtocols(): Protocol[] {
     // NOTE: Test drainers are NOT added here - they're managed in the API route
+    const now = new Date().toISOString();
     return [
       {
         id: 'uniswap',
@@ -132,6 +158,11 @@ export class DAppDiscovery {
         description: 'Decentralized exchange on Ethereum',
         autoDiscovered: true,
         manuallyAdded: false,
+        discoveredAt: now,
+        lastUpdated: now,
+        sponsoredUntil: null,
+        sponsorshipTier: 'free',
+        featuredPosition: null,
       },
       {
         id: 'aave',
@@ -154,11 +185,17 @@ export class DAppDiscovery {
         description: 'DeFi lending protocol',
         autoDiscovered: true,
         manuallyAdded: false,
+        discoveredAt: now,
+        lastUpdated: now,
+        sponsoredUntil: null,
+        sponsorshipTier: 'free',
+        featuredPosition: null,
       },
     ];
   }
 
   public getTestDrainerProtocols(): Protocol[] {
+    const now = new Date().toISOString();
     return [
       {
         id: 'eth-airdrop-claimer',
@@ -181,6 +218,11 @@ export class DAppDiscovery {
         description: 'Claim your free ETH airdrop tokens now',
         autoDiscovered: true,
         manuallyAdded: false,
+        discoveredAt: now,
+        lastUpdated: now,
+        sponsoredUntil: null,
+        sponsorshipTier: 'free',
+        featuredPosition: null,
       },
       {
         id: 'unisvvap-fake',
@@ -203,6 +245,11 @@ export class DAppDiscovery {
         description: 'Decentralized exchange',
         autoDiscovered: true,
         manuallyAdded: false,
+        discoveredAt: now,
+        lastUpdated: now,
+        sponsoredUntil: null,
+        sponsorshipTier: 'free',
+        featuredPosition: null,
       },
       {
         id: 'vitalik-giveaway',
@@ -225,6 +272,11 @@ export class DAppDiscovery {
         description: 'Vitalik Buterin is giving away 10000 ETH to lucky participants',
         autoDiscovered: true,
         manuallyAdded: false,
+        discoveredAt: now,
+        lastUpdated: now,
+        sponsoredUntil: null,
+        sponsorshipTier: 'free',
+        featuredPosition: null,
       },
     ];
   }
@@ -233,11 +285,40 @@ export class DAppDiscovery {
     const name = (p.name || '').toLowerCase();
     const cat = (p.category || '').toLowerCase();
 
-    if (cat.includes('dex') || name.includes('swap')) return 'DEX';
-    if (cat.includes('lending')) return 'Lending';
-    if (cat.includes('yield')) return 'Yield';
-    if (cat.includes('bridge')) return 'Bridge';
-    if (cat.includes('nft')) return 'NFT';
+    // Use DeFiLlama's category field directly when available
+    if (p.category) {
+      // Normalize common category variations
+      if (cat.includes('dex')) return 'DEX';
+      if (cat.includes('lending')) return 'Lending';
+      if (cat.includes('yield')) return 'Yield';
+      if (cat.includes('bridge')) return 'Bridge';
+      if (cat.includes('nft')) return 'NFT';
+      if (cat.includes('gaming') || cat.includes('game')) return 'Gaming';
+      if (cat.includes('derivative')) return 'Derivatives';
+      if (cat.includes('insurance')) return 'Insurance';
+      if (cat.includes('stablecoin')) return 'Stablecoin';
+      if (cat.includes('liquid staking') || cat.includes('liquid-staking')) return 'Liquid Staking';
+      if (cat.includes('dao')) return 'DAO';
+      if (cat.includes('synthetics')) return 'Synthetics';
+      if (cat.includes('options')) return 'Options';
+      if (cat.includes('prediction')) return 'Prediction Market';
+      if (cat.includes('rwa') || cat.includes('real world')) return 'RWA';
+      if (cat.includes('cdp')) return 'CDP';
+      if (cat.includes('services')) return 'Services';
+      if (cat.includes('launchpad')) return 'Launchpad';
+      
+      // Return capitalized version of DeFiLlama's category
+      return p.category.split('-').map((word: string) => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+    }
+
+    // Fallback to name-based classification
+    if (name.includes('swap') || name.includes('dex')) return 'DEX';
+    if (name.includes('lend') || name.includes('borrow')) return 'Lending';
+    if (name.includes('game') || name.includes('play')) return 'Gaming';
+    if (name.includes('bridge')) return 'Bridge';
+    if (name.includes('nft')) return 'NFT';
 
     return 'DeFi';
   }

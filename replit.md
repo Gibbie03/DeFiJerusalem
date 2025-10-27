@@ -22,7 +22,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 The system is optimized for CoinMarketCap-level speed through client-side techniques like `React.memo`, `useCallback`, `useMemo`, debounced search, and pagination, as well as server-side multi-tier caching (protocols, scans, blacklist, trending), HTTP Cache-Control headers, background refresh guards, Gzip compression, parallel scan execution, batch DB writes, and database indexing. Network optimization includes compression and `stale-while-revalidate` caching.
 
 ### Feature Specifications
-- **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displaying them in a sortable, filterable table. Includes estimated volume-based ranking.
+- **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displaying them in a sortable, filterable table. Uses real volume data when available from API, with intelligent estimation fallback. Supports 15+ protocol categories including Gaming, Derivatives, Insurance, Stablecoin, Liquid Staking, and more.
 - **Security Analysis**: Conducts comprehensive scans for 19+ threat categories, detecting wallet drainers, phishing, rug pulls, etc. Includes a verification system (protocol whitelist, age, TVL, social, audit verification) to prevent false positives.
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted based on threat patterns (e.g., wallet drainer patterns, private key phishing, known scams).
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
@@ -33,17 +33,19 @@ The system is optimized for CoinMarketCap-level speed through client-side techni
 - **Trending & New DApps**: Dedicated pages for tracking protocol trends.
 - **Tutorial System**: Functionality for educational DeFi security videos.
 - **Trending Ticker**: An auto-scrolling ticker displays trending protocols across all pages.
-- **Sponsorship & Featured Listings System**: A comprehensive revenue monetization system with 2 pricing tiers (Featured, Sponsored) for enhanced protocol visibility, including database schema and a public guidance page.
+- **Sponsorship & Featured Listings System**: A comprehensive revenue monetization system with 2 pricing tiers (Featured, Sponsored) for enhanced protocol visibility, including database schema, public guidance page, and social media links (X: @defi_jerusalem, Telegram: t.me/DefiJerusalem).
+- **Admin Panel**: Secure admin interface with bcrypt authentication, session management, and full protocol management capabilities including protocol editing, blacklist oversight, and sponsorship management.
 
 ### System Design Choices
-- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables.
+- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, `manual_audits`, `sponsor_payments`, and `admin_users` tables.
 - **Database Performance**: Indexes on frequently queried columns and optimized SQL queries using `DISTINCT ON`.
 - **UPSERT-Based Persistence**: Uses PostgreSQL's `ON CONFLICT DO UPDATE` for protocol storage, ensuring atomic updates and persistence of test drainer protocols.
-- **API Routes**: RESTful API for managing application data.
+- **API Routes**: RESTful API for managing application data, including admin authentication endpoints (login, logout, session management, protocol updates).
 - **Storage Layer**: An `IStorage` interface (`DatabaseStorage`) centralizes database operations.
 - **Test Protocol Management**: Test drainer protocols are managed and persisted to ensure constant availability for scanning demonstrations.
 - **Separation of Concerns**: Clear distinction between frontend and backend.
 - **Caching**: DeFiLlama API has a 30-minute cache. Server-side in-memory caching (2-5 minute TTL) for expensive API routes with automatic invalidation.
+- **Admin Authentication**: bcryptjs password hashing with express-session for secure session management.
 
 ## External Dependencies
 - **DeFiLlama API**: For DeFi protocol discovery, TVL data, and audit information.
