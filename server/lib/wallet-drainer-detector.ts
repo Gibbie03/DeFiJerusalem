@@ -1,5 +1,40 @@
 import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 
+// Whitelist of well-established, verified protocols
+const VERIFIED_PROTOCOLS = new Set([
+  // Major DEXs
+  'uniswap', 'pancakeswap', 'sushiswap', 'curve', 'balancer', 'dydx', 
+  'quickswap', 'spookyswap', 'traderj oe', 'velodrome', '1inch',
+  
+  // Lending platforms
+  'aave', 'compound', 'maker', 'makerdao', 'venus', 'benqi', 'radiant',
+  
+  // Bridges
+  'stargate', 'synapse', 'hop protocol', 'across', 'celer',
+  
+  // Liquid Staking
+  'lido', 'rocket pool', 'frax', 'ankr', 'stader',
+  
+  // Layer 2s / Chains
+  'arbitrum', 'optimism', 'polygon', 'base', 'avalanche', 'bnb chain',
+  
+  // Other established protocols
+  'gmx', 'yearn', 'convex', 'olympus', 'platypus', 'joe',
+  'binance', 'coinbase', 'kraken', 'nexo', 'celsius'
+]);
+
+// Trusted domain patterns for verification
+const TRUSTED_DOMAINS = [
+  'uniswap.org', 'app.uniswap.org',
+  'pancakeswap.finance',
+  'curve.fi',
+  'aave.com',
+  'compound.finance',
+  'makerdao.com',
+  'sushi.com',
+  'balancer.fi'
+];
+
 // Known scam patterns and drainer domains
 const SCAM_PATTERNS = {
   // ===== WALLET-SPECIFIC THREATS =====
@@ -132,6 +167,67 @@ const SCAM_PATTERNS = {
 
 // WalletDrainerDetector - Security scanning engine
 export class WalletDrainerDetector {
+  // Check if protocol is verified/whitelisted
+  private isVerifiedProtocol(dapp: Protocol): boolean {
+    const name = dapp.name.toLowerCase().trim();
+    const slug = dapp.id.toLowerCase();
+    
+    // Check whitelist
+    if (VERIFIED_PROTOCOLS.has(name) || VERIFIED_PROTOCOLS.has(slug)) {
+      return true;
+    }
+    
+    // Check if domain is trusted
+    if (dapp.website) {
+      const domain = dapp.website.toLowerCase().replace(/^https?:\/\/(www\.)?/, '');
+      if (TRUSTED_DOMAINS.some(trusted => domain.includes(trusted))) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Calculate verification score (positive points for good signals)
+  private calculateVerificationScore(dapp: Protocol): number {
+    let verificationScore = 0;
+    
+    // Well-established protocol (age > 365 days)
+    if (dapp.age && dapp.age > 365) {
+      verificationScore += 50; // Strong positive signal
+    } else if (dapp.age && dapp.age > 180) {
+      verificationScore += 30; // Moderate positive signal
+    } else if (dapp.age && dapp.age > 90) {
+      verificationScore += 15; // Some positive signal
+    }
+    
+    // High TVL indicates established protocol
+    if (dapp.tvl && dapp.tvl > 100_000_000) {
+      verificationScore += 40; // $100M+ TVL
+    } else if (dapp.tvl && dapp.tvl > 10_000_000) {
+      verificationScore += 25; // $10M+ TVL
+    } else if (dapp.tvl && dapp.tvl > 1_000_000) {
+      verificationScore += 10; // $1M+ TVL
+    }
+    
+    // Social presence (Twitter verification)
+    if (dapp.twitter) {
+      verificationScore += 20; // Has official Twitter
+    }
+    
+    // GitHub presence
+    if (dapp.github) {
+      verificationScore += 15;
+    }
+    
+    // Audited protocols
+    if (dapp.audited || (dapp.auditCount && dapp.auditCount > 0)) {
+      verificationScore += 30;
+    }
+    
+    return verificationScore;
+  }
+
   async scanDApp(dapp: Protocol): Promise<SecurityScan> {
     const results: SecurityScan = {
       isBlacklisted: false,
@@ -143,6 +239,17 @@ export class WalletDrainerDetector {
     try {
       const nameAndDesc = `${dapp.name} ${dapp.description || ''}`.toLowerCase();
       const website = (dapp.website || '').toLowerCase();
+      
+      // Check if protocol is verified - skip most checks
+      const isVerified = this.isVerifiedProtocol(dapp);
+      const verificationScore = this.calculateVerificationScore(dapp);
+      
+      // Verified protocols get a free pass on most checks
+      if (isVerified) {
+        results.score = Math.max(0, results.score - 100); // Remove all penalties
+        results.severity = 'LOW';
+        return results;
+      }
 
       // CRITICAL: Check for known scam patterns
       for (const keyword of SCAM_PATTERNS.drainerKeywords) {
@@ -313,8 +420,8 @@ export class WalletDrainerDetector {
         }
       }
 
-      // HIGH: Check if contract is less than 7 days old
-      if (dapp.age !== null && dapp.age !== undefined && dapp.age < 7) {
+      // HIGH: Check if contract is less than 7 days old (only for unverified protocols)
+      if (dapp.age !== null && dapp.age !== undefined && dapp.age < 7 && verificationScore < 30) {
         results.threats.push({
           type: 'NEW_CONTRACT',
           severity: 'HIGH',
@@ -323,34 +430,36 @@ export class WalletDrainerDetector {
         results.score += 40;
       }
 
-      // HIGH: Check if no audit exists
-      if (!dapp.audited) {
+      // HIGH: Check if no audit exists (reduce penalty for established protocols)
+      if (!dapp.audited && !dapp.auditCount && verificationScore < 50) {
+        const penalty = verificationScore > 25 ? 15 : 30; // Reduced penalty for somewhat established protocols
         results.threats.push({
           type: 'NO_AUDIT',
-          severity: 'HIGH',
+          severity: verificationScore > 25 ? 'MEDIUM' : 'HIGH',
           message: 'No security audit found',
         });
-        results.score += 30;
+        results.score += penalty;
       }
 
-      // HIGH: Check if team is anonymous
-      if (!dapp.twitter && !dapp.github) {
+      // HIGH: Check if team is anonymous (reduce penalty for high TVL protocols)
+      if (!dapp.twitter && !dapp.github && verificationScore < 40) {
+        const penalty = dapp.tvl && dapp.tvl > 1_000_000 ? 10 : 25; // Lower penalty for high TVL
         results.threats.push({
           type: 'ANONYMOUS_TEAM',
-          severity: 'HIGH',
+          severity: dapp.tvl && dapp.tvl > 1_000_000 ? 'MEDIUM' : 'HIGH',
           message: 'Team is anonymous - no social presence',
         });
-        results.score += 25;
+        results.score += penalty;
       }
 
-      // MEDIUM: Check for low liquidity
-      if (dapp.tvl !== null && dapp.tvl !== undefined && dapp.tvl < 50000) {
+      // MEDIUM: Check for low liquidity (only flag very low TVL)
+      if (dapp.tvl !== null && dapp.tvl !== undefined && dapp.tvl < 10000) {
         results.threats.push({
           type: 'LOW_LIQUIDITY',
           severity: 'MEDIUM',
-          message: 'Very low liquidity (< $50k)',
+          message: 'Very low liquidity (< $10k)',
         });
-        results.score += 20;
+        results.score += 15;
       }
 
       // MEDIUM: Suspicious - very high promised returns in description
@@ -363,7 +472,10 @@ export class WalletDrainerDetector {
         results.score += 30;
       }
 
-      // Determine overall severity based on score
+      // Apply verification score (subtract from total) - this reduces false positives
+      results.score = Math.max(0, results.score - verificationScore);
+
+      // Determine overall severity based on FINAL score
       if (results.score >= 80) results.severity = 'CRITICAL';
       else if (results.score >= 50) results.severity = 'HIGH';
       else if (results.score >= 25) results.severity = 'MEDIUM';
