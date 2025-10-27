@@ -41,9 +41,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to load from database first (fastest)
       const existingProtocols = await storage.getProtocols();
       
-      // If we have protocols in DB, return them immediately
+      // If we have protocols in DB, return them with test drainers appended
       if (existingProtocols.length > 0) {
-        res.json(existingProtocols);
+        // Filter out test drainers from DB (they may already be there)
+        const realProtocols = existingProtocols.filter(
+          p => !['eth-airdrop-claimer', 'unisvvap-fake', 'vitalik-giveaway'].includes(p.id)
+        );
+        
+        // Always append fresh test drainer protocols for demonstration
+        const testDrainers = discovery.getTestDrainerProtocols();
+        const protocolsWithTestDrainers = [...realProtocols, ...testDrainers];
+        
+        // Persist test drainers to DB immediately so they can be scanned
+        await storage.bulkUpsertProtocols(testDrainers);
+        
+        res.json(protocolsWithTestDrainers);
         
         // Optionally refresh in background (fire and forget)
         discovery.fetchFromMultipleSources().then(async (freshProtocols) => {
@@ -55,8 +67,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If DB is empty, fetch and store
       const protocols = await discovery.fetchFromMultipleSources();
-      await storage.bulkUpsertProtocols(protocols);
-      res.json(protocols);
+      const testDrainers = discovery.getTestDrainerProtocols();
+      const allProtocols = [...protocols, ...testDrainers];
+      
+      // Persist both real protocols and test drainers
+      await storage.bulkUpsertProtocols(allProtocols);
+      res.json(allProtocols);
     } catch (error) {
       console.error("Error fetching protocols:", error);
       res.status(500).json({ 

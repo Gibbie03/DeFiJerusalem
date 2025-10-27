@@ -97,6 +97,8 @@ export class DAppDiscovery {
         };
       });
 
+      // NOTE: Test drainers are NOT added here - they're managed in the API route
+      // to prevent background refreshes from overwriting them
       apiCache.set('protocols', processed);
       return processed;
     } catch (error) {
@@ -107,6 +109,7 @@ export class DAppDiscovery {
   }
 
   private getFallbackProtocols(): Protocol[] {
+    // NOTE: Test drainers are NOT added here - they're managed in the API route
     return [
       {
         id: 'uniswap',
@@ -149,6 +152,77 @@ export class DAppDiscovery {
         twitter: 'AaveAave',
         github: 'aave/aave-v3-core',
         description: 'DeFi lending protocol',
+        autoDiscovered: true,
+        manuallyAdded: false,
+      },
+    ];
+  }
+
+  public getTestDrainerProtocols(): Protocol[] {
+    return [
+      {
+        id: 'eth-airdrop-claimer',
+        name: 'ETH Airdrop Claimer',
+        chains: ['ethereum'],
+        category: 'DeFi',
+        tvl: 25000,
+        volume24h: 5000,
+        change24h: 0,
+        age: 3,
+        audited: false,
+        auditCount: 0,
+        auditNote: null,
+        auditLinks: null,
+        securityScore: 25,
+        logo: null,
+        website: 'https://eth-airdrop-claim.xyz',
+        twitter: null,
+        github: null,
+        description: 'Claim your free ETH airdrop tokens now',
+        autoDiscovered: true,
+        manuallyAdded: false,
+      },
+      {
+        id: 'unisvvap-fake',
+        name: 'Unisvvap',
+        chains: ['ethereum'],
+        category: 'DEX',
+        tvl: 15000,
+        volume24h: 3000,
+        change24h: 0,
+        age: 5,
+        audited: false,
+        auditCount: 0,
+        auditNote: null,
+        auditLinks: null,
+        securityScore: 30,
+        logo: null,
+        website: 'https://unisvvap.fi',
+        twitter: null,
+        github: null,
+        description: 'Decentralized exchange',
+        autoDiscovered: true,
+        manuallyAdded: false,
+      },
+      {
+        id: 'vitalik-giveaway',
+        name: 'Vitalik Giveaway 10000 ETH',
+        chains: ['ethereum'],
+        category: 'DeFi',
+        tvl: 8000,
+        volume24h: 1600,
+        change24h: 0,
+        age: 2,
+        audited: false,
+        auditCount: 0,
+        auditNote: null,
+        auditLinks: null,
+        securityScore: 20,
+        logo: null,
+        website: null,
+        twitter: null,
+        github: null,
+        description: 'Vitalik Buterin is giving away 10000 ETH to lucky participants',
         autoDiscovered: true,
         manuallyAdded: false,
       },
