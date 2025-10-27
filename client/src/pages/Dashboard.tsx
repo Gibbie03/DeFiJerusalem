@@ -100,9 +100,37 @@ export default function Dashboard() {
   }, [protocols]);
 
   const categories = useMemo(() => {
-    const uniqueCategories = new Set<string>(['all']);
-    protocols.forEach(p => uniqueCategories.add(p.category));
-    return Array.from(uniqueCategories);
+    // Static list of all supported categories
+    const allSupportedCategories = [
+      'all',
+      'DeFi',
+      'DEX',
+      'Lending',
+      'Yield',
+      'Bridge',
+      'NFT',
+      'Gaming',
+      'Derivatives',
+      'Insurance',
+      'Stablecoin',
+      'Liquid Staking',
+      'DAO',
+      'Synthetics',
+      'Options',
+      'Prediction Market',
+      'RWA',
+      'CDP',
+      'Services',
+      'Launchpad',
+    ];
+    // Add any additional categories from actual protocols
+    const additionalCategories = new Set<string>();
+    protocols.forEach(p => {
+      if (!allSupportedCategories.includes(p.category)) {
+        additionalCategories.add(p.category);
+      }
+    });
+    return [...allSupportedCategories, ...Array.from(additionalCategories)];
   }, [protocols]);
 
   const filteredProtocols = useMemo(() => {
