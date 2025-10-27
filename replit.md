@@ -33,7 +33,7 @@ The system is optimized for CoinMarketCap-level speed through client-side techni
 - **Trending & New DApps**: Dedicated pages for tracking protocol trends.
 - **Tutorial System**: Functionality for educational DeFi security videos.
 - **Trending Ticker**: An auto-scrolling ticker displays trending protocols across all pages.
-- **Sponsorship & Featured Listings System**: A comprehensive revenue monetization system with 3 pricing tiers (Featured, Sponsored, Promoted) for enhanced protocol visibility, including database schema and a public guidance page.
+- **Sponsorship & Featured Listings System**: A comprehensive revenue monetization system with 2 pricing tiers (Featured, Sponsored) for enhanced protocol visibility, including database schema and a public guidance page.
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables.

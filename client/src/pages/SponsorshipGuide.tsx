@@ -1,4 +1,4 @@
-import { Shield, TrendingUp, Star, Crown, Check, Mail } from 'lucide-react';
+import { Shield, TrendingUp, Star, Check, Mail } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,29 +48,6 @@ const PRICING_TIERS = [
     ],
     ideal: 'Established protocols driving user acquisition',
   },
-  {
-    name: 'Promoted',
-    tier: 'promoted',
-    icon: Crown,
-    price: '$5,000-$10,000',
-    period: '/month',
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/20',
-    features: [
-      'All Sponsored benefits',
-      'Top 5 guaranteed trending placement',
-      'Homepage hero section banner',
-      'Custom landing page on our platform',
-      'Video spotlight (homepage)',
-      'Dedicated account manager',
-      'Weekly performance reports',
-      'Social media takeover (8x/month)',
-      'Press release distribution',
-      'Partnership announcement',
-    ],
-    ideal: 'Enterprise protocols maximizing market dominance',
-  },
 ];
 
 const REQUIREMENTS = [
@@ -79,8 +56,8 @@ const REQUIREMENTS = [
     items: [
       'Smart contract audit from recognized firm',
       'No critical security vulnerabilities',
-      'Active bug bounty program (Promoted tier)',
       'Pass our comprehensive security scan',
+      'Active development and security updates',
     ],
   },
   {
@@ -97,8 +74,8 @@ const REQUIREMENTS = [
     items: [
       'Minimum $100K TVL (Featured)',
       'Minimum $1M TVL (Sponsored)',
-      'Minimum $10M TVL (Promoted)',
       'Active trading volume (24h)',
+      'Established user base',
     ],
   },
 ];
@@ -129,11 +106,11 @@ export default function SponsorshipGuide() {
             Sponsorship & Featured Listings
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Amplify your protocol's visibility on the #1 DeFi security platform. Reach 100K+ monthly users actively researching DeFi investments.
+            Amplify your protocol's visibility on the #1 DeFi security platform. Reach 100K+ monthly users actively researching DeFi investments. Two flexible tiers to match your growth stage.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
           {PRICING_TIERS.map((tier) => {
             const Icon = tier.icon;
             return (

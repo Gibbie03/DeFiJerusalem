@@ -124,7 +124,7 @@ export type Protocol = {
   autoDiscovered: boolean;
   manuallyAdded: boolean;
   sponsoredUntil: string | null;
-  sponsorshipTier: 'free' | 'featured' | 'sponsored' | 'promoted';
+  sponsorshipTier: 'free' | 'featured' | 'sponsored';
   featuredPosition: number | null;
 };
 
@@ -170,7 +170,7 @@ export type ManualAudit = {
 export type SponsorPayment = {
   id: string;
   protocolId: string;
-  tier: 'featured' | 'sponsored' | 'promoted';
+  tier: 'featured' | 'sponsored';
   startDate: string;
   endDate: string;
   amount: number;

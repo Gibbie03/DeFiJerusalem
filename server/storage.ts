@@ -20,7 +20,7 @@ export interface IStorage {
   getSponsoredProtocols(): Promise<Protocol[]>;
   updateProtocolSponsorship(
     protocolId: string,
-    tier: 'free' | 'featured' | 'sponsored' | 'promoted',
+    tier: 'free' | 'featured' | 'sponsored',
     sponsoredUntil: Date | null,
     featuredPosition: number | null
   ): Promise<void>;
@@ -51,7 +51,7 @@ export class DatabaseStorage implements IStorage {
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
     }));
   }
@@ -93,7 +93,7 @@ export class DatabaseStorage implements IStorage {
       autoDiscovered: result.autoDiscovered,
       manuallyAdded: result.manuallyAdded,
       sponsoredUntil: result.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (result.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      sponsorshipTier: (result.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: result.featuredPosition,
     };
   }
@@ -288,7 +288,7 @@ export class DatabaseStorage implements IStorage {
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
     }));
   }
@@ -323,7 +323,7 @@ export class DatabaseStorage implements IStorage {
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
     }));
   }
@@ -358,14 +358,14 @@ export class DatabaseStorage implements IStorage {
       autoDiscovered: p.autoDiscovered,
       manuallyAdded: p.manuallyAdded,
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored' | 'promoted',
+      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
     }));
   }
 
   async updateProtocolSponsorship(
     protocolId: string,
-    tier: 'free' | 'featured' | 'sponsored' | 'promoted',
+    tier: 'free' | 'featured' | 'sponsored',
     sponsoredUntil: Date | null,
     featuredPosition: number | null
   ): Promise<void> {
