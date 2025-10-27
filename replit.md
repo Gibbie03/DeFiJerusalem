@@ -58,7 +58,11 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 ### Recent Updates (October 27, 2025)
 - **Enhanced Verification System**: Expanded protocol whitelist to 60+ variations including all major DeFi protocols (Uniswap V2/V3/V4, Curve DEX, PancakeSwap AMM V2/V3, Aave V2/V3, etc.) to prevent false positives
 - **Admin Blacklist Management**: Added DELETE `/api/blacklist/:id` endpoint with optimistic UI updates allowing admins to remove blacklist entries
-- **Improved Security Scoring**: Conditional penalties based on verification level - established protocols with high TVL/age/audits receive reduced penalties for missing audits or anonymous teams
+- **Improved Security Scoring**: Conditional penalties based on verification level - established protocols with high TVL/age/audits receive reduced penalties
+- **Layout Optimization**: Restructured layout for optimal PC browser experience - header spans full width above both main content and sidebar, preventing sidebar from being covered
+- **Sidebar Cleanup**: Removed "Security Scanner" branding from sidebar header for cleaner navigation experience
+- **Interactive Trending Ticker**: Made trending protocol tokens clickable across all pages - clicks open protocol detail modals for quick access
+- **Audit Stats Clarity**: Changed audit statistics from percentage display (40%) to actual count display (2,621) for better transparency for missing audits or anonymous teams
 
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL, Volume, or Security Score. Includes category and chain filtering.
