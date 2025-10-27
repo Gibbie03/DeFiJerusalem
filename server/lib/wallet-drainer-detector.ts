@@ -185,6 +185,112 @@ const SCAM_PATTERNS = {
     /unchecked.*call/i,
     /delegatecall/i,
     /selfdestruct/i
+  ],
+  
+  // ===== NEW ADVANCED THREATS =====
+  
+  // Backdoor function patterns (dangerous admin functions)
+  backdoorFunctionPatterns: [
+    /withdrawAll/i,
+    /rescueTokens/i,
+    /sweepFunds/i,
+    /emergencyWithdraw/i,
+    /adminWithdraw/i,
+    /ownerWithdraw/i,
+    /claimTokens/i,
+    /drainContract/i,
+    /transferOwnership.*bypass/i,
+    /hidden.*withdrawal/i
+  ],
+  
+  // Flash loan governance attack patterns
+  flashLoanGovernancePatterns: [
+    /instant.*voting/i,
+    /flash.*loan.*governance/i,
+    /borrow.*vote/i,
+    /no.*vote.*delay/i,
+    /same.*block.*vote/i,
+    /governance.*exploit/i
+  ],
+  
+  // Ponzi/pyramid scheme patterns
+  ponziTokenomicsPatterns: [
+    /referral.*bonus/i,
+    /recruit.*earn/i,
+    /multi.*level.*marketing/i,
+    /mlm.*rewards/i,
+    /downline.*commission/i,
+    /pyramid.*structure/i,
+    /tier.*system.*recruit/i,
+    /invite.*3.*friends/i,
+    /passive.*income.*referral/i,
+    /matrix.*plan/i
+  ],
+  
+  // Unverified contract indicators
+  unverifiedContractPatterns: [
+    /source.*not.*verified/i,
+    /contract.*not.*verified/i,
+    /unverified.*code/i,
+    /trust.*us.*safe/i
+  ],
+  
+  // No timelock patterns
+  noTimelockPatterns: [
+    /instant.*admin.*control/i,
+    /immediate.*parameter.*change/i,
+    /no.*delay.*governance/i,
+    /owner.*can.*change.*instantly/i
+  ],
+  
+  // Centralized key control patterns
+  centralizedKeyPatterns: [
+    /single.*owner/i,
+    /one.*admin.*wallet/i,
+    /no.*multisig/i,
+    /centralized.*admin/i,
+    /sole.*control/i
+  ],
+  
+  // Oracle manipulation risk patterns
+  oracleManipulationPatterns: [
+    /single.*oracle/i,
+    /centralized.*price.*feed/i,
+    /no.*twap/i,
+    /manipulatable.*oracle/i,
+    /flash.*loan.*oracle/i,
+    /uniswap.*v2.*oracle/i // V2 oracles are vulnerable
+  ],
+  
+  // Bridge exploit risk patterns
+  bridgeExploitPatterns: [
+    /new.*bridge/i,
+    /cross.*chain.*beta/i,
+    /centralized.*validators/i,
+    /bridge.*no.*audit/i,
+    /wrapped.*token.*unverified/i,
+    /bridge.*single.*validator/i
+  ],
+  
+  // Migration scam patterns
+  migrationScamPatterns: [
+    /migrate.*to.*v2/i,
+    /swap.*old.*tokens/i,
+    /upgrade.*required.*urgent/i,
+    /new.*contract.*migration/i,
+    /token.*swap.*deadline/i,
+    /v2.*migration.*mandatory/i,
+    /old.*tokens.*worthless/i
+  ],
+  
+  // Mixer/privacy service patterns (OFAC sanctioned)
+  mixerServicePatterns: [
+    /tornado.*cash/i,
+    /privacy.*mixer/i,
+    /coin.*mixer/i,
+    /tumbler.*service/i,
+    /anonymous.*transfer/i,
+    /untraceable.*transaction/i
   ]
 };
 
@@ -440,6 +546,140 @@ export class WalletDrainerDetector {
           });
           results.score += 85;
           break;
+        }
+      }
+
+      // ===== NEW ADVANCED THREAT DETECTION =====
+
+      // CRITICAL: Check for backdoor functions
+      for (const pattern of SCAM_PATTERNS.backdoorFunctionPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'BACKDOOR_FUNCTIONS',
+            severity: 'CRITICAL',
+            message: 'DANGER: Contract contains dangerous admin functions that can drain funds',
+          });
+          results.score += 95;
+          break;
+        }
+      }
+
+      // CRITICAL: Check for flash loan governance attacks
+      for (const pattern of SCAM_PATTERNS.flashLoanGovernancePatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'FLASH_LOAN_GOVERNANCE',
+            severity: 'CRITICAL',
+            message: 'Governance attack risk - instant voting or flash loan governance vulnerability',
+          });
+          results.score += 90;
+          break;
+        }
+      }
+
+      // CRITICAL: Check for Ponzi/pyramid schemes
+      for (const pattern of SCAM_PATTERNS.ponziTokenomicsPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'PONZI_TOKENOMICS',
+            severity: 'CRITICAL',
+            message: 'ILLEGAL: Ponzi/pyramid scheme detected - returns depend on new user recruitment',
+          });
+          results.score += 100;
+          break;
+        }
+      }
+
+      // CRITICAL: Check for mixer services (OFAC sanctioned)
+      for (const pattern of SCAM_PATTERNS.mixerServicePatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'MIXER_SERVICE',
+            severity: 'CRITICAL',
+            message: 'LEGAL RISK: Privacy mixer service - may be sanctioned by OFAC',
+          });
+          results.score += 85;
+          break;
+        }
+      }
+
+      // HIGH: Check for migration scams
+      for (const pattern of SCAM_PATTERNS.migrationScamPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'MIGRATION_SCAM',
+            severity: 'HIGH',
+            message: 'Migration scam risk - fake V2 upgrade to steal tokens',
+          });
+          results.score += 75;
+          break;
+        }
+      }
+
+      // HIGH: Check for unverified contracts
+      for (const pattern of SCAM_PATTERNS.unverifiedContractPatterns) {
+        if (pattern.test(nameAndDesc) || (!dapp.audited && verificationScore < 30)) {
+          results.threats.push({
+            type: 'UNVERIFIED_CONTRACT',
+            severity: 'HIGH',
+            message: 'Unverified contract - source code not verified on block explorer',
+          });
+          results.score += 60;
+          break;
+        }
+      }
+
+      // HIGH: Check for no timelock protection
+      for (const pattern of SCAM_PATTERNS.noTimelockPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'NO_TIMELOCK',
+            severity: 'HIGH',
+            message: 'No timelock protection - admin can change parameters instantly',
+          });
+          results.score += 70;
+          break;
+        }
+      }
+
+      // HIGH: Check for centralized key control
+      for (const pattern of SCAM_PATTERNS.centralizedKeyPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'CENTRALIZED_KEYS',
+            severity: 'HIGH',
+            message: 'Centralized control - single wallet controls protocol (no multi-sig)',
+          });
+          results.score += 65;
+          break;
+        }
+      }
+
+      // HIGH: Check for oracle manipulation risks
+      for (const pattern of SCAM_PATTERNS.oracleManipulationPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'ORACLE_MANIPULATION',
+            severity: 'HIGH',
+            message: 'Oracle manipulation risk - price feed vulnerable to flash loan attacks',
+          });
+          results.score += 70;
+          break;
+        }
+      }
+
+      // HIGH: Check for bridge exploit risks
+      if (dapp.category === 'Bridge' || /bridge/i.test(nameAndDesc)) {
+        for (const pattern of SCAM_PATTERNS.bridgeExploitPatterns) {
+          if (pattern.test(nameAndDesc) || (dapp.age && dapp.age < 90) || !dapp.audited) {
+            results.threats.push({
+              type: 'BRIDGE_EXPLOIT_RISK',
+              severity: 'HIGH',
+              message: 'Bridge security risk - cross-chain bridges are #1 DeFi hack target ($2B+ stolen)',
+            });
+            results.score += 55;
+            break;
+          }
         }
       }
 
