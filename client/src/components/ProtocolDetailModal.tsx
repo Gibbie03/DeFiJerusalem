@@ -1,4 +1,4 @@
-import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video } from 'lucide-react';
+import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, BarChart3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ interface Protocol {
   chains: string[];
   category: string;
   tvl: number;
+  volume24h: number;
   change24h: number;
   securityScore: number;
   logo?: string | null;
@@ -104,13 +105,23 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             </div>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
                 TVL
               </p>
               <p className="text-lg font-bold font-mono">{formatTVL(protocol.tvl)}</p>
+            </div>
+            <div className="relative group">
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <BarChart3 className="w-3 h-3" />
+                Volume 24h
+              </p>
+              <p className="text-lg font-bold font-mono" data-testid="text-volume-24h">{formatTVL(protocol.volume24h)}</p>
+              <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-48 p-2 text-xs bg-popover text-popover-foreground border border-border rounded-md shadow-lg">
+                Estimated 24h trading volume based on TVL and protocol category
+              </div>
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
