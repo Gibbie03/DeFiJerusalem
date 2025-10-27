@@ -24,7 +24,8 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 - **Result**: Button response times reduced from 30+ seconds to < 2 seconds, achieving CoinMarketCap-level responsiveness
 
 ### Feature Specifications
-- **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL or Security Score. Includes category and chain filtering.
+- **Protocol Discovery & Display**: Fetches protocols from DeFiLlama, displays them in a sortable, filterable table by TVL, Volume, or Security Score. Includes category and chain filtering.
+- **Volume-Based Ranking**: Protocols can be sorted by estimated 24h trading volume. Since DeFiLlama's `/protocols` endpoint doesn't provide volume data, estimates are calculated using TVL × category-specific turnover rates (DEX: 30%, Lending: 5%, Bridge: 20%, Other: 10%) with activity adjustments based on 24h price change. A hover tooltip clarifies the estimated nature of volume data.
 - **Security Analysis**: Conducts detailed security scans based on contract age, audit status, team transparency, and liquidity. Detects wallet drainers, typosquatting, and known scam phrases.
 - **3-Tier Audit System**: Integrates audit data from DeFiLlama (count, notes, links) and allows for manual audit entries.
 - **Blacklisting**: Automatically flags and blacklists protocols with critical security scores (≥80 points), with a dedicated Blacklist page showing detailed threats and reasons.
@@ -36,7 +37,7 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 
 ### System Design Choices
 - **Database Schema**: Utilizes PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables, ensuring data persistence and scalability.
-- **Database Performance**: Indexes added on frequently queried columns (tvl, category, change24h, discoveredAt, protocolId, scannedAt) for fast sorting and filtering. Optimized queries using SQL DISTINCT ON instead of in-memory iteration.
+- **Database Performance**: Indexes added on frequently queried columns (tvl, volume24h, category, change24h, discoveredAt, protocolId, scannedAt) for fast sorting and filtering. Optimized queries using SQL DISTINCT ON instead of in-memory iteration.
 - **API Routes**: Comprehensive RESTful API for managing protocols, security scans, blacklist entries, and tutorial videos.
 - **Storage Layer**: An `IStorage` interface implementation (`DatabaseStorage`) centralizes all CRUD operations with the database.
 - **Separation of Concerns**: Clear distinction between frontend (client/) and backend (server/) directories.
