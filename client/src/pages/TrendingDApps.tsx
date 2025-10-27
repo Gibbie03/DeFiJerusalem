@@ -80,7 +80,7 @@ export default function TrendingDApps() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatsCard
             label="Trending Protocols"
             value={stats.total.toLocaleString()}
@@ -88,7 +88,14 @@ export default function TrendingDApps() {
           />
           <StatsCard
             label="Total TVL"
-            value={`$${(stats.totalTvl / 1e9).toFixed(2)}B`}
+            value={(() => {
+              const tvl = stats.totalTvl;
+              if (tvl >= 1_000_000_000_000) return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
+              if (tvl >= 1_000_000_000) return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
+              if (tvl >= 1_000_000) return `$${(tvl / 1_000_000).toFixed(2)}M`;
+              if (tvl >= 1_000) return `$${(tvl / 1_000).toFixed(2)}K`;
+              return `$${tvl.toFixed(2)}`;
+            })()}
             icon={BarChart3}
           />
           <StatsCard

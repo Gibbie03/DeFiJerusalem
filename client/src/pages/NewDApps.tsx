@@ -80,7 +80,7 @@ export default function NewDApps() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatsCard
             label="New Protocols"
             value={stats.total.toLocaleString()}
@@ -88,12 +88,18 @@ export default function NewDApps() {
           />
           <StatsCard
             label="Average TVL"
-            value={`$${(stats.avgTvl / 1e6).toFixed(1)}M`}
+            value={(() => {
+              const tvl = stats.avgTvl;
+              if (tvl >= 1_000_000_000) return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
+              if (tvl >= 1_000_000) return `$${(tvl / 1_000_000).toFixed(2)}M`;
+              if (tvl >= 1_000) return `$${(tvl / 1_000).toFixed(2)}K`;
+              return `$${tvl.toFixed(2)}`;
+            })()}
             icon={TrendingUp}
           />
           <StatsCard
             label="Audited"
-            value={`${stats.audited} (${((stats.audited / stats.total) * 100).toFixed(0)}%)`}
+            value={`${stats.audited} (${stats.total > 0 ? ((stats.audited / stats.total) * 100).toFixed(0) : '0'}%)`}
             icon={TrendingUp}
           />
         </div>

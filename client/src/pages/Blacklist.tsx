@@ -59,7 +59,7 @@ export default function Blacklist() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             label="Total Blacklisted"
             value={stats.total.toLocaleString()}
@@ -67,17 +67,17 @@ export default function Blacklist() {
           />
           <StatsCard
             label="Critical"
-            value={stats.critical}
+            value={stats.critical.toLocaleString()}
             icon={AlertTriangle}
           />
           <StatsCard
             label="High Severity"
-            value={stats.high}
+            value={stats.high.toLocaleString()}
             icon={AlertTriangle}
           />
           <StatsCard
             label="Active Threats"
-            value={stats.active}
+            value={stats.active.toLocaleString()}
             icon={Shield}
           />
         </div>

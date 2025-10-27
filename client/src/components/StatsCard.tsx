@@ -19,14 +19,14 @@ export default function StatsCard({ label, value, icon: Icon, trend, tooltip }: 
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
               {label}
             </p>
             {tooltip && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                    <Info className="w-3 h-3 text-muted-foreground cursor-help shrink-0" />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs">
                     <p className="text-xs">{tooltip}</p>
@@ -35,7 +35,7 @@ export default function StatsCard({ label, value, icon: Icon, trend, tooltip }: 
               </TooltipProvider>
             )}
           </div>
-          <p className="text-3xl font-bold text-foreground truncate" data-testid={`text-${label.toLowerCase().replace(/\s+/g, '-')}-value`}>
+          <p className="text-2xl sm:text-3xl font-bold text-foreground break-words" data-testid={`text-${label.toLowerCase().replace(/\s+/g, '-')}-value`}>
             {value}
           </p>
           {trend && (
