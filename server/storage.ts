@@ -147,28 +147,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllSecurityScans(): Promise<Record<string, SecurityScan>> {
-    // Order by scannedAt DESC to get most recent scans first
-    const allScans = await db
-      .select()
-      .from(securityScans)
-      .orderBy(desc(securityScans.scannedAt));
+    // Use SQL DISTINCT ON to get only the most recent scan per protocol - much faster!
+    const recentScans = await db.execute(sql`
+      SELECT DISTINCT ON (protocol_id) 
+        protocol_id, 
+        is_blacklisted, 
+        severity, 
+        threats, 
+        score
+      FROM security_scans
+      ORDER BY protocol_id, scanned_at DESC
+    `);
     
     const scanMap: Record<string, SecurityScan> = {};
     
-    // Keep only the most recent scan per protocol (first occurrence due to DESC order)
-    for (const scan of allScans) {
-      if (!scanMap[scan.protocolId]) {
-        scanMap[scan.protocolId] = {
-          isBlacklisted: scan.isBlacklisted,
-          severity: scan.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
-          threats: scan.threats.map(t => ({
-            type: t.type,
-            severity: t.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
-            message: t.message,
-          })),
-          score: scan.score,
-        };
-      }
+    for (const row of recentScans.rows) {
+      scanMap[row.protocol_id as string] = {
+        isBlacklisted: row.is_blacklisted as boolean,
+        severity: row.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+        threats: row.threats as any[],
+        score: row.score as number,
+      };
     }
     
     return scanMap;

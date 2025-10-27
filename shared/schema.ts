@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { pgTable, text, boolean, real, integer, timestamp, json } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, real, integer, timestamp, json, index } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
 // Database Tables
@@ -25,7 +25,12 @@ export const protocols = pgTable('protocols', {
   manuallyAdded: boolean('manually_added').notNull().default(false),
   discoveredAt: timestamp('discovered_at').notNull().defaultNow(),
   lastUpdated: timestamp('last_updated').notNull().defaultNow(),
-});
+}, (table) => ({
+  tvlIdx: index('protocols_tvl_idx').on(table.tvl),
+  categoryIdx: index('protocols_category_idx').on(table.category),
+  change24hIdx: index('protocols_change24h_idx').on(table.change24h),
+  discoveredAtIdx: index('protocols_discovered_at_idx').on(table.discoveredAt),
+}));
 
 export const securityScans = pgTable('security_scans', {
   id: text('id').primaryKey(),
@@ -35,7 +40,10 @@ export const securityScans = pgTable('security_scans', {
   threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
   score: real('score').notNull(),
   scannedAt: timestamp('scanned_at').notNull().defaultNow(),
-});
+}, (table) => ({
+  protocolIdIdx: index('security_scans_protocol_id_idx').on(table.protocolId),
+  scannedAtIdx: index('security_scans_scanned_at_idx').on(table.scannedAt),
+}));
 
 export const blacklistEntries = pgTable('blacklist_entries', {
   id: text('id').primaryKey(),

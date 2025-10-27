@@ -6,6 +6,23 @@ import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { insertProtocolSchema, insertTutorialVideoSchema } from "@shared/schema";
 
+// Simple in-memory cache with TTL
+const cache = new Map<string, { data: any; expires: number }>();
+
+function getCache(key: string): any | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(key: string, data: any, ttlMs: number): void {
+  cache.set(key, { data, expires: Date.now() + ttlMs });
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const discovery = new DAppDiscovery();
   const detector = new WalletDrainerDetector();
@@ -119,6 +136,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
+      // Invalidate cache after scanning
+      cache.delete('scans');
+      cache.delete('blacklist');
+
       res.json({ 
         scanResults,
         newBlacklistEntries,
@@ -156,7 +177,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/blacklist - Get all blacklist entries
   app.get("/api/blacklist", async (req, res) => {
     try {
+      // Check cache first (5 minute TTL)
+      const cached = getCache('blacklist');
+      if (cached) {
+        return res.json(cached);
+      }
+
       const blacklist = await storage.getBlacklist();
+      setCache('blacklist', blacklist, 5 * 60 * 1000); // 5 minutes
       res.json(blacklist);
     } catch (error) {
       console.error("Error fetching blacklist:", error);
@@ -214,7 +242,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/protocols/trending - Get trending protocols by TVL growth
   app.get("/api/protocols/trending", async (req, res) => {
     try {
+      // Check cache first (2 minute TTL)
+      const cached = getCache('trending');
+      if (cached) {
+        return res.json(cached);
+      }
+
       const protocols = await storage.getProtocolsByTvlGrowth(50);
+      setCache('trending', protocols, 2 * 60 * 1000); // 2 minutes
       res.json(protocols);
     } catch (error) {
       console.error("Error fetching trending protocols:", error);
@@ -228,7 +263,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/scans - Get all security scans
   app.get("/api/scans", async (req, res) => {
     try {
+      // Check cache first (3 minute TTL)
+      const cached = getCache('scans');
+      if (cached) {
+        return res.json(cached);
+      }
+
       const scans = await storage.getAllSecurityScans();
+      setCache('scans', scans, 3 * 60 * 1000); // 3 minutes
       res.json(scans);
     } catch (error) {
       console.error("Error fetching scans:", error);
