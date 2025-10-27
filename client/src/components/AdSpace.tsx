@@ -138,7 +138,7 @@ export default function AdSpace({ position }: AdSpaceProps) {
           {!isConfigured && (
             <div className="text-center p-4 border border-dashed border-muted-foreground/20 rounded">
               <p className="text-sm text-muted-foreground font-medium">
-                💰 Crypto Ad Space ({position})
+                Crypto Ad Space ({position})
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Configure ad zones in <code className="bg-muted px-1 py-0.5 rounded">client/src/config/adConfig.ts</code>
