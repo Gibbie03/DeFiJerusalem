@@ -29,6 +29,7 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 - **Security Analysis**: Conducts detailed security scans based on contract age, audit status, team transparency, and liquidity. Detects wallet drainers, typosquatting, and known scam phrases.
 - **3-Tier Audit System**: Integrates audit data from DeFiLlama (count, notes, links) and allows for manual audit entries.
 - **Blacklisting**: Automatically flags and blacklists protocols with critical security scores (≥80 points), with a dedicated Blacklist page showing detailed threats and reasons.
+- **Test Drainer Protocols**: Three malicious test protocols (ETH Airdrop Claimer, Unisvvap, Vitalik Giveaway) are always visible in the protocol list to demonstrate the blacklisting system. These protocols are designed to trigger CRITICAL security alerts when scanned, scoring 160-215 points through detection of scam keywords, typosquatting, and known scam phrases. They persist in the database and survive background refreshes.
 - **Scanning Mechanism**: Supports manual security scanning triggered by a "Scan All" button and weekly automated scans. Scan results are stored persistently.
 - **DApp Management**: "Add DApp by URL" feature for auto-detecting protocol information from links.
 - **Trending & New DApps**: Dedicated pages for tracking recently discovered protocols and those with the highest TVL growth.
@@ -38,8 +39,10 @@ The frontend is built with React, Wouter for routing, TanStack Query for data fe
 ### System Design Choices
 - **Database Schema**: Utilizes PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `tutorial_videos`, and `manual_audits` tables, ensuring data persistence and scalability.
 - **Database Performance**: Indexes added on frequently queried columns (tvl, volume24h, category, change24h, discoveredAt, protocolId, scannedAt) for fast sorting and filtering. Optimized queries using SQL DISTINCT ON instead of in-memory iteration.
+- **UPSERT-Based Persistence**: Uses PostgreSQL's `ON CONFLICT DO UPDATE` for protocol storage, ensuring atomic upserts by ID without deleting unrelated records. This allows test drainer protocols to persist indefinitely while background refreshes update real protocols.
 - **API Routes**: Comprehensive RESTful API for managing protocols, security scans, blacklist entries, and tutorial videos.
-- **Storage Layer**: An `IStorage` interface implementation (`DatabaseStorage`) centralizes all CRUD operations with the database.
+- **Storage Layer**: An `IStorage` interface implementation (`DatabaseStorage`) centralizes all CRUD operations with the database using UPSERT semantics for safe concurrent updates.
+- **Test Protocol Management**: Test drainer protocols are managed exclusively in the `/api/protocols` route, filtered from DB cache on every request, re-appended to responses, and immediately persisted to ensure availability for security scanning. Background refreshes fetch only real DeFiLlama protocols, preserving test drainers through UPSERT-by-ID behavior.
 - **Separation of Concerns**: Clear distinction between frontend (client/) and backend (server/) directories.
 - **Caching**: DeFiLlama API integration includes a 30-minute cache for efficiency. Server-side in-memory caching (2-5 minute TTL) for expensive API routes (/api/scans, /api/blacklist, /api/protocols/trending) with automatic cache invalidation on updates.
 
