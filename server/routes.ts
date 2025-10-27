@@ -232,9 +232,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Promise.all(scansToStore.map(({ protocolId, scan }) => 
           storage.addSecurityScan(protocolId, scan)
         )),
-        // Batch store all blacklist entries
+        // Batch store all blacklist entries (remove timestamp as DB will add it)
         newBlacklistEntries.length > 0 
-          ? Promise.all(newBlacklistEntries.map(entry => storage.addToBlacklist(entry)))
+          ? Promise.all(newBlacklistEntries.map(entry => {
+              const { timestamp, ...entryWithoutTimestamp } = entry;
+              return storage.addToBlacklist(entryWithoutTimestamp);
+            }))
           : Promise.resolve()
       ]);
 

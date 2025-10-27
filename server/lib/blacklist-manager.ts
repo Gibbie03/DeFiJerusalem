@@ -25,7 +25,7 @@ export class BlacklistManager {
       threats: scanResult.threats,
       reason: reason,
       status: 'ACTIVE',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString(), // String for API/frontend
     };
     this.blacklist.push(entry);
     return { entry, updatedList: [...this.blacklist] };
