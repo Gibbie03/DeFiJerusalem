@@ -10,6 +10,10 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
+// Trust proxy - Required for rate limiting behind Replit's reverse proxy
+// This enables Express to read the X-Forwarded-For header to get real client IPs
+app.set('trust proxy', 1);
+
 // Security headers with Helmet
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for Vite dev server
