@@ -70,7 +70,7 @@ export default function TrendingDApps() {
     <div className="bg-background">
       <AdSpace position="top" />
       
-      <TrendingTicker />
+      <TrendingTicker onProtocolClick={(protocol) => setSelectedProtocol(protocol)} />
       
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div>
