@@ -55,7 +55,8 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
   // Removed tutorial fetching to improve performance
   const relatedTutorials: TutorialVideo[] = [];
 
-  const formatTVL = (num: number) => {
+  const formatTVL = (num: number | undefined | null) => {
+    if (num === undefined || num === null || isNaN(num)) return 'N/A';
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
     if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
     if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
