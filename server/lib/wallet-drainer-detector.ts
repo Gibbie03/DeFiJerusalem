@@ -2,6 +2,11 @@ import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 
 // Whitelist of well-established, verified protocols
 const VERIFIED_PROTOCOLS = new Set([
+  // Major CEXs (Centralized Exchanges)
+  'binance', 'binance cex', 'coinbase', 'kraken', 'nexo', 'celsius',
+  'mexc', 'mexc global', 'bybit', 'okx', 'okex', 'bitget', 'gate.io', 'gate', 
+  'kucoin', 'huobi', 'crypto.com', 'bitfinex', 'gemini', 'bitstamp',
+  
   // Major DEXs
   'uniswap', 'uniswap v2', 'uniswap v3', 'uniswap v4',
   'pancakeswap', 'pancakeswap amm', 'pancakeswap amm v2', 'pancakeswap amm v3',
@@ -25,8 +30,7 @@ const VERIFIED_PROTOCOLS = new Set([
   'arbitrum', 'optimism', 'polygon', 'base', 'avalanche', 'bnb chain', 'zksync',
   
   // Other established protocols
-  'gmx', 'yearn', 'yearn finance', 'convex', 'convex finance', 'olympus', 'olympus dao', 'platypus', 'platypus finance', 'joe',
-  'binance', 'binance cex', 'coinbase', 'kraken', 'nexo', 'celsius'
+  'gmx', 'yearn', 'yearn finance', 'convex', 'convex finance', 'olympus', 'olympus dao', 'platypus', 'platypus finance', 'joe'
 ]);
 
 // Trusted domain patterns for verification
@@ -108,12 +112,25 @@ const SCAM_PATTERNS = {
     /maker[da]o/i, /mak3r/i, // MakerDAO imposters
   ],
   
-  // Known scam protocol names
-  knownScams: [
-    'fake airdrop', 'free tokens', 'claim rewards', 'double your crypto',
-    'guaranteed returns', '100x gem', 'elon giveaway', 'vitalik giveaway',
-    'safemoon', 'moon', 'safe', 'shiba', 'doge', 'cumrocket', // High-risk meme patterns
-    'pump', 'moon shot', 'to the moon', '1000x guaranteed'
+  // Known scam protocol name patterns (using word boundaries for context-aware matching)
+  knownScamPatterns: [
+    // Giveaway scams (exact phrases only)
+    /\belon\s+giveaway\b/i,
+    /\bvitalik\s+giveaway\b/i,
+    /\bfree\s+eth\s+airdrop\b/i,
+    /\bdouble\s+your\s+crypto\b/i,
+    /\bfake\s+airdrop\b/i,
+    
+    // Guaranteed returns scams (full phrases)
+    /\bguaranteed\s+returns\b/i,
+    /\b100x\s+guaranteed\b/i,
+    /\b1000x\s+guaranteed\b/i,
+    /\bget\s+rich\s+quick\b/i,
+    
+    // Obvious scam phrases
+    /\bclaim\s+free\s+tokens\b/i,
+    /\binstant\s+profit\b/i,
+    /\bno\s+risk\s+profit\b/i,
   ],
   
   // Honeypot indicators
@@ -283,13 +300,13 @@ export class WalletDrainerDetector {
         }
       }
 
-      // CRITICAL: Check for known scam phrases
-      for (const scam of SCAM_PATTERNS.knownScams) {
-        if (nameAndDesc.includes(scam)) {
+      // CRITICAL: Check for known scam patterns (using regex with word boundaries)
+      for (const pattern of SCAM_PATTERNS.knownScamPatterns) {
+        if (pattern.test(nameAndDesc)) {
           results.threats.push({
             type: 'KNOWN_SCAM',
             severity: 'CRITICAL',
-            message: `Known scam pattern detected: "${scam}"`,
+            message: `Known scam pattern detected - protocol name/description contains scam phrase`,
           });
           results.score += 95;
           break;
