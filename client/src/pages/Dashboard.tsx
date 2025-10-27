@@ -191,13 +191,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bg-background">
-      <AdSpace position="top" />
-      
+    <div className="bg-background min-h-screen">
       <TrendingTicker />
 
-      <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             label="Total Protocols"
             value={stats.total.toLocaleString()}

@@ -14,19 +14,19 @@ export default function TrendingTicker() {
   if (trending.length === 0) return null;
 
   return (
-    <div className="bg-card border-y border-border overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2">
+    <div className="bg-muted/30 border-b border-border overflow-hidden">
+      <div className="flex items-center gap-3 px-4 sm:px-6 py-2.5">
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="text-sm font-semibold text-foreground flex-shrink-0">Trending:</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">Trending</span>
         <div className="flex-1 overflow-hidden">
-          <div className="animate-scroll-left flex gap-8 whitespace-nowrap" data-testid="trending-ticker">
+          <div className="animate-scroll-left flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
             {[...trending, ...trending].map((protocol, index) => (
               <div key={`${protocol.id}-${index}`} className="inline-flex items-center gap-2">
-                <span className="text-sm font-medium text-foreground">{protocol.name}</span>
-                <span className={`text-xs ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <span className="text-sm font-semibold text-foreground">{protocol.name}</span>
+                <span className={`text-xs font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                   {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground font-medium">
                   ${(protocol.tvl / 1e9).toFixed(2)}B
                 </span>
               </div>
