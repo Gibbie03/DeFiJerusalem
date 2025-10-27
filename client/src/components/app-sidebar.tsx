@@ -55,6 +55,7 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
     const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
     if (stored) {
       setTheme(stored);
+      document.documentElement.classList.toggle('dark', stored === 'dark');
     }
   }, []);
 

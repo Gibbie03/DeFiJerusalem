@@ -35,7 +35,7 @@ export default function StatsCard({ label, value, icon: Icon, trend, tooltip }: 
               </TooltipProvider>
             )}
           </div>
-          <p className="text-2xl font-bold text-foreground truncate" data-testid={`text-${label.toLowerCase().replace(/\s+/g, '-')}-value`}>
+          <p className="text-3xl font-bold text-foreground truncate" data-testid={`text-${label.toLowerCase().replace(/\s+/g, '-')}-value`}>
             {value}
           </p>
           {trend && (
