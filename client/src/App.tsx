@@ -17,6 +17,7 @@ import SponsorshipGuide from "@/pages/SponsorshipGuide";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
 
 function CustomSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
@@ -91,6 +92,14 @@ function Router() {
 }
 
 function App() {
+  // Force invalidate all cached queries on app mount to ensure fresh data
+  // Fixes mobile browser cache persistence issues across different browsers
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/volume/cross-chain'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/protocols/trending'] });
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
