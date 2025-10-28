@@ -7,6 +7,7 @@ import { DAppDiscovery } from "./lib/dapp-discovery";
 import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { auditLogger } from "./lib/audit-logger";
+import { defiApi } from "./lib/defi-api";
 import { insertProtocolSchema, insertTutorialVideoSchema } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 
@@ -94,7 +95,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch fresh data from DeFiLlama
       const protocols = await discovery.fetchFromMultipleSources();
       const testDrainers = discovery.getTestDrainerProtocols();
-      const allProtocols = [...protocols, ...testDrainers];
+      let allProtocols = [...protocols, ...testDrainers];
+      
+      // Enrich with De.Fi audit data (top 100 protocols by TVL for efficiency)
+      try {
+        console.log('[DE.FI] Enriching protocols with audit data...');
+        const topProtocols = protocols
+          .filter(p => p.tvl > 0)
+          .sort((a, b) => b.tvl - a.tvl)
+          .slice(0, 100);
+        
+        const auditMap = await defiApi.enrichProtocolsWithAudits(
+          topProtocols.map(p => ({ name: p.name, address: p.id }))
+        );
+        
+        // Merge audit data into protocols
+        allProtocols = allProtocols.map(protocol => {
+          const auditData = auditMap.get(protocol.name.toLowerCase());
+          if (auditData) {
+            return {
+              ...protocol,
+              defiSecurityScore: auditData.securityScore,
+              defiAuditReports: auditData.auditReports,
+              defiHasMultisig: auditData.hasMultisig,
+              defiHasTimelock: auditData.hasTimelock,
+              defiDataFetchedAt: new Date().toISOString(),
+              // Update audit count with De.Fi data if available
+              auditCount: Math.max(protocol.auditCount, auditData.auditCount || 0),
+              audited: protocol.audited || auditData.auditCount > 0,
+            };
+          }
+          return protocol;
+        });
+        
+        console.log(`[DE.FI] Enriched ${auditMap.size} protocols with audit data`);
+      } catch (error) {
+        console.error('[DE.FI] Failed to enrich with audit data:', error);
+        // Continue without audit enrichment
+      }
       
       // Persist to database
       await storage.bulkUpsertProtocols(allProtocols as any);
