@@ -44,6 +44,8 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
 ## Recent Changes (October 28, 2025)
+- **Trending Ticker Rankings**: Added rank numbers (#1, #2, #3, etc.) to trending ticker displayed on homepage, showing position in the trending list.
+- **Admin Auto-Navigation Fix**: Fixed admin page to automatically navigate to dashboard after login without requiring manual page refresh. Added query invalidation to force session refresh.
 - **CRITICAL FIX - Blacklist Filtering in Trending**: Fixed trending list to exclude blacklisted protocols using NOT EXISTS subquery (prevents duplicate rows from multiple security scans per protocol). UniWswap AMM and other blacklisted protocols no longer appear in trending despite high percentage gains.
 - **CRITICAL FIX - Query Duplicate Rows**: Resolved issue where trending query returned duplicate rows (38-39 duplicates per protocol) due to LEFT JOIN with security_scans table. Changed to NOT EXISTS subquery for clean results.
 - **Data Flow Verification**: Confirmed volume and audit data flows correctly from database → backend API → frontend. Database has 5,192 protocols with volume (78.4%), 2,622 with audits. APIs return correct data: Binance $20B volume, Aave/Lido 2 audits each.
