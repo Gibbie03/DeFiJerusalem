@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2 } from 'lucide-react';
+import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2, ExternalLink } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -248,6 +248,18 @@ export default function Blacklist() {
                       <CardTitle className="text-lg flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-red-500" />
                         {entry.dappName || entry.dappId}
+                        {entry.website && (
+                          <a 
+                            href={entry.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid={`link-website-${entry.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
                       </CardTitle>
                       <CardDescription>
                         Flagged on {new Date(entry.timestamp).toLocaleDateString()}

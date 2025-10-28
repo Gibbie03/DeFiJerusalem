@@ -85,7 +85,7 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
 
   return (
     <Sidebar side={side} collapsible="icon" className="border-l">
-      <SidebarContent className="pt-4">
+      <SidebarContent className="pt-8">
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>

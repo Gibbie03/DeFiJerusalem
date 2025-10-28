@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, BarChart3 } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, BarChart3, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -277,6 +278,22 @@ export default function Dashboard() {
             tooltip="Protocols are automatically blacklisted when they reach a CRITICAL risk score (≥80 points). This includes new contracts (<7 days), no audits, anonymous teams, and low liquidity (<$50k)."
           />
         </div>
+
+        <Alert data-testid="alert-scanning-info" className="bg-muted/50">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Scanning Information</AlertTitle>
+          <AlertDescription className="space-y-2 mt-2">
+            <div>
+              <strong>How often do we scan?</strong> Security scans are currently manual-only. Click "Scan All" to run comprehensive threat detection across all protocols. Automated weekly scans are planned for future releases.
+            </div>
+            <div>
+              <strong>Multi-chain coverage:</strong> JERUSALEM scans DeFi protocols across 126+ blockchain chains including Ethereum, BSC, Polygon, Arbitrum, Optimism, Avalanche, Fantom, and more.
+            </div>
+            <div>
+              <strong>Can we scan contract addresses?</strong> Currently, JERUSALEM scans protocols discovered through DeFiLlama's comprehensive protocol database. Direct contract address scanning (paste any 0x address) is planned for a future release. For now, you can manually add protocols by URL using the "+ DApp" button.
+            </div>
+          </AlertDescription>
+        </Alert>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-3 space-y-4">

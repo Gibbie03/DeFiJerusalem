@@ -151,6 +151,7 @@ export type BlacklistEntry = {
   id: string;
   dappId: string;
   dappName: string;
+  website: string | null;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   threats: Threat[];
   reason: string | null;
