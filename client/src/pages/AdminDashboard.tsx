@@ -46,10 +46,16 @@ export default function AdminDashboard() {
     queryKey: ['/api/admin/session'],
   });
 
-  const { data: protocols = [], isLoading: protocolsLoading } = useQuery<Protocol[]>({
+  const { data: protocolsData, isLoading: protocolsLoading } = useQuery<{
+    protocols: Protocol[];
+    total: number;
+    auditedCount: number;
+  }>({
     queryKey: ['/api/protocols'],
     enabled: session?.authenticated,
   });
+
+  const protocols = protocolsData?.protocols || [];
 
   const { data: blacklist = [], isLoading: blacklistLoading } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],

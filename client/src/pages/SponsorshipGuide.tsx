@@ -22,7 +22,6 @@ const PRICING_TIERS = [
       'Priority placement in category',
       'Highlighted in search results',
       'Social media mentions (2x/month)',
-      'Newsletter inclusion',
       'Enhanced protocol details display',
     ],
     ideal: 'Growing protocols seeking visibility',
@@ -42,12 +41,34 @@ const PRICING_TIERS = [
       'Top 10 trending section placement',
       'Sponsored badge with custom messaging',
       'Homepage featured slot',
-      'Dedicated blog post feature',
+      'Dedicated X article feature',
       'Social media spotlight (4x/month)',
       'Priority customer support',
       'Advanced analytics dashboard',
     ],
     ideal: 'Established protocols driving user acquisition',
+  },
+  {
+    name: 'Premium',
+    tier: 'premium',
+    icon: Shield,
+    price: '$10,000+',
+    period: '/month',
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+    features: [
+      'All Sponsored benefits',
+      'Exclusive homepage banner placement',
+      'Custom branded landing page',
+      'Dedicated X thread series (weekly)',
+      'Co-branded security reports',
+      'White-label partnership opportunities',
+      'Direct integration support',
+      'Quarterly strategy sessions',
+      'Custom analytics & reporting',
+    ],
+    ideal: 'Major protocols seeking maximum exposure',
   },
 ];
 
@@ -83,11 +104,7 @@ const REQUIREMENTS = [
 
 export default function SponsorshipGuide() {
   const handleContactSales = (tier: string) => {
-    const email = 'sponsorships@Defijerusalem.com';
-    const subject = `${tier} Tier Sponsorship Inquiry`;
-    const body = `Hello,\n\nI'm interested in the ${tier} sponsorship tier for our protocol.\n\nProtocol Name: [Your Protocol]\nWebsite: [Your Website]\nTVL: [Current TVL]\nContact: [Your Email]\n\nPlease provide more information about the sponsorship process.\n\nBest regards`;
-    
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open('https://t.me/pingu1st', '_blank');
   };
 
   return (
@@ -98,20 +115,15 @@ export default function SponsorshipGuide() {
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-12">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
-              <Shield className="w-10 h-10 text-primary-foreground" />
-            </div>
-          </div>
           <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             Sponsorship & Featured Listings
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Amplify your protocol's visibility on the #1 DeFi security platform. Reach 100K+ monthly users actively researching DeFi investments. Two flexible tiers to match your growth stage.
+            Amplify your protocol's visibility on the #1 DeFi security platform. Reach 100K+ monthly users actively researching DeFi investments. Three flexible tiers to match your growth stage.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {PRICING_TIERS.map((tier) => {
             const Icon = tier.icon;
             return (
@@ -153,8 +165,8 @@ export default function SponsorshipGuide() {
                     onClick={() => handleContactSales(tier.name)}
                     data-testid={`button-contact-${tier.tier}`}
                   >
-                    <Mail className="w-4 h-4 mr-2" />
-                    Contact Sales
+                    <Send className="w-4 h-4 mr-2" />
+                    Contact on Telegram
                   </Button>
                 </CardContent>
               </Card>
