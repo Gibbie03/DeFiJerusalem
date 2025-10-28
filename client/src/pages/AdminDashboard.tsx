@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, LogOut, Edit, Save, X } from 'lucide-react';
+import { Shield, LogOut, Edit, Save, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -65,6 +65,28 @@ export default function AdminDashboard() {
       setLocation('/admin/login');
     }
   }, [session, sessionLoading, setLocation]);
+
+  const refreshProtocolsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/refresh-protocols', {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/volume/cross-chain'] });
+      toast({
+        title: 'Protocols Refreshed',
+        description: `Successfully refreshed ${data.protocolCount} protocols (${data.auditedCount} audited)`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Refresh Failed',
+        description: error instanceof Error ? error.message : 'Failed to refresh protocols',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -160,15 +182,26 @@ export default function AdminDashboard() {
               Manage JERUSALEM DeFi Security Scanner
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-            data-testid="button-logout"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="default"
+              onClick={() => refreshProtocolsMutation.mutate()}
+              disabled={refreshProtocolsMutation.isPending}
+              data-testid="button-refresh-protocols"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshProtocolsMutation.isPending ? 'animate-spin' : ''}`} />
+              {refreshProtocolsMutation.isPending ? 'Refreshing...' : 'Refresh All Protocols'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         <Card>

@@ -78,6 +78,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
+  // POST /api/admin/refresh-protocols - Force refresh all protocols from DeFiLlama
+  app.post("/api/admin/refresh-protocols", async (req: Request, res: Response) => {
+    try {
+      // Check admin authentication
+      if (!(req.session as any)?.isAdmin) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Admin authentication required' 
+        });
+      }
+      
+      console.log('[ADMIN] Manual protocol refresh triggered');
+      
+      // Fetch fresh data from DeFiLlama
+      const protocols = await discovery.fetchFromMultipleSources();
+      const testDrainers = discovery.getTestDrainerProtocols();
+      const allProtocols = [...protocols, ...testDrainers];
+      
+      // Persist to database
+      await storage.bulkUpsertProtocols(allProtocols as any);
+      
+      // Clear all caches
+      clearCache('protocols');
+      
+      console.log(`[ADMIN] Successfully refreshed ${allProtocols.length} protocols`);
+      
+      res.json({ 
+        success: true,
+        message: `Successfully refreshed ${allProtocols.length} protocols`,
+        protocolCount: allProtocols.length,
+        auditedCount: allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length
+      });
+    } catch (error) {
+      console.error('[ADMIN] Protocol refresh failed:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to refresh protocols",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/volume/cross-chain - Track volume across all chains and protocols
   app.get("/api/volume/cross-chain", apiLimiter, async (req: Request, res: Response) => {
     try {
