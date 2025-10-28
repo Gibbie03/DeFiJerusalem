@@ -41,22 +41,26 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">Trending</span>
         <div className="flex-1 overflow-hidden">
           <div className="animate-scroll-left flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
-            {[...trending, ...trending].map((protocol, index) => (
-              <button
-                key={`${protocol.id}-${index}`}
-                onClick={() => onProtocolClick?.(protocol)}
-                className="inline-flex items-center gap-2 hover-elevate active-elevate-2 px-2 py-1 rounded transition-colors"
-                data-testid={`trending-protocol-${protocol.id}`}
-              >
-                <span className="text-sm font-semibold text-foreground">{protocol.name}</span>
-                <span className={`text-xs font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
-                </span>
-                <span className="text-xs text-muted-foreground font-medium">
-                  {formatTVL(protocol.tvl)}
-                </span>
-              </button>
-            ))}
+            {[...trending, ...trending].map((protocol, index) => {
+              const rank = (index % trending.length) + 1;
+              return (
+                <button
+                  key={`${protocol.id}-${index}`}
+                  onClick={() => onProtocolClick?.(protocol)}
+                  className="inline-flex items-center gap-2 hover-elevate active-elevate-2 px-2 py-1 rounded transition-colors"
+                  data-testid={`trending-protocol-${protocol.id}`}
+                >
+                  <span className="text-xs font-bold text-primary/60 min-w-[1.5rem]">#{rank}</span>
+                  <span className="text-sm font-semibold text-foreground">{protocol.name}</span>
+                  <span className={`text-xs font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
+                  </span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {formatTVL(protocol.tvl)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

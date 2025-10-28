@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
 
 const loginSchema = z.object({
@@ -62,6 +62,11 @@ export default function AdminLogin() {
           title: 'Login Successful',
           description: `Welcome back, ${result.admin.username}!`,
         });
+        
+        // Invalidate session query to force refresh of admin state
+        await queryClient.invalidateQueries({ queryKey: ['/api/admin/session'] });
+        
+        // Navigate to admin dashboard
         setLocation('/admin/dashboard');
       } else {
         toast({
