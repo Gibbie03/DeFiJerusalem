@@ -353,7 +353,7 @@ export default function Dashboard() {
               return `$${vol.toFixed(2)}`;
             })()}
             icon={BarChart3}
-            tooltip="Total 24h trading volume across all tracked DeFi protocols on JERUSALEM"
+            tooltip="Aggregated 24h trading volume from DeFiLlama's DEX, derivatives, and options endpoints. Includes real volume data for 1,000+ protocols. Remaining protocols use TVL-based estimates. Data refreshes every 5 minutes."
           />
           <StatsCard
             label="Chains Supported"
@@ -365,7 +365,7 @@ export default function Dashboard() {
             label="Audited"
             value={stats.audited.toLocaleString()}
             icon={Shield}
-            tooltip="Number of protocols with verified audits. DeFiLlama API does not reliably provide audit information for most protocols. This data may not be accurate. Audits must be verified independently."
+            tooltip="Protocols with audit data from DeFiLlama. Note: Many audited protocols may show as unaudited due to incomplete API data. Always verify audit status on the protocol's official website. This is a known limitation of DeFiLlama's public API."
           />
           <StatsCard
             label="Blacklisted"

@@ -34,12 +34,57 @@ export class DAppDiscovery {
     }
   }
 
+  async fetchVolumeData(): Promise<Record<string, number>> {
+    // Fetch volume data from multiple DeFiLlama endpoints
+    const volumeData: Record<string, number> = {};
+    
+    try {
+      // Fetch DEX volumes
+      const dexData = await this.fetchWithRetry('https://api.llama.fi/overview/dexs?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
+      if (dexData.protocols && Array.isArray(dexData.protocols)) {
+        dexData.protocols.forEach((p: any) => {
+          if (p.total24h && typeof p.total24h === 'number') {
+            volumeData[p.name?.toLowerCase()] = p.total24h;
+          }
+        });
+      }
+      
+      // Fetch derivatives volumes
+      const derivData = await this.fetchWithRetry('https://api.llama.fi/overview/derivatives?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
+      if (derivData.protocols && Array.isArray(derivData.protocols)) {
+        derivData.protocols.forEach((p: any) => {
+          if (p.total24h && typeof p.total24h === 'number') {
+            volumeData[p.name?.toLowerCase()] = (volumeData[p.name?.toLowerCase()] || 0) + p.total24h;
+          }
+        });
+      }
+      
+      // Fetch options volumes
+      const optionsData = await this.fetchWithRetry('https://api.llama.fi/overview/options?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
+      if (optionsData.protocols && Array.isArray(optionsData.protocols)) {
+        optionsData.protocols.forEach((p: any) => {
+          if (p.total24h && typeof p.total24h === 'number') {
+            volumeData[p.name?.toLowerCase()] = (volumeData[p.name?.toLowerCase()] || 0) + p.total24h;
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch volume data:', error);
+    }
+    
+    return volumeData;
+  }
+
   async fetchFromMultipleSources(): Promise<Protocol[]> {
     const cached = apiCache.get('protocols');
     if (cached) return cached;
 
     try {
-      const protocols = await this.fetchWithRetry('https://api.llama.fi/protocols');
+      // Fetch both protocols and volume data in parallel
+      const [protocols, volumeData] = await Promise.all([
+        this.fetchWithRetry('https://api.llama.fi/protocols'),
+        this.fetchVolumeData()
+      ]);
 
       if (!Array.isArray(protocols)) {
         throw new Error('Invalid API response: Expected an array');
@@ -66,20 +111,11 @@ export class DAppDiscovery {
         const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
         const category = this.classifyCategory(p);
         
-        // Try to get real volume data from DeFiLlama
-        // Check multiple possible volume fields that DeFiLlama might provide
-        let volume24h = 0;
-        if (typeof p.volume24h === 'number') {
-          volume24h = p.volume24h;
-        } else if (typeof p.total24h === 'number') {
-          volume24h = p.total24h;
-        } else if (typeof p.dailyVolume === 'number') {
-          volume24h = p.dailyVolume;
-        } else if (typeof p.totalVolume24h === 'number') {
-          volume24h = p.totalVolume24h;
-        } else {
-          // Fallback: estimate volume based on TVL and activity
-          // Different protocols have different turnover rates
+        // Get real volume data from DeFiLlama volume endpoints
+        let volume24h = volumeData[p.name?.toLowerCase()] || 0;
+        
+        // If no real volume data available, estimate based on TVL
+        if (volume24h === 0) {
           const turnoverMultiplier = 
             category === 'DEX' ? 0.3 : 
             category === 'Derivatives' ? 0.5 :
