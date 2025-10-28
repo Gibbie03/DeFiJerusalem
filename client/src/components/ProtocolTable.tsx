@@ -1,7 +1,6 @@
 import { useState, useMemo, memo, useCallback } from 'react';
-import { Shield, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import MiniSparkline from '@/components/MiniSparkline';
 import type { Protocol, SecurityScan } from '@shared/schema';
@@ -208,8 +207,6 @@ export default function ProtocolTable({
   onViewDetails 
 }: ProtocolTableProps) {
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 100; // CoinMarketCap-style pagination
 
   const toggleWatchlist = useCallback((protocolId: string) => {
     setWatchlist(prev => {
@@ -222,22 +219,6 @@ export default function ProtocolTable({
       return newSet;
     });
   }, []);
-
-  // Pagination
-  const totalPages = Math.ceil(protocols.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentProtocols = protocols.slice(startIndex, endIndex);
-
-  const handlePrevPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(totalPages, prev + 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   return (
     <TooltipProvider>
@@ -258,11 +239,11 @@ export default function ProtocolTable({
               </tr>
             </thead>
             <tbody>
-              {currentProtocols.map((protocol, index) => (
+              {protocols.map((protocol, index) => (
                 <ProtocolRow
                   key={protocol.id}
                   protocol={protocol}
-                  index={startIndex + index}
+                  index={index}
                   scan={securityScans[protocol.id]}
                   isWatchlisted={watchlist.has(protocol.id)}
                   onToggleWatchlist={toggleWatchlist}
@@ -272,40 +253,6 @@ export default function ProtocolTable({
             </tbody>
           </table>
         </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, protocols.length)} of {protocols.length} protocols
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-                data-testid="button-prev-page"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-                data-testid="button-next-page"
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
     </TooltipProvider>
   );
