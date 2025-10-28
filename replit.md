@@ -44,6 +44,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
 ## Recent Changes (October 28, 2025)
+- **CRITICAL FIX - React Query Mobile Cache Issue**: Fixed aggressive client-side caching that persisted across different mobile browsers. Changed `staleTime: Infinity → 0` and added `refetchOnMount: true` to force fresh data fetches. Added app-level cache invalidation on mount to clear stale data. Fixes volume showing "No Data", stats showing old cached values, and trending showing only 6 protocols instead of 50.
 - **Sidebar UX Improvement**: Configured sidebar to start collapsed by default on desktop, overlay on top of content (instead of squeezing it), and auto-close when navigating between pages. Provides cleaner initial view while maintaining easy access via hamburger menu.
 - **Trending Ticker Rankings**: Added rank numbers (#1, #2, #3, etc.) to trending ticker displayed on homepage, showing position in the trending list.
 - **Admin Auto-Navigation Fix**: Fixed admin page to automatically navigate to dashboard after login without requiring manual page refresh. Added query invalidation to force session refresh.
