@@ -2,11 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { pool } from "./db";
 
 const app = express();
 
@@ -15,27 +17,56 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security headers with Helmet
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for Vite dev server
-  crossOriginEmbedderPolicy: false, // Allow embedding
+  contentSecurityPolicy: isProduction ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://coinzilla.com", "https://a.bitmedia.io"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "https://api.llama.fi", "https://defillama-datasets.llama.fi"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://coinzilla.com", "https://a.bitmedia.io"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  } : false, // Disable CSP in development for Vite
+  crossOriginEmbedderPolicy: false, // Allow embedding for ads
 }));
 
 // Cookie parser for CSRF tokens
 app.use(cookieParser());
 
-// Session configuration
-const MemoryStoreSession = MemoryStore(session);
+// Session configuration - Use PostgreSQL in production, MemoryStore in development
+const createSessionStore = () => {
+  if (isProduction) {
+    // Production: PostgreSQL session store for persistence across restarts
+    const PgSession = connectPgSimple(session);
+    return new PgSession({
+      pool,
+      tableName: 'session', // Will auto-create table if doesn't exist
+      createTableIfMissing: true,
+      pruneSessionInterval: 60 * 15, // Clean up expired sessions every 15 minutes
+    });
+  } else {
+    // Development: MemoryStore for faster performance
+    const MemoryStoreSession = MemoryStore(session);
+    return new MemoryStoreSession({
+      checkPeriod: 86400000, // 24 hours
+    });
+  }
+};
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'jerusalem-defi-security-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
-  store: new MemoryStoreSession({
-    checkPeriod: 86400000, // 24 hours
-  }),
+  store: createSessionStore(),
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction,
     sameSite: 'lax',
   },
 }));
