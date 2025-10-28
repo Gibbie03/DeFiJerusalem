@@ -78,14 +78,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
-  // GET /api/protocols - Fetch protocols (from DB or DeFiLlama) with aggressive caching and rate limiting
+  // GET /api/protocols - Fetch protocols with pagination support
   app.get("/api/protocols", apiLimiter, async (req, res) => {
     try {
       // Set HTTP cache headers for browser caching (CMC-level optimization)
       res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
       
-      // Extract query parameters for filtering
-      const { category, chain, minTvl } = req.query;
+      // Extract query parameters for filtering and pagination
+      const { category, chain, minTvl, limit: limitParam, offset: offsetParam } = req.query;
       const filters: { category?: string; chain?: string; minTvl?: number } = {};
       
       if (category && typeof category === 'string') {
@@ -103,35 +103,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create cache key based on filters
-      const cacheKey = Object.keys(filters).length > 0 
-        ? `protocols-${JSON.stringify(filters)}`
-        : 'protocols';
+      // Parse pagination parameters
+      const limit = limitParam ? parseInt(limitParam as string, 10) : 500;
+      const offset = offsetParam ? parseInt(offsetParam as string, 10) : 0;
       
-      // Check cache first (60s TTL for CMC-level speed)
-      const cached = getCache(cacheKey);
-      if (cached) {
-        // Set content-based ETag
-        res.set('ETag', cached.etag);
-        res.set('Content-Type', 'application/json');
+      // Validate pagination params
+      const validLimit = Math.min(Math.max(limit, 1), 1000); // Max 1000 per request
+      const validOffset = Math.max(offset, 0);
+      
+      // Create cache key based on filters + pagination
+      const cacheKey = `protocols-${JSON.stringify({ ...filters, limit: validLimit, offset: validOffset })}`;
+      const fullDataCacheKey = Object.keys(filters).length > 0 
+        ? `protocols-full-${JSON.stringify(filters)}`
+        : 'protocols-full';
+      
+      // Check if we have full dataset cached (for pagination)
+      const cachedFull = getCache(fullDataCacheKey);
+      if (cachedFull) {
+        const allProtocols = cachedFull.data;
+        const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
+        const response = {
+          protocols: paginatedData,
+          total: allProtocols.length,
+          limit: validLimit,
+          offset: validOffset,
+          hasMore: (validOffset + validLimit) < allProtocols.length
+        };
         
-        // If client has same ETag, return 304 Not Modified (saves bandwidth)
-        if (req.headers['if-none-match'] === cached.etag) {
-          return res.status(304).end();
+        // Cache this specific page
+        setCache(cacheKey, response, 60 * 1000);
+        
+        const pageCache = getCache(cacheKey);
+        if (pageCache) {
+          res.set('ETag', pageCache.etag);
+          res.set('Content-Type', 'application/json');
+          
+          if (req.headers['if-none-match'] === pageCache.etag) {
+            return res.status(304).end();
+          }
+          
+          return res.send(pageCache.serialized);
         }
-        
-        // Send pre-serialized JSON directly (no re-serialization overhead)
-        return res.send(cached.serialized);
+        return res.json(response);
       }
 
       // Try to load from database first (fastest)
       let existingProtocols = await storage.getProtocols(Object.keys(filters).length > 0 ? filters : undefined);
-      
-      // Limit results for performance (CMC-level speed) - paginate later if needed
-      // For now, limit to top 500 protocols by TVL for instant loading
-      if (existingProtocols.length > 500) {
-        existingProtocols = existingProtocols.slice(0, 500);
-      }
       
       // If we have protocols in DB, return them with test drainers appended
       if (existingProtocols.length > 0) {
@@ -142,15 +159,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Always append fresh test drainer protocols for demonstration
         const testDrainers = discovery.getTestDrainerProtocols();
-        const protocolsWithTestDrainers = [...realProtocols, ...testDrainers];
+        const allProtocols = [...realProtocols, ...testDrainers];
         
-        // Cache result for 60 seconds
-        setCache(cacheKey, protocolsWithTestDrainers, 60 * 1000);
+        // Cache FULL dataset for pagination
+        setCache(fullDataCacheKey, allProtocols, 60 * 1000);
         
         // Persist test drainers to DB immediately (async, non-blocking)
         storage.bulkUpsertProtocols(testDrainers as any).catch(err => 
           console.error('Failed to persist test drainers:', err)
         );
+        
+        // Return paginated data
+        const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
+        const response = {
+          protocols: paginatedData,
+          total: allProtocols.length,
+          limit: validLimit,
+          offset: validOffset,
+          hasMore: (validOffset + validLimit) < allProtocols.length
+        };
+        
+        // Cache this page
+        setCache(cacheKey, response, 60 * 1000);
         
         // Send with ETag immediately (first-hit optimization)
         const cacheEntry = getCache(cacheKey);
@@ -159,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.set('Content-Type', 'application/json');
           res.send(cacheEntry.serialized);
         } else {
-          res.json(protocolsWithTestDrainers);
+          res.json(response);
         }
         
         // Background refresh with guard (only once every 5 minutes)
@@ -191,8 +221,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist both real protocols and test drainers
       await storage.bulkUpsertProtocols(allProtocols as any);
       
-      // Cache for 60 seconds
-      setCache(cacheKey, allProtocols, 60 * 1000);
+      // Cache FULL dataset for pagination
+      setCache(fullDataCacheKey, allProtocols, 60 * 1000);
+      
+      // Return paginated data
+      const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
+      const response = {
+        protocols: paginatedData,
+        total: allProtocols.length,
+        limit: validLimit,
+        offset: validOffset,
+        hasMore: (validOffset + validLimit) < allProtocols.length
+      };
+      
+      // Cache this page
+      setCache(cacheKey, response, 60 * 1000);
       
       // Send with ETag immediately (first-hit optimization)
       const cacheEntry = getCache(cacheKey);
@@ -201,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.set('Content-Type', 'application/json');
         res.send(cacheEntry.serialized);
       } else {
-        res.json(allProtocols);
+        res.json(response);
       }
     } catch (error) {
       console.error("Error fetching protocols:", error);

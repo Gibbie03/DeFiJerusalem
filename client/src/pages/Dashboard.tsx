@@ -20,6 +20,15 @@ import AdSpace from '@/components/AdSpace';
 import SecurityRatingLegend from '@/components/SecurityRatingLegend';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
+// Paginated response type
+interface PaginatedResponse {
+  protocols: Protocol[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 export default function Dashboard() {
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [searchValue, setSearchValue] = useState('');
@@ -29,18 +38,34 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('trending');
   const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedSearch = useDebounce(searchValue, 300);
 
-  // Fetch protocols from API
-  const { data: protocols = [], isLoading, refetch } = useQuery<Protocol[]>({
+  // Fetch initial protocols from API with pagination
+  const { data: initialData, isLoading, refetch } = useQuery<PaginatedResponse>({
     queryKey: ['/api/protocols'],
     enabled: isOnline,
     staleTime: 30 * 60 * 1000, // 30 minutes
     retry: 3,
   });
+
+  // Update protocols when initial data loads
+  useEffect(() => {
+    if (initialData?.protocols) {
+      setAllProtocols(initialData.protocols);
+      setCurrentOffset(initialData.offset + initialData.protocols.length);
+      setHasMore(initialData.hasMore);
+    }
+  }, [initialData]);
+
+  // Protocols to display (either filtered or all loaded)
+  const protocols = allProtocols;
 
   // Fetch blacklist
   const { data: blacklist = [] } = useQuery<BlacklistEntry[]>({
@@ -91,6 +116,51 @@ export default function Dashboard() {
       scanMutation.mutate(protocolIds);
     }
   }, [protocols, scanMutation]);
+
+  // Load more protocols function
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || isLoadingMore || !isOnline) return;
+    
+    setIsLoadingMore(true);
+    try {
+      // Build query params with filters
+      const params = new URLSearchParams({
+        limit: '500',
+        offset: currentOffset.toString()
+      });
+      
+      if (selectedCategory !== 'all') params.append('category', selectedCategory);
+      if (selectedChain !== 'all') params.append('chain', selectedChain);
+      
+      const response = await fetch(`/api/protocols?${params.toString()}`);
+      
+      // Check response status
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data: PaginatedResponse = await response.json();
+      
+      if (data.protocols && data.protocols.length > 0) {
+        setAllProtocols(prev => [...prev, ...data.protocols]);
+        setCurrentOffset(prev => prev + data.protocols.length);
+        setHasMore(data.hasMore);
+        
+        toast({
+          title: "Loaded More Protocols",
+          description: `Loaded ${data.protocols.length} additional protocols. Total: ${currentOffset + data.protocols.length}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Load Failed",
+        description: error instanceof Error ? error.message : "Failed to load more protocols",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentOffset, hasMore, isLoadingMore, isOnline, toast, selectedCategory, selectedChain]);
 
   const chains = useMemo(() => {
     const uniqueChains = new Set<string>(['all']);
@@ -408,12 +478,45 @@ export default function Dashboard() {
                 <p className="text-muted-foreground">No protocols found</p>
               </div>
             ) : (
-              <ProtocolTable
-                key={`${selectedChain}-${selectedCategory}-${sortBy}-${activeTab}-${debouncedSearch}`}
-                protocols={displayProtocols}
-                securityScans={securityScans}
-                onViewDetails={handleViewDetails}
-              />
+              <>
+                <ProtocolTable
+                  key={`${selectedChain}-${selectedCategory}-${sortBy}-${activeTab}-${debouncedSearch}`}
+                  protocols={displayProtocols}
+                  securityScans={securityScans}
+                  onViewDetails={handleViewDetails}
+                />
+                
+                {/* Load More Button - Available for all filter states */}
+                {hasMore && activeTab === 'trending' && !debouncedSearch && (
+                  <div className="mt-8 flex flex-col items-center gap-3">
+                    <Button
+                      onClick={handleLoadMore}
+                      disabled={isLoadingMore || !isOnline}
+                      size="lg"
+                      className="min-w-[200px]"
+                      data-testid="button-load-more"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Database className="w-4 h-4 mr-2" />
+                          Load More Protocols
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-sm text-muted-foreground">
+                      Showing {allProtocols.length} of {initialData?.total || allProtocols.length}+ protocols
+                      {(selectedCategory !== 'all' || selectedChain !== 'all') && (
+                        <span className="ml-1">(filtered)</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         </Tabs>
