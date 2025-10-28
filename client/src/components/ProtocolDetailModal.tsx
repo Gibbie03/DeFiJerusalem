@@ -106,6 +106,50 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             </div>
           )}
 
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              data-testid="button-dapps-link"
+            >
+              <a 
+                href={`https://defillama.com/protocol/${protocol.id}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                View on DeFiLlama
+              </a>
+            </Button>
+            {protocol.website && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                data-testid="button-website-link"
+              >
+                <a href={protocol.website} target="_blank" rel="noopener noreferrer">
+                  <Globe className="w-3.5 h-3.5 mr-1.5" />
+                  Website
+                </a>
+              </Button>
+            )}
+            {protocol.twitter && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                data-testid="button-twitter-link"
+              >
+                <a href={`https://twitter.com/${protocol.twitter}`} target="_blank" rel="noopener noreferrer">
+                  <Twitter className="w-3.5 h-3.5 mr-1.5" />
+                  Twitter
+                </a>
+              </Button>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
