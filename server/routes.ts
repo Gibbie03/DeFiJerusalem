@@ -79,11 +79,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check cache first (60s TTL for CMC-level speed)
       const cached = getCache(cacheKey);
       if (cached) {
+        // Add ETag for conditional requests (CMC-level optimization)
+        const etag = `W/"protocols-${cacheKey}-${cached.length}"`;
+        res.set('ETag', etag);
+        
+        // If client has same ETag, return 304 Not Modified (saves bandwidth)
+        if (req.headers['if-none-match'] === etag) {
+          return res.status(304).end();
+        }
+        
         return res.json(cached);
       }
 
       // Try to load from database first (fastest)
-      const existingProtocols = await storage.getProtocols(Object.keys(filters).length > 0 ? filters : undefined);
+      let existingProtocols = await storage.getProtocols(Object.keys(filters).length > 0 ? filters : undefined);
+      
+      // Limit results for performance (CMC-level speed) - paginate later if needed
+      // For now, limit to top 500 protocols by TVL for instant loading
+      if (existingProtocols.length > 500) {
+        existingProtocols = existingProtocols.slice(0, 500);
+      }
       
       // If we have protocols in DB, return them with test drainers appended
       if (existingProtocols.length > 0) {
@@ -310,17 +325,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/blacklist - Get all blacklist entries (with rate limiting)
   app.get("/api/blacklist", apiLimiter, async (req, res) => {
     try {
-      // HTTP cache headers
+      // HTTP cache headers (CMC-level optimization)
       res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
       
       // Check cache first (5 minute TTL)
       const cached = getCache('blacklist');
       if (cached) {
+        // ETag for conditional requests
+        const etag = `W/"blacklist-${cached.length}"`;
+        res.set('ETag', etag);
+        
+        if (req.headers['if-none-match'] === etag) {
+          return res.status(304).end();
+        }
+        
         return res.json(cached);
       }
 
       const blacklist = await storage.getBlacklist();
       setCache('blacklist', blacklist, 5 * 60 * 1000); // 5 minutes
+      
+      // Add ETag to response
+      const etag = `W/"blacklist-${blacklist.length}"`;
+      res.set('ETag', etag);
+      
       res.json(blacklist);
     } catch (error) {
       console.error("Error fetching blacklist:", error);
@@ -432,17 +460,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/scans - Get all security scans (with rate limiting)
   app.get("/api/scans", apiLimiter, async (req, res) => {
     try {
-      // HTTP cache headers
+      // HTTP cache headers (CMC-level optimization)
       res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
       
       // Check cache first (3 minute TTL)
       const cached = getCache('scans');
       if (cached) {
+        // ETag for conditional requests
+        const scanCount = Object.keys(cached).length;
+        const etag = `W/"scans-${scanCount}"`;
+        res.set('ETag', etag);
+        
+        if (req.headers['if-none-match'] === etag) {
+          return res.status(304).end();
+        }
+        
         return res.json(cached);
       }
 
       const scans = await storage.getAllSecurityScans();
       setCache('scans', scans, 3 * 60 * 1000); // 3 minutes
+      
+      // Add ETag to response
+      const scanCount = Object.keys(scans).length;
+      const etag = `W/"scans-${scanCount}"`;
+      res.set('ETag', etag);
+      
       res.json(scans);
     } catch (error) {
       console.error("Error fetching scans:", error);
