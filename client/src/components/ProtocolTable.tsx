@@ -1,14 +1,27 @@
 import { useState, useMemo, memo, useCallback } from 'react';
-import { Star, Shield } from 'lucide-react';
+import { Star, Shield, Ban } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useQuery } from '@tanstack/react-query';
 import MiniSparkline from '@/components/MiniSparkline';
 import type { Protocol, SecurityScan } from '@shared/schema';
+
+interface AdminSession {
+  authenticated: boolean;
+  admin?: {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+  };
+}
 
 interface ProtocolTableProps {
   protocols: Protocol[];
   securityScans: Record<string, SecurityScan>;
   onViewDetails: (protocol: Protocol) => void;
+  onBlacklist?: (protocol: Protocol) => void;
 }
 
 // Memoized sparkline data cache - generate once per protocol ID
@@ -42,7 +55,9 @@ const ProtocolRow = memo(({
   scan, 
   isWatchlisted, 
   onToggleWatchlist, 
-  onViewDetails 
+  onViewDetails,
+  onBlacklist,
+  isAdmin
 }: { 
   protocol: Protocol; 
   index: number; 
@@ -50,6 +65,8 @@ const ProtocolRow = memo(({
   isWatchlisted: boolean;
   onToggleWatchlist: (id: string) => void;
   onViewDetails: (protocol: Protocol) => void;
+  onBlacklist?: (protocol: Protocol) => void;
+  isAdmin: boolean;
 }) => {
   const isPositiveChange = protocol.change24h >= 0;
   const sparklineData = useMemo(
@@ -219,6 +236,24 @@ const ProtocolRow = memo(({
           </TooltipContent>
         </Tooltip>
       </td>
+
+      {/* Admin Actions */}
+      {isAdmin && onBlacklist && (
+        <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBlacklist(protocol);
+            }}
+            className="text-destructive hover:text-destructive"
+            data-testid={`button-blacklist-${protocol.id}`}
+          >
+            <Ban className="w-4 h-4" />
+          </Button>
+        </td>
+      )}
     </tr>
   );
 });
@@ -228,9 +263,16 @@ ProtocolRow.displayName = 'ProtocolRow';
 export default function ProtocolTable({ 
   protocols, 
   securityScans, 
-  onViewDetails 
+  onViewDetails,
+  onBlacklist
 }: ProtocolTableProps) {
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
+
+  const { data: session } = useQuery<AdminSession>({
+    queryKey: ['/api/admin/session'],
+  });
+
+  const isAdmin = session?.authenticated === true;
 
   const toggleWatchlist = useCallback((protocolId: string) => {
     setWatchlist(prev => {
@@ -260,6 +302,9 @@ export default function ProtocolTable({
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">7d %</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Last 7 Days (TVL)</th>
                 <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Security</th>
+                {isAdmin && onBlacklist && (
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -272,6 +317,8 @@ export default function ProtocolTable({
                   isWatchlisted={watchlist.has(protocol.id)}
                   onToggleWatchlist={toggleWatchlist}
                   onViewDetails={onViewDetails}
+                  onBlacklist={onBlacklist}
+                  isAdmin={isAdmin}
                 />
               ))}
             </tbody>
