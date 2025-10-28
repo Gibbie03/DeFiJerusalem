@@ -83,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/refresh-protocols", async (req: Request, res: Response) => {
     try {
       // Check admin authentication
-      if (!(req.session as any)?.isAdmin) {
+      if (!req.session.adminId) {
         return res.status(401).json({ 
           success: false,
           message: 'Admin authentication required' 
