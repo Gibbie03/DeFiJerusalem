@@ -42,7 +42,7 @@ function Router() {
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
+    <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
       <div className="flex flex-col h-screen w-full">
         {/* Top Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm z-50 shrink-0">
@@ -63,7 +63,7 @@ function Router() {
         </header>
 
         {/* Main Container below header */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
           {/* Main Content */}
           <main className="flex-1 overflow-y-auto flex flex-col">
             <div className="flex-1">
@@ -82,7 +82,7 @@ function Router() {
             <Footer />
           </main>
 
-          {/* Sidebar on the Right - below header */}
+          {/* Sidebar on the Right - overlays on top */}
           <AppSidebar side="right" />
         </div>
       </div>
