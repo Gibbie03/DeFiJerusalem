@@ -1,7 +1,7 @@
 import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization } from "@shared/schema";
 import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gt, sql, and, gte } from "drizzle-orm";
+import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
 export interface IStorage {
   getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]>;
@@ -414,12 +414,15 @@ export class DatabaseStorage implements IStorage {
         sponsorshipTier: protocols.sponsorshipTier,
         featuredPosition: protocols.featuredPosition,
         sponsoredUntil: protocols.sponsoredUntil,
+        isBlacklisted: securityScans.isBlacklisted,
       })
       .from(protocols)
+      .leftJoin(securityScans, eq(protocols.id, securityScans.protocolId))
       .where(and(
         gt(protocols.change24h, 0), // Positive growth
         gte(protocols.securityScore, 50), // Exclude critical risk protocols (score < 50)
-        gt(sql`${protocols.tvl} * ${protocols.change24h} / 100`, 100) // Absolute growth > $100 (meaningful growth)
+        gt(sql`${protocols.tvl} * ${protocols.change24h} / 100`, 100), // Absolute growth > $100 (meaningful growth)
+        or(isNull(securityScans.isBlacklisted), eq(securityScans.isBlacklisted, false)) // Exclude blacklisted protocols
       ))
       .orderBy(desc(protocols.change24h)) // Sort by percentage growth
       .limit(limit);
