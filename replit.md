@@ -44,8 +44,8 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
 ## Recent Changes (October 28, 2025)
-- **Trending List Security Fix**: Updated trending algorithm to exclude protocols with critical risk (security score < 50) and track only absolute TVL growth > $100. Sorts by dollar growth to highlight meaningful movements.
-- **De.Fi Auto-Enrichment on Startup**: Added background process that automatically enriches top 100 protocols with De.Fi audit data on server startup if no enrichment exists. Currently experiencing De.Fi API issues (see Known Issues below).
+- **Removed De.Fi API Integration**: Removed all De.Fi API integration code due to persistent API failures. Now using DeFiLlama exclusively for audit and security data. Removed De.Fi security score display from frontend. Application now relies on DeFiLlama's audit data (2,622+ protocols) for audit information.
+- **Trending List Updated**: Updated trending algorithm to exclude protocols with critical risk (security score < 50), filter for meaningful growth (absolute TVL growth > $100), and sort by percentage growth (instead of dollar growth). This shows protocols with the highest percentage gains while filtering out risky and insignificant movements.
 - **CRITICAL BUG FIX - Contract Address Extraction**: Fixed bug where DeFiLlama's address objects `{ethereum: '0x...', bsc: '0x...'}` weren't being parsed correctly. Previously only extracted string addresses. Now extracts Ethereum addresses (preferred for De.Fi API) or first available chain address. This enables De.Fi enrichment for hundreds more protocols.
 - **Comprehensive SEO Optimization**: Implemented enterprise-grade SEO with meta tags, Open Graph/Twitter Cards, JSON-LD structured data (WebApplication, FAQPage, BreadcrumbList), sitemap.xml, robots.txt, and rich snippets for Google search visibility.
 - **De.Fi API Integration**: Integrated De.Fi's security API to enrich top 100 protocols (by TVL) with real audit data, security scores, multisig/timelock verification, and audit reports. Provides authoritative security analysis to supplement DeFiLlama data.
@@ -56,12 +56,10 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Contact Method**: Changed sponsorship contact from email to Telegram (@pingu1st).
 
 ## Known Issues
-- **De.Fi API Integration Failure**: ALL GraphQL queries to De.Fi API return "400 Bad Request" errors. The DEFI_API_KEY is configured correctly, suggesting the issue is either: (1) GraphQL schema mismatch with current API version, (2) missing required query parameters (chain/network context), or (3) API endpoint changes. The enrichment map also has a key mismatch bug (stores by protocol name, lookups by ID) that would prevent updates even if API succeeds. Backend volume ($95.3B across 1,291 protocols) and audit data (2,622 protocols) from DeFiLlama ARE working correctly.
-- **Recommended Fix**: Capture De.Fi API error response bodies, verify GraphQL schema against current documentation, and align enrichment map keys with caller expectations.
+- None currently. All features working as expected with DeFiLlama as primary data source.
 
 ## External Dependencies
-- **DeFiLlama API**: For DeFi protocol discovery, TVL data, volume data (DEX/derivatives/options/aggregators/fees endpoints), and basic audit information.
-- **De.Fi API**: For real security analysis, audit reports, multisig/timelock verification, holder analysis, and liquidity risk assessment (enriches top 100 protocols by TVL).
+- **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL data, volume data (DEX/derivatives/options/aggregators/fees endpoints), and audit information. Provides data for 1,291+ protocols with volume and 2,622+ audited protocols.
 - **Neon PostgreSQL**: Cloud-hosted PostgreSQL database.
 - **Shadcn UI**: UI component library.
 - **TanStack Query (React Query)**: For server state management and data fetching.
