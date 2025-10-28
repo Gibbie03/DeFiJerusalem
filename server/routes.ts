@@ -144,10 +144,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist to database
       await storage.bulkUpsertProtocols(allProtocols as any);
       
-      // Clear all protocol-related caches (protocols, volume, trending)
-      clearCache('protocols');
-      clearCache('volume-cross-chain');
-      clearCache('trending');
+      // Clear ALL caches to ensure fresh data (protocols, volume, trending, new, scans)
+      clearCache(); // Clear everything
+      console.log('[CACHE] Cleared all caches after protocol refresh');
       
       console.log(`[ADMIN] Successfully refreshed ${allProtocols.length} protocols`);
       

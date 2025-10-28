@@ -77,12 +77,20 @@ export default function AdminDashboard() {
       const res = await apiRequest('POST', '/api/admin/refresh-protocols', {});
       return await res.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/volume/cross-chain'] });
+    onSuccess: async (data) => {
+      // Invalidate and refetch ALL queries to ensure fresh data across entire app
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/protocols'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/volume/cross-chain'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/protocols/trending'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/protocols/new'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/scans'], refetchType: 'all' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/blacklist'], refetchType: 'all' }),
+      ]);
+      
       toast({
         title: 'Protocols Refreshed',
-        description: `Successfully refreshed ${data.protocolCount} protocols (${data.auditedCount} audited)`,
+        description: `Successfully refreshed ${data.protocolCount} protocols (${data.auditedCount} audited). All caches cleared.`,
       });
     },
     onError: (error) => {
