@@ -13,20 +13,30 @@ export class DAppDiscovery {
 
   async fetchWithRetry(url: string, retries = this.maxRetries): Promise<any> {
     try {
-      // CORS Proxy for browser compatibility
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl);
+      // Server-side: Call APIs directly (no CORS proxy needed)
+      console.log(`[FETCH] Attempting to fetch: ${url}`);
+      const response = await fetch(url);
+      
+      console.log(`[FETCH] Response status: ${response.status} for ${url}`);
       
       if (response.status === 429) {
+        console.warn(`[FETCH] Rate limited, waiting 5s before retry...`);
         await new Promise(resolve => setTimeout(resolve, 5000));
         if (retries > 0) return this.fetchWithRetry(url, retries - 1);
         throw new Error('Rate limit exceeded');
       }
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`[FETCH] Successfully fetched data from ${url}`);
+      return data;
     } catch (error) {
+      console.error(`[FETCH] Error fetching ${url}:`, error);
       if (retries > 0) {
+        console.log(`[FETCH] Retrying... (${retries} attempts left)`);
         await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         return this.fetchWithRetry(url, retries - 1);
       }
@@ -35,7 +45,7 @@ export class DAppDiscovery {
   }
 
   async fetchVolumeData(): Promise<Record<string, number>> {
-    // Fetch volume data from multiple DeFiLlama endpoints
+    console.log('[VOLUME] Starting volume data fetch from DeFiLlama...');
     const volumeData: Record<string, number> = {};
     
     // List of volume endpoints to fetch
@@ -47,6 +57,8 @@ export class DAppDiscovery {
       'fees',  // Includes lending, liquid staking, etc.
     ];
     
+    console.log(`[VOLUME] Fetching from ${endpoints.length} DeFiLlama endpoints...`);
+    
     // Fetch all endpoints in parallel with individual error handling
     const results = await Promise.allSettled(
       endpoints.map(endpoint => 
@@ -57,10 +69,15 @@ export class DAppDiscovery {
     );
     
     // Process each successful result
+    let successfulEndpoints = 0;
+    let failedEndpoints = 0;
+    
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
+        successfulEndpoints++;
         const data = result.value;
         if (data.protocols && Array.isArray(data.protocols)) {
+          let endpointProtocolCount = 0;
           data.protocols.forEach((p: any) => {
             const name = p.name?.toLowerCase();
             if (!name) return;
@@ -69,15 +86,25 @@ export class DAppDiscovery {
             const volume = p.total24h || p.dailyFees || p.dailyRevenue || 0;
             if (volume && typeof volume === 'number') {
               volumeData[name] = (volumeData[name] || 0) + volume;
+              endpointProtocolCount++;
             }
           });
+          console.log(`[VOLUME] ✓ ${endpoints[index]}: ${endpointProtocolCount} protocols with volume data`);
+        } else {
+          console.warn(`[VOLUME] ✗ ${endpoints[index]}: Invalid response format`);
         }
       } else {
-        console.warn(`Failed to fetch ${endpoints[index]} volume:`, result.reason);
+        failedEndpoints++;
+        console.error(`[VOLUME] ✗ ${endpoints[index]} FAILED:`, result.reason);
       }
     });
     
-    console.log(`[VOLUME] Fetched real volume data for ${Object.keys(volumeData).length} protocols`);
+    console.log(`[VOLUME] Summary: ${successfulEndpoints}/${endpoints.length} endpoints successful, ${Object.keys(volumeData).length} protocols with real volume data`);
+    
+    if (Object.keys(volumeData).length === 0) {
+      console.error('[VOLUME] WARNING: No volume data fetched from any endpoint! Protocols will use TVL-based estimates.');
+    }
+    
     return volumeData;
   }
 
