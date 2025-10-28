@@ -138,10 +138,18 @@ export default function AdSpace({ position }: AdSpaceProps) {
           {!isConfigured && (
             <div className="text-center p-4 border border-dashed border-muted-foreground/20 rounded">
               <p className="text-sm text-muted-foreground font-medium">
-                Crypto Ad Space ({position})
+                Put Your Banner Here
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Configure ad zones in <code className="bg-muted px-1 py-0.5 rounded">client/src/config/adConfig.ts</code>
+              <p className="text-xs text-muted-foreground mt-2">
+                Contact: <a 
+                  href="https://t.me/pingu1st" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                  data-testid="link-contact-telegram"
+                >
+                  t.me/pingu1st
+                </a>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
                 Expected Revenue: <span className="font-semibold text-green-500">$2-6 CPM</span>
