@@ -55,7 +55,7 @@ function clearCache(keyPrefix?: string): void {
   }
   
   // Clear all keys with prefix (for filtered queries like protocols-{...})
-  for (const key of cache.keys()) {
+  for (const key of Array.from(cache.keys())) {
     if (key.startsWith(keyPrefix)) {
       cache.delete(key);
     }
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (cachedFull) {
         const allProtocols = cachedFull.data;
         const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
-        const auditedCount = allProtocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length;
+        const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
         const response = {
           protocols: paginatedData,
           total: allProtocols.length,
@@ -173,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Return paginated data
         const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
-        const auditedCount = allProtocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length;
+        const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
         const response = {
           protocols: paginatedData,
           total: allProtocols.length,
@@ -230,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Return paginated data
       const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
-      const auditedCount = allProtocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length;
+      const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
       const response = {
         protocols: paginatedData,
         total: allProtocols.length,
