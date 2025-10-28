@@ -29,6 +29,11 @@ export const protocols = pgTable('protocols', {
   sponsoredUntil: timestamp('sponsored_until'),
   sponsorshipTier: text('sponsorship_tier').default('free'),
   featuredPosition: integer('featured_position'),
+  defiSecurityScore: real('defi_security_score'),
+  defiAuditReports: json('defi_audit_reports').$type<Array<{ auditor: string; date: string; reportUrl: string }>>(),
+  defiHasMultisig: boolean('defi_has_multisig'),
+  defiHasTimelock: boolean('defi_has_timelock'),
+  defiDataFetchedAt: timestamp('defi_data_fetched_at'),
 }, (table) => ({
   tvlIdx: index('protocols_tvl_idx').on(table.tvl),
   volume24hIdx: index('protocols_volume24h_idx').on(table.volume24h),
@@ -165,6 +170,11 @@ export type Protocol = {
   sponsoredUntil: string | null;
   sponsorshipTier: 'free' | 'featured' | 'sponsored';
   featuredPosition: number | null;
+  defiSecurityScore: number | null;
+  defiAuditReports: Array<{ auditor: string; date: string; reportUrl: string }> | null;
+  defiHasMultisig: boolean | null;
+  defiHasTimelock: boolean | null;
+  defiDataFetchedAt: string | null;
 };
 
 export type SecurityScan = {
