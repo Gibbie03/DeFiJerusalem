@@ -419,9 +419,9 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         gt(protocols.change24h, 0), // Positive growth
         gte(protocols.securityScore, 50), // Exclude critical risk protocols (score < 50)
-        gt(sql`${protocols.tvl} * ${protocols.change24h} / 100`, 100) // Absolute growth > $100
+        gt(sql`${protocols.tvl} * ${protocols.change24h} / 100`, 100) // Absolute growth > $100 (meaningful growth)
       ))
-      .orderBy(desc(sql`${protocols.tvl} * ${protocols.change24h} / 100`)) // Sort by absolute dollar growth
+      .orderBy(desc(protocols.change24h)) // Sort by percentage growth
       .limit(limit);
     
     return result.map(p => ({

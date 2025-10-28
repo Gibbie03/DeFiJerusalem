@@ -213,25 +213,13 @@ const ProtocolRow = memo(({
           <TooltipTrigger asChild>
             <div className="flex flex-col items-center gap-1">
               {getSecurityBadge(protocol.securityScore)}
-              {protocol.defiSecurityScore && (
-                <div className="text-[10px] text-muted-foreground">
-                  De.Fi: {protocol.defiSecurityScore}
-                </div>
-              )}
             </div>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
             <p className="text-xs font-semibold mb-1">Security Score: {protocol.securityScore}/100</p>
             {scan?.isBlacklisted && <p className="text-xs text-destructive">⚠️ Flagged as High Risk</p>}
-            {protocol.defiSecurityScore && (
-              <>
-                <p className="text-xs mt-2 font-semibold">De.Fi Analysis: {protocol.defiSecurityScore}/100</p>
-                {protocol.defiHasMultisig && <p className="text-xs text-green-500">✓ Multisig Wallet</p>}
-                {protocol.defiHasTimelock && <p className="text-xs text-green-500">✓ Timelock Protection</p>}
-                {protocol.defiAuditReports && protocol.defiAuditReports.length > 0 && (
-                  <p className="text-xs text-blue-500">✓ {protocol.defiAuditReports.length} Audit Report(s)</p>
-                )}
-              </>
+            {protocol.auditCount > 0 && (
+              <p className="text-xs text-green-500 mt-2">✓ {protocol.auditCount} Audit{protocol.auditCount > 1 ? 's' : ''} Completed</p>
             )}
           </TooltipContent>
         </Tooltip>
