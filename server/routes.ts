@@ -141,8 +141,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue without audit enrichment
       }
       
+      // Log sample data before persisting
+      const sampleProtocol = allProtocols[0];
+      console.log('[ADMIN] Sample protocol before DB save:', {
+        name: sampleProtocol.name,
+        volume24h: sampleProtocol.volume24h,
+        audited: sampleProtocol.audited,
+        auditCount: sampleProtocol.auditCount
+      });
+      
       // Persist to database
       await storage.bulkUpsertProtocols(allProtocols as any);
+      
+      // Verify data was saved correctly by reading it back
+      const savedProtocols = await storage.getProtocols();
+      const totalVolume = savedProtocols.reduce((sum, p) => sum + (p.volume24h || 0), 0);
+      const auditedCount = savedProtocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length;
+      
+      console.log('[ADMIN] Data saved to DB:', {
+        totalProtocols: savedProtocols.length,
+        totalVolume: totalVolume,
+        auditedCount: auditedCount,
+        sampleProtocol: savedProtocols[0] ? {
+          name: savedProtocols[0].name,
+          volume24h: savedProtocols[0].volume24h,
+          audited: savedProtocols[0].audited,
+          auditCount: savedProtocols[0].auditCount
+        } : null
+      });
       
       // Clear ALL caches to ensure fresh data (protocols, volume, trending, new, scans)
       clearCache(); // Clear everything
@@ -153,8 +179,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true,
         message: `Successfully refreshed ${allProtocols.length} protocols`,
-        protocolCount: allProtocols.length,
-        auditedCount: allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length
+        protocolCount: savedProtocols.length,
+        auditedCount: auditedCount,
+        totalVolume: totalVolume
       });
     } catch (error) {
       console.error('[ADMIN] Protocol refresh failed:', error);
@@ -192,6 +219,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all protocols from database
       const protocols = await storage.getProtocols();
+      
+      console.log('[VOLUME API] Fetched protocols from DB:', {
+        totalProtocols: protocols.length,
+        sampleVolumes: protocols.slice(0, 5).map(p => ({
+          name: p.name,
+          volume24h: p.volume24h
+        }))
+      });
       
       // Aggregate volume by chain
       const volumeByChain: Record<string, number> = {};
@@ -242,6 +277,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         topProtocols,
         timestamp: new Date().toISOString()
       };
+      
+      console.log('[VOLUME API] Returning response:', {
+        totalVolume,
+        protocolCount,
+        topProtocolsCount: topProtocols.length
+      });
       
       // Cache for 5 minutes (300,000ms) with pre-serialized JSON
       setCache(cacheKey, response, 300_000);
