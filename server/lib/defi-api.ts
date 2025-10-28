@@ -275,17 +275,25 @@ export class DefiApiService {
       return auditMap;
     }
 
+    // Filter out protocols without valid string addresses
+    const validProtocols = protocols.filter(p => {
+      if (!p.address || typeof p.address !== 'string') {
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`[DE.FI] Processing ${validProtocols.length} protocols with valid addresses out of ${protocols.length} total`);
+
     // Process in batches of 10 to avoid rate limits
     const batchSize = 10;
-    for (let i = 0; i < protocols.length; i += batchSize) {
-      const batch = protocols.slice(i, i + batchSize);
+    for (let i = 0; i < validProtocols.length; i += batchSize) {
+      const batch = validProtocols.slice(i, i + batchSize);
       
       await Promise.allSettled(
         batch.map(async (protocol) => {
-          if (!protocol.address) return;
-          
           try {
-            const securityData = await this.getContractSecurity(protocol.address);
+            const securityData = await this.getContractSecurity(protocol.address!);
             if (securityData) {
               auditMap.set(protocol.name.toLowerCase(), {
                 securityScore: securityData.securityScore,
@@ -296,13 +304,13 @@ export class DefiApiService {
               });
             }
           } catch (error) {
-            // Silent fail for individual protocols
+            console.warn(`[DE.FI] Failed to fetch security for ${protocol.name}:`, error);
           }
         })
       );
 
       // Rate limit protection - wait 1 second between batches
-      if (i + batchSize < protocols.length) {
+      if (i + batchSize < validProtocols.length) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }

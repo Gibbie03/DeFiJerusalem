@@ -106,8 +106,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .slice(0, 100);
         
         const auditMap = await defiApi.enrichProtocolsWithAudits(
-          topProtocols.map(p => ({ name: p.name, address: p.id }))
+          topProtocols
+            .filter(p => (p as any).contractAddress) // Only protocols with contract addresses
+            .map(p => ({ 
+              name: p.name, 
+              address: (p as any).contractAddress 
+            }))
         );
+        
+        console.log(`[DE.FI] Attempting to enrich ${topProtocols.filter(p => (p as any).contractAddress).length} protocols with contract addresses`);
         
         // Merge audit data into protocols
         allProtocols = allProtocols.map(protocol => {

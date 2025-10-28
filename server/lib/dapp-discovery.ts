@@ -117,6 +117,14 @@ export class DAppDiscovery {
         const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
         const category = this.classifyCategory(p);
         
+        // Extract contract address - DeFiLlama returns either a string or null
+        // (Note: Some protocols have no address, e.g., CEXs)
+        let contractAddress: string | null = null;
+        if (p.address && typeof p.address === 'string') {
+          // Simple string address (usually Ethereum mainnet)
+          contractAddress = p.address.toLowerCase();
+        }
+        
         // Get real volume data from DeFiLlama volume endpoints
         let volume24h = volumeData[p.name?.toLowerCase()] || 0;
         
@@ -164,6 +172,7 @@ export class DAppDiscovery {
           defiHasMultisig: null,
           defiHasTimelock: null,
           defiDataFetchedAt: null,
+          contractAddress: contractAddress,
         } as any;
       });
 
