@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte } from "drizzle-orm";
 
@@ -31,6 +31,14 @@ export interface IStorage {
   createAdmin(username: string, passwordHash: string, email: string): Promise<AdminUser>;
   updateAdminLastLogin(adminId: string): Promise<void>;
   updateProtocol(protocolId: string, updates: Partial<Protocol>): Promise<void>;
+  
+  // Protocol customization methods
+  createCustomizationRequest(data: InsertProtocolCustomization): Promise<ProtocolCustomization>;
+  getCustomizationsByProtocol(protocolId: string): Promise<ProtocolCustomization[]>;
+  getCustomizationById(id: string): Promise<ProtocolCustomization | undefined>;
+  updateCustomizationStatus(id: string, status: string, reviewNotes?: string): Promise<void>;
+  updateCustomizationPayment(id: string, paymentStatus: string, txHash?: string, currency?: string): Promise<void>;
+  getAllCustomizations(): Promise<ProtocolCustomization[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -561,6 +569,170 @@ export class DatabaseStorage implements IStorage {
       .update(protocols)
       .set(dbUpdates)
       .where(eq(protocols.id, protocolId));
+  }
+
+  async createCustomizationRequest(data: InsertProtocolCustomization): Promise<ProtocolCustomization> {
+    const [customization] = await db
+      .insert(protocolCustomizations)
+      .values({
+        id: `custom-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        ...data,
+      } as any)
+      .returning();
+    
+    return {
+      id: customization.id,
+      protocolId: customization.protocolId,
+      requestorEmail: customization.requestorEmail,
+      requestorName: customization.requestorName,
+      customDescription: customization.customDescription,
+      customWebsite: customization.customWebsite,
+      customTwitter: customization.customTwitter,
+      customGithub: customization.customGithub,
+      customAuditLinks: customization.customAuditLinks as string[] | null,
+      customLogo: customization.customLogo,
+      paymentAmount: customization.paymentAmount,
+      paymentStatus: customization.paymentStatus as 'pending' | 'paid' | 'confirmed' | 'failed',
+      paymentCurrency: customization.paymentCurrency,
+      paymentTxHash: customization.paymentTxHash,
+      paymentAddress: customization.paymentAddress,
+      status: customization.status as 'pending' | 'payment_pending' | 'under_review' | 'approved' | 'rejected' | 'applied',
+      reviewNotes: customization.reviewNotes,
+      createdAt: customization.createdAt.toISOString(),
+      approvedAt: customization.approvedAt?.toISOString() ?? null,
+      appliedAt: customization.appliedAt?.toISOString() ?? null,
+    };
+  }
+
+  async getCustomizationsByProtocol(protocolId: string): Promise<ProtocolCustomization[]> {
+    const customizations = await db
+      .select()
+      .from(protocolCustomizations)
+      .where(eq(protocolCustomizations.protocolId, protocolId))
+      .orderBy(desc(protocolCustomizations.createdAt));
+    
+    return customizations.map(c => ({
+      id: c.id,
+      protocolId: c.protocolId,
+      requestorEmail: c.requestorEmail,
+      requestorName: c.requestorName,
+      customDescription: c.customDescription,
+      customWebsite: c.customWebsite,
+      customTwitter: c.customTwitter,
+      customGithub: c.customGithub,
+      customAuditLinks: c.customAuditLinks as string[] | null,
+      customLogo: c.customLogo,
+      paymentAmount: c.paymentAmount,
+      paymentStatus: c.paymentStatus as 'pending' | 'paid' | 'confirmed' | 'failed',
+      paymentCurrency: c.paymentCurrency,
+      paymentTxHash: c.paymentTxHash,
+      paymentAddress: c.paymentAddress,
+      status: c.status as 'pending' | 'payment_pending' | 'under_review' | 'approved' | 'rejected' | 'applied',
+      reviewNotes: c.reviewNotes,
+      createdAt: c.createdAt.toISOString(),
+      approvedAt: c.approvedAt?.toISOString() ?? null,
+      appliedAt: c.appliedAt?.toISOString() ?? null,
+    }));
+  }
+
+  async getCustomizationById(id: string): Promise<ProtocolCustomization | undefined> {
+    const [customization] = await db
+      .select()
+      .from(protocolCustomizations)
+      .where(eq(protocolCustomizations.id, id));
+    
+    if (!customization) return undefined;
+    
+    return {
+      id: customization.id,
+      protocolId: customization.protocolId,
+      requestorEmail: customization.requestorEmail,
+      requestorName: customization.requestorName,
+      customDescription: customization.customDescription,
+      customWebsite: customization.customWebsite,
+      customTwitter: customization.customTwitter,
+      customGithub: customization.customGithub,
+      customAuditLinks: customization.customAuditLinks as string[] | null,
+      customLogo: customization.customLogo,
+      paymentAmount: customization.paymentAmount,
+      paymentStatus: customization.paymentStatus as 'pending' | 'paid' | 'confirmed' | 'failed',
+      paymentCurrency: customization.paymentCurrency,
+      paymentTxHash: customization.paymentTxHash,
+      paymentAddress: customization.paymentAddress,
+      status: customization.status as 'pending' | 'payment_pending' | 'under_review' | 'approved' | 'rejected' | 'applied',
+      reviewNotes: customization.reviewNotes,
+      createdAt: customization.createdAt.toISOString(),
+      approvedAt: customization.approvedAt?.toISOString() ?? null,
+      appliedAt: customization.appliedAt?.toISOString() ?? null,
+    };
+  }
+
+  async updateCustomizationStatus(id: string, status: string, reviewNotes?: string): Promise<void> {
+    const updates: any = { status };
+    
+    if (reviewNotes) {
+      updates.reviewNotes = reviewNotes;
+    }
+    
+    if (status === 'approved') {
+      updates.approvedAt = new Date();
+    }
+    
+    if (status === 'applied') {
+      updates.appliedAt = new Date();
+    }
+    
+    await db
+      .update(protocolCustomizations)
+      .set(updates)
+      .where(eq(protocolCustomizations.id, id));
+  }
+
+  async updateCustomizationPayment(id: string, paymentStatus: string, txHash?: string, currency?: string): Promise<void> {
+    const updates: any = { paymentStatus };
+    
+    if (txHash) {
+      updates.paymentTxHash = txHash;
+    }
+    
+    if (currency) {
+      updates.paymentCurrency = currency;
+    }
+    
+    await db
+      .update(protocolCustomizations)
+      .set(updates)
+      .where(eq(protocolCustomizations.id, id));
+  }
+
+  async getAllCustomizations(): Promise<ProtocolCustomization[]> {
+    const customizations = await db
+      .select()
+      .from(protocolCustomizations)
+      .orderBy(desc(protocolCustomizations.createdAt));
+    
+    return customizations.map(c => ({
+      id: c.id,
+      protocolId: c.protocolId,
+      requestorEmail: c.requestorEmail,
+      requestorName: c.requestorName,
+      customDescription: c.customDescription,
+      customWebsite: c.customWebsite,
+      customTwitter: c.customTwitter,
+      customGithub: c.customGithub,
+      customAuditLinks: c.customAuditLinks as string[] | null,
+      customLogo: c.customLogo,
+      paymentAmount: c.paymentAmount,
+      paymentStatus: c.paymentStatus as 'pending' | 'paid' | 'confirmed' | 'failed',
+      paymentCurrency: c.paymentCurrency,
+      paymentTxHash: c.paymentTxHash,
+      paymentAddress: c.paymentAddress,
+      status: c.status as 'pending' | 'payment_pending' | 'under_review' | 'approved' | 'rejected' | 'applied',
+      reviewNotes: c.reviewNotes,
+      createdAt: c.createdAt.toISOString(),
+      approvedAt: c.approvedAt?.toISOString() ?? null,
+      appliedAt: c.appliedAt?.toISOString() ?? null,
+    }));
   }
 }
 

@@ -113,6 +113,33 @@ export const adminUsers = pgTable('admin_users', {
   usernameIdx: index('admin_users_username_idx').on(table.username),
 }));
 
+export const protocolCustomizations = pgTable('protocol_customizations', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull().references(() => protocols.id),
+  requestorEmail: text('requestor_email').notNull(),
+  requestorName: text('requestor_name'),
+  customDescription: text('custom_description'),
+  customWebsite: text('custom_website'),
+  customTwitter: text('custom_twitter'),
+  customGithub: text('custom_github'),
+  customAuditLinks: json('custom_audit_links').$type<string[]>(),
+  customLogo: text('custom_logo'),
+  paymentAmount: real('payment_amount').notNull().default(200),
+  paymentStatus: text('payment_status').notNull().default('pending'),
+  paymentCurrency: text('payment_currency'),
+  paymentTxHash: text('payment_tx_hash'),
+  paymentAddress: text('payment_address'),
+  status: text('status').notNull().default('pending'),
+  reviewNotes: text('review_notes'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  approvedAt: timestamp('approved_at'),
+  appliedAt: timestamp('applied_at'),
+}, (table) => ({
+  protocolIdIdx: index('protocol_customizations_protocol_id_idx').on(table.protocolId),
+  statusIdx: index('protocol_customizations_status_idx').on(table.status),
+  paymentStatusIdx: index('protocol_customizations_payment_status_idx').on(table.paymentStatus),
+}));
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -204,6 +231,29 @@ export type AdminUser = {
   lastLogin: string | null;
 };
 
+export type ProtocolCustomization = {
+  id: string;
+  protocolId: string;
+  requestorEmail: string;
+  requestorName: string | null;
+  customDescription: string | null;
+  customWebsite: string | null;
+  customTwitter: string | null;
+  customGithub: string | null;
+  customAuditLinks: string[] | null;
+  customLogo: string | null;
+  paymentAmount: number;
+  paymentStatus: 'pending' | 'paid' | 'confirmed' | 'failed';
+  paymentCurrency: string | null;
+  paymentTxHash: string | null;
+  paymentAddress: string | null;
+  status: 'pending' | 'payment_pending' | 'under_review' | 'approved' | 'rejected' | 'applied';
+  reviewNotes: string | null;
+  createdAt: string;
+  approvedAt: string | null;
+  appliedAt: string | null;
+};
+
 export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -231,10 +281,18 @@ export const insertSponsorPaymentSchema = createInsertSchema(sponsorPayments).om
   createdAt: true 
 });
 
+export const insertProtocolCustomizationSchema = createInsertSchema(protocolCustomizations).omit({ 
+  id: true, 
+  createdAt: true,
+  approvedAt: true,
+  appliedAt: true
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
 export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
 export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
+export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());
