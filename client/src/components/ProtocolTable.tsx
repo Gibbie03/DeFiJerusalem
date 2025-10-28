@@ -14,19 +14,21 @@ interface ProtocolTableProps {
 // Memoized sparkline data cache - generate once per protocol ID
 const sparklineCache = new Map<string, number[]>();
 
-const generateSparklineData = (protocolId: string, change24h: number): number[] => {
+const generateSparklineData = (protocolId: string, tvl: number): number[] => {
   if (sparklineCache.has(protocolId)) {
     return sparklineCache.get(protocolId)!;
   }
   
-  const baseValue = 100;
-  const volatility = Math.abs(change24h) / 10;
-  const trend = change24h > 0 ? 1 : -1;
+  // Generate realistic 7-day TVL trend based on current TVL
+  const baseValue = tvl;
+  const volatility = baseValue * 0.05; // 5% volatility
   
   const data = Array.from({ length: 7 }, (_, i) => {
-    const trendEffect = (i / 6) * change24h * trend;
+    // Create slight upward or downward trend
+    const trendFactor = (Math.random() - 0.5) * 0.02;
+    const dayTrend = baseValue * (1 + trendFactor * i);
     const randomness = (Math.random() - 0.5) * volatility;
-    return baseValue + trendEffect + randomness;
+    return Math.max(0, dayTrend + randomness);
   });
   
   sparklineCache.set(protocolId, data);
@@ -51,8 +53,8 @@ const ProtocolRow = memo(({
 }) => {
   const isPositiveChange = protocol.change24h >= 0;
   const sparklineData = useMemo(
-    () => generateSparklineData(protocol.id, protocol.change24h),
-    [protocol.id, protocol.change24h]
+    () => generateSparklineData(protocol.id, protocol.tvl),
+    [protocol.id, protocol.tvl]
   );
   const sevenDayChange = protocol.change24h * 1.2;
   
@@ -169,11 +171,6 @@ const ProtocolRow = memo(({
         </div>
       </td>
 
-      {/* Market Cap (using TVL as proxy) */}
-      <td className="px-3 py-4 text-right">
-        <div className="text-sm text-foreground">{formatTVL(protocol.tvl)}</div>
-      </td>
-
       {/* Sparkline Chart */}
       <td className="px-3 py-4 text-right">
         <div className="flex justify-end">
@@ -230,11 +227,10 @@ export default function ProtocolTable({
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground w-12"></th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">#</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Name</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Price (TVL)</th>
+                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">TVL</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">24h %</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">7d %</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Market Cap</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Last 7 Days</th>
+                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Last 7 Days (TVL)</th>
                 <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Security</th>
               </tr>
             </thead>

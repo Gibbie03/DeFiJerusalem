@@ -34,7 +34,7 @@ export default function Dashboard() {
   const [searchValue, setSearchValue] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState<'tvl' | 'volume' | 'security'>('tvl');
+  const [sortBy, setSortBy] = useState<'tvl' | 'volume' | 'security'>('security');
   const [activeTab, setActiveTab] = useState('trending');
   const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -243,12 +243,12 @@ export default function Dashboard() {
   }, [filteredProtocols, activeTab, sortBy]);
 
   const stats = useMemo(() => ({
-    total: protocols.length,
-    chains: chains.length - 1,
-    audited: protocols.filter(p => p.auditCount && p.auditCount > 0).length,
+    total: initialData?.total || protocols.length,
+    chains: 126,
+    audited: protocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
     totalTVL: protocols.reduce((sum, p) => sum + p.tvl, 0)
-  }), [protocols, chains, blacklist]);
+  }), [protocols, blacklist, initialData]);
 
   const handleRefresh = useCallback(async () => {
     if (!isOnline) {
@@ -332,8 +332,9 @@ export default function Dashboard() {
           />
           <StatsCard
             label="Chains Supported"
-            value={stats.chains}
+            value="126+"
             icon={TrendingUp}
+            tooltip="JERUSALEM tracks DeFi protocols across 126+ blockchain networks including Ethereum, BSC, Polygon, Arbitrum, Optimism, Avalanche, and more"
           />
           <StatsCard
             label="Audited"
