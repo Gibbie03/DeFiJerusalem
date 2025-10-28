@@ -43,8 +43,14 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Error Handling**: Generic error messages returned to clients to prevent information leakage.
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
+## Recent Changes (October 28, 2025)
+- **Volume Data Accuracy**: Updated to fetch real 24h volume from DeFiLlama's DEX, derivatives, and options endpoints instead of estimating. Provides accurate volume for 1,000+ protocols with real trading data.
+- **Data Transparency**: Updated dashboard tooltips to clearly indicate data sources and accuracy limitations for both volume and audit statistics.
+- **Sponsorship Tiers**: Updated to 3 tiers (Featured $500-1K, Sponsored $2-5K, Premium $10K+). Removed newsletter from tier 1, changed blog post to X article in tier 2, added comprehensive Premium tier with white-label partnerships.
+- **Contact Method**: Changed sponsorship contact from email to Telegram (@pingu1st).
+
 ## External Dependencies
-- **DeFiLlama API**: For DeFi protocol discovery, TVL data, and audit information.
+- **DeFiLlama API**: For DeFi protocol discovery, TVL data, volume data (DEX/derivatives/options endpoints), and audit information.
 - **Neon PostgreSQL**: Cloud-hosted PostgreSQL database.
 - **Shadcn UI**: UI component library.
 - **TanStack Query (React Query)**: For server state management and data fetching.

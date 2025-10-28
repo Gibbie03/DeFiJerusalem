@@ -38,40 +38,46 @@ export class DAppDiscovery {
     // Fetch volume data from multiple DeFiLlama endpoints
     const volumeData: Record<string, number> = {};
     
-    try {
-      // Fetch DEX volumes
-      const dexData = await this.fetchWithRetry('https://api.llama.fi/overview/dexs?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
-      if (dexData.protocols && Array.isArray(dexData.protocols)) {
-        dexData.protocols.forEach((p: any) => {
-          if (p.total24h && typeof p.total24h === 'number') {
-            volumeData[p.name?.toLowerCase()] = p.total24h;
-          }
-        });
-      }
-      
-      // Fetch derivatives volumes
-      const derivData = await this.fetchWithRetry('https://api.llama.fi/overview/derivatives?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
-      if (derivData.protocols && Array.isArray(derivData.protocols)) {
-        derivData.protocols.forEach((p: any) => {
-          if (p.total24h && typeof p.total24h === 'number') {
-            volumeData[p.name?.toLowerCase()] = (volumeData[p.name?.toLowerCase()] || 0) + p.total24h;
-          }
-        });
-      }
-      
-      // Fetch options volumes
-      const optionsData = await this.fetchWithRetry('https://api.llama.fi/overview/options?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
-      if (optionsData.protocols && Array.isArray(optionsData.protocols)) {
-        optionsData.protocols.forEach((p: any) => {
-          if (p.total24h && typeof p.total24h === 'number') {
-            volumeData[p.name?.toLowerCase()] = (volumeData[p.name?.toLowerCase()] || 0) + p.total24h;
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch volume data:', error);
-    }
+    // List of volume endpoints to fetch
+    const endpoints = [
+      'dexs',
+      'derivatives',
+      'options',
+      'aggregators',
+      'fees',  // Includes lending, liquid staking, etc.
+    ];
     
+    // Fetch all endpoints in parallel with individual error handling
+    const results = await Promise.allSettled(
+      endpoints.map(endpoint => 
+        this.fetchWithRetry(
+          `https://api.llama.fi/overview/${endpoint}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`
+        )
+      )
+    );
+    
+    // Process each successful result
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const data = result.value;
+        if (data.protocols && Array.isArray(data.protocols)) {
+          data.protocols.forEach((p: any) => {
+            const name = p.name?.toLowerCase();
+            if (!name) return;
+            
+            // Aggregate volume from multiple sources (total24h, dailyFees, dailyRevenue)
+            const volume = p.total24h || p.dailyFees || p.dailyRevenue || 0;
+            if (volume && typeof volume === 'number') {
+              volumeData[name] = (volumeData[name] || 0) + volume;
+            }
+          });
+        }
+      } else {
+        console.warn(`Failed to fetch ${endpoints[index]} volume:`, result.reason);
+      }
+    });
+    
+    console.log(`[VOLUME] Fetched real volume data for ${Object.keys(volumeData).length} protocols`);
     return volumeData;
   }
 
