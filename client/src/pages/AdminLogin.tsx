@@ -21,6 +21,7 @@ const initAdminSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   email: z.string().email('Invalid email address'),
+  bootstrapSecret: z.string().min(1, 'Bootstrap secret is required'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -46,6 +47,7 @@ export default function AdminLogin() {
       username: '',
       password: '',
       email: '',
+      bootstrapSecret: '',
     },
   });
 
@@ -254,6 +256,28 @@ export default function AdminLogin() {
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={initForm.control}
+                  name="bootstrapSecret"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bootstrap Secret</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="password"
+                          placeholder="Enter the ADMIN_BOOTSTRAP_SECRET value"
+                          data-testid="input-init-bootstrap-secret"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This is the ADMIN_BOOTSTRAP_SECRET environment variable set in Replit Secrets
+                      </p>
                     </FormItem>
                   )}
                 />
