@@ -584,6 +584,7 @@ export default function Dashboard() {
         isOpen={!!selectedProtocol}
         onClose={() => setSelectedProtocol(null)}
         onScan={handleScanProtocol}
+        onBlacklist={handleBlacklist}
         isScanning={scanMutation.isPending}
       />
     </div>

@@ -1,4 +1,4 @@
-import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, BarChart3 } from 'lucide-react';
+import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, BarChart3, Ban } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,28 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useQuery } from '@tanstack/react-query';
 import SecurityBadge from './SecurityBadge';
 import SeverityIndicator from './SeverityIndicator';
-import type { TutorialVideo } from '@shared/schema';
-
-interface Protocol {
-  id: string;
-  name: string;
-  chains: string[];
-  category: string;
-  tvl: number;
-  volume24h: number;
-  change24h: number;
-  securityScore: number;
-  logo?: string | null;
-  website?: string | null;
-  twitter?: string | null;
-  github?: string | null;
-  audited: boolean;
-  auditCount?: number;
-  auditNote?: string | null;
-  auditLinks?: string[] | null;
-  age?: number | null;
-  description?: string;
-}
+import type { Protocol, TutorialVideo } from '@shared/schema';
 
 interface ScanResult {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -46,11 +25,19 @@ interface ProtocolDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onScan?: (protocolId: string) => void;
+  onBlacklist?: (protocol: Protocol) => void;
   isScanning?: boolean;
 }
 
-export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onClose, onScan, isScanning = false }: ProtocolDetailModalProps) {
+export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onClose, onScan, onBlacklist, isScanning = false }: ProtocolDetailModalProps) {
   if (!protocol) return null;
+
+  // Check admin session
+  const { data: session } = useQuery<{ authenticated: boolean }>({
+    queryKey: ['/api/admin/session'],
+    staleTime: 5 * 60 * 1000,
+  });
+  const isAdmin = session?.authenticated === true;
 
   // Removed tutorial fetching to improve performance
   const relatedTutorials: TutorialVideo[] = [];
@@ -207,7 +194,7 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
               <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Shield className="w-4 h-4 text-primary" />
-                  Audit Information
+                  Audit Information (DeFiLlama)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -246,16 +233,124 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             </Card>
           )}
 
-          {onScan && (
+          {(protocol.defiSecurityScore !== null || (protocol.defiAuditReports && protocol.defiAuditReports.length > 0) || protocol.defiHasMultisig !== null || protocol.defiHasTimelock !== null) && (
+            <Card className="bg-emerald-500/5 border-emerald-500/20">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-500" />
+                  De.Fi Security Analysis
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Real-time security data from De.Fi API
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {protocol.defiSecurityScore !== null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Security Score</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${
+                            protocol.defiSecurityScore >= 80 ? 'bg-emerald-500' :
+                            protocol.defiSecurityScore >= 60 ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }`}
+                          style={{ width: `${protocol.defiSecurityScore}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-bold">{protocol.defiSecurityScore}/100</span>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  {protocol.defiHasMultisig !== null && (
+                    <div className="flex items-center gap-2">
+                      {protocol.defiHasMultisig ? (
+                        <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Multisig
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          No Multisig
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  {protocol.defiHasTimelock !== null && (
+                    <div className="flex items-center gap-2">
+                      {protocol.defiHasTimelock ? (
+                        <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          Timelock
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          No Timelock
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {protocol.defiAuditReports && protocol.defiAuditReports.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">De.Fi Audit Reports ({protocol.defiAuditReports.length})</p>
+                    <div className="space-y-2">
+                      {protocol.defiAuditReports.map((report, index) => (
+                        <div key={index} className="flex items-start justify-between p-2 bg-muted/50 rounded-md">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold">{report.auditor}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(report.date).toLocaleDateString()}</p>
+                          </div>
+                          {report.reportUrl && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              data-testid={`button-defi-audit-report-${index}`}
+                            >
+                              <a href={report.reportUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {protocol.defiDataFetchedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Last updated: {new Date(protocol.defiDataFetchedAt).toLocaleString()}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {(onScan || (isAdmin && onBlacklist)) && (
             <div className="flex gap-2">
-              <Button
-                onClick={() => onScan(protocol.id)}
-                disabled={isScanning}
-                data-testid="button-scan-protocol"
-              >
-                <Scan className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-                {isScanning ? 'Scanning...' : 'Scan Protocol'}
-              </Button>
+              {onScan && (
+                <Button
+                  onClick={() => onScan(protocol.id)}
+                  disabled={isScanning}
+                  data-testid="button-scan-protocol"
+                >
+                  <Scan className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                  {isScanning ? 'Scanning...' : 'Scan Protocol'}
+                </Button>
+              )}
+              {isAdmin && onBlacklist && (
+                <Button
+                  onClick={() => onBlacklist(protocol)}
+                  variant="destructive"
+                  data-testid="button-blacklist-protocol"
+                >
+                  <Ban className="w-4 h-4 mr-2" />
+                  Blacklist Protocol
+                </Button>
+              )}
             </div>
           )}
 
