@@ -946,6 +946,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/protocol-customizations - Create a customization request (with validation and rate limiting)
+  app.post("/api/protocol-customizations", apiLimiter, async (req: Request, res: Response) => {
+    try {
+      // Validate request body with Zod
+      const { insertProtocolCustomizationSchema } = await import("@shared/schema");
+      const validatedData = insertProtocolCustomizationSchema.parse(req.body);
+      
+      const customization = await storage.createCustomizationRequest(validatedData);
+      
+      auditLogger.logFromRequest(req, 'CUSTOMIZATION_REQUEST_CREATED', true, { 
+        protocolId: customization.protocolId,
+        requestorEmail: customization.requestorEmail 
+      });
+      
+      res.json({ 
+        success: true,
+        customization 
+      });
+    } catch (error) {
+      console.error("Error creating customization request:", error);
+      auditLogger.logFromRequest(req, 'CUSTOMIZATION_REQUEST_FAILED', false, { error: error instanceof Error ? error.message : "Unknown" });
+      res.status(400).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Invalid request data"
+      });
+    }
+  });
+
+  // GET /api/protocol-customizations/:protocolId - Get customization requests for a protocol
+  app.get("/api/protocol-customizations/:protocolId", async (req: Request, res: Response) => {
+    try {
+      const { protocolId } = req.params;
+      const customizations = await storage.getCustomizationsByProtocol(protocolId);
+      
+      res.json({ 
+        success: true,
+        customizations 
+      });
+    } catch (error) {
+      console.error("Error fetching customizations:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch customizations"
+      });
+    }
+  });
+
+  // GET /api/admin/protocol-customizations - Get all customization requests (Admin only)
+  app.get("/api/admin/protocol-customizations", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const customizations = await storage.getAllCustomizations();
+      
+      res.json({ 
+        success: true,
+        customizations 
+      });
+    } catch (error) {
+      console.error("Error fetching all customizations:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch customizations"
+      });
+    }
+  });
+
+  // PATCH /api/admin/protocol-customizations/:id/status - Update customization status (Admin only)
+  app.patch("/api/admin/protocol-customizations/:id/status", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        auditLogger.logFromRequest(req, 'CUSTOMIZATION_STATUS_UPDATE_UNAUTHORIZED', false, { id: req.params.id });
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const { id } = req.params;
+      const { status, reviewNotes } = req.body;
+      
+      // Validate status is a valid value
+      const validStatuses = ['pending', 'payment_pending', 'under_review', 'approved', 'rejected', 'applied'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid status value' 
+        });
+      }
+
+      await storage.updateCustomizationStatus(id, status, reviewNotes);
+      
+      auditLogger.logFromRequest(req, 'CUSTOMIZATION_STATUS_UPDATED', true, { id, status });
+      
+      res.json({ 
+        success: true 
+      });
+    } catch (error) {
+      console.error("Error updating customization status:", error);
+      auditLogger.logFromRequest(req, 'CUSTOMIZATION_STATUS_UPDATE_FAILED', false, { id: req.params.id });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to update status"
+      });
+    }
+  });
+
+  // PATCH /api/admin/protocol-customizations/:id/payment - Update payment status (Admin only - requires verification)
+  app.patch("/api/admin/protocol-customizations/:id/payment", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        auditLogger.logFromRequest(req, 'CUSTOMIZATION_PAYMENT_UPDATE_UNAUTHORIZED', false, { id: req.params.id });
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Admin authentication required to update payment status' 
+        });
+      }
+
+      const { id } = req.params;
+      const { paymentStatus, txHash, currency } = req.body;
+      
+      // Validate payment status
+      const validPaymentStatuses = ['pending', 'paid', 'confirmed', 'failed'];
+      if (!validPaymentStatuses.includes(paymentStatus)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid payment status' 
+        });
+      }
+      
+      // Require transaction hash for 'paid' or 'confirmed' status
+      if ((paymentStatus === 'paid' || paymentStatus === 'confirmed') && !txHash) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Transaction hash required for paid/confirmed status' 
+        });
+      }
+
+      await storage.updateCustomizationPayment(id, paymentStatus, txHash, currency);
+      
+      auditLogger.logFromRequest(req, 'CUSTOMIZATION_PAYMENT_UPDATED', true, { 
+        id, 
+        paymentStatus, 
+        hasTxHash: !!txHash 
+      });
+      
+      res.json({ 
+        success: true 
+      });
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      auditLogger.logFromRequest(req, 'CUSTOMIZATION_PAYMENT_UPDATE_FAILED', false, { id: req.params.id });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to update payment"
+      });
+    }
+  });
+
   // Weekly scanning function (optimized for speed)
   const performWeeklyScan = async () => {
     try {
