@@ -121,6 +121,29 @@ export default function Dashboard() {
     },
   });
 
+  // Manual blacklist mutation
+  const blacklistMutation = useMutation({
+    mutationFn: async (protocolId: string) => {
+      const res = await apiRequest('POST', '/api/admin/blacklist', { protocolId });
+      return await res.json();
+    },
+    onSuccess: (data: { success: boolean; message: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
+      toast({
+        title: "Blacklist Updated",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Blacklist Failed",
+        description: error?.message || "Failed to blacklist protocol",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Manual scan function
   const handleScanAll = useCallback(() => {
     if (protocols.length > 0) {
@@ -294,6 +317,10 @@ export default function Dashboard() {
   const handleScanProtocol = useCallback((protocolId: string) => {
     scanMutation.mutate([protocolId]);
   }, [scanMutation]);
+
+  const handleBlacklist = useCallback((protocol: Protocol) => {
+    blacklistMutation.mutate(protocol.id);
+  }, [blacklistMutation]);
 
   if (!isOnline) {
     return (
@@ -510,6 +537,7 @@ export default function Dashboard() {
                   protocols={displayProtocols}
                   securityScans={securityScans}
                   onViewDetails={handleViewDetails}
+                  onBlacklist={handleBlacklist}
                 />
                 
                 {/* Load More Button - Available for all filter states */}

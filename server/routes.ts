@@ -663,7 +663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch protocol data
-      const protocol = await storage.getProtocol(protocolId);
+      const allProtocols = await storage.getProtocols();
+      const protocol = allProtocols.find(p => p.id === protocolId);
       if (!protocol) {
         return res.status(404).json({ 
           success: false,
@@ -712,7 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ip: req.ip || 'unknown',
         userAgent: req.get('user-agent') || 'unknown',
         success: true,
-        metadata: { protocolId, protocolName: protocol.name }
+        details: { protocolId, protocolName: protocol.name }
       });
 
       res.json({ 
