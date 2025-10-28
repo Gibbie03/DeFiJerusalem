@@ -83,7 +83,7 @@ export default function AdSpace({ position }: AdSpaceProps) {
 
       // Create Coinzilla ad configuration
       const configScript = document.createElement('script');
-      configScript.innerHTML = `
+      configScript.textContent = `
         window.coinzilla_display = window.coinzilla_display || [];
         var c_display_preferences = {};
         c_display_preferences.zone = "${coinzillaConfig.zoneId.replace('C-', '')}";
