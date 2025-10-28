@@ -47,9 +47,36 @@ export default function NewDApps() {
     },
   });
 
+  const blacklistMutation = useMutation({
+    mutationFn: async (protocolId: string) => {
+      const res = await apiRequest('POST', '/api/admin/blacklist', { protocolId });
+      return await res.json();
+    },
+    onSuccess: (data: { success: boolean; message: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/protocols/new'] });
+      toast({
+        title: "Blacklist Updated",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Blacklist Failed",
+        description: error?.message || "Failed to blacklist protocol",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleScanProtocol = useCallback((protocolId: string) => {
     scanMutation.mutate([protocolId]);
   }, [scanMutation]);
+
+  const handleBlacklist = useCallback((protocol: Protocol) => {
+    blacklistMutation.mutate(protocol.id);
+  }, [blacklistMutation]);
 
   const filteredProtocols = protocols.filter(p =>
     p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -127,6 +154,7 @@ export default function NewDApps() {
             scanResult={securityScans[selectedProtocol.id]}
             onClose={() => setSelectedProtocol(null)}
             onScan={handleScanProtocol}
+            onBlacklist={handleBlacklist}
             isScanning={scanMutation.isPending}
           />
         )}

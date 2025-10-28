@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2, ExternalLink } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
@@ -6,19 +6,29 @@ import SearchBar from '@/components/SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
+import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import type { BlacklistEntry } from '@shared/schema';
+import type { BlacklistEntry, Protocol, SecurityScan } from '@shared/schema';
 
 export default function Blacklist() {
   const [searchValue, setSearchValue] = useState('');
+  const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const { toast } = useToast();
 
   const { data: blacklist = [], isLoading } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
+  });
+
+  const { data: protocols = [] } = useQuery<Protocol[]>({
+    queryKey: ['/api/protocols'],
+  });
+
+  const { data: securityScans = {} } = useQuery<Record<string, SecurityScan>>({
+    queryKey: ['/api/scans'],
   });
 
   // Delete mutation
@@ -49,11 +59,43 @@ export default function Blacklist() {
     },
   });
 
+  const scanMutation = useMutation({
+    mutationFn: async (protocolIds: string[]) => {
+      const res = await apiRequest('POST', '/api/scan', { protocolIds });
+      return await res.json();
+    },
+    onSuccess: (data: { scanResults: Record<string, SecurityScan>; scannedCount: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scans'] });
+      toast({
+        title: "Security Scan Complete",
+        description: `Scanned protocol successfully`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Scan Failed",
+        description: error instanceof Error ? error.message : "Failed to scan protocol",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDelete = (entryId: string, dappName: string) => {
     if (confirm(`Are you sure you want to remove "${dappName}" from the blacklist?`)) {
       deleteMutation.mutate(entryId);
     }
   };
+
+  const handleScanProtocol = useCallback((protocolId: string) => {
+    scanMutation.mutate([protocolId]);
+  }, [scanMutation]);
+
+  const handleViewProtocol = useCallback((dappId: string) => {
+    const protocol = protocols.find(p => p.id === dappId);
+    if (protocol) {
+      setSelectedProtocol(protocol);
+    }
+  }, [protocols]);
 
   const filteredBlacklist = blacklist.filter(entry =>
     entry.dappId.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -247,7 +289,13 @@ export default function Blacklist() {
                     <div className="flex-1">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-red-500" />
-                        {entry.dappName || entry.dappId}
+                        <button
+                          onClick={() => handleViewProtocol(entry.dappId)}
+                          className="hover:text-primary transition-colors underline decoration-dotted"
+                          data-testid={`link-protocol-${entry.id}`}
+                        >
+                          {entry.dappName || entry.dappId}
+                        </button>
                         {entry.website && (
                           <a 
                             href={entry.website} 
@@ -314,6 +362,17 @@ export default function Blacklist() {
               </Card>
             ))}
           </div>
+        )}
+
+        {selectedProtocol && (
+          <ProtocolDetailModal
+            isOpen={true}
+            protocol={selectedProtocol}
+            scanResult={securityScans[selectedProtocol.id]}
+            onClose={() => setSelectedProtocol(null)}
+            onScan={handleScanProtocol}
+            isScanning={scanMutation.isPending}
+          />
         )}
       </main>
 
