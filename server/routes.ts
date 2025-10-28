@@ -144,8 +144,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist to database
       await storage.bulkUpsertProtocols(allProtocols as any);
       
-      // Clear all caches
+      // Clear all protocol-related caches (protocols, volume, trending)
       clearCache('protocols');
+      clearCache('volume-cross-chain');
+      clearCache('trending');
       
       console.log(`[ADMIN] Successfully refreshed ${allProtocols.length} protocols`);
       
@@ -168,6 +170,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/volume/cross-chain - Track volume across all chains and protocols
   app.get("/api/volume/cross-chain", apiLimiter, async (req: Request, res: Response) => {
     try {
+      // Check application cache first (CMC-level optimization)
+      const cacheKey = 'volume-cross-chain';
+      const cached = getCache(cacheKey);
+      
+      if (cached) {
+        // Set HTTP cache headers
+        res.set('Cache-Control', 'public, max-age=300');
+        res.set('ETag', cached.etag);
+        
+        // Check if client has valid cached version
+        if (req.headers['if-none-match'] === cached.etag) {
+          return res.status(304).end();
+        }
+        
+        // Return pre-serialized cached response (sub-10ms performance)
+        res.set('Content-Type', 'application/json');
+        return res.send(cached.serialized);
+      }
+      
       res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
       
       // Get all protocols from database
@@ -222,6 +243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         topProtocols,
         timestamp: new Date().toISOString()
       };
+      
+      // Cache for 5 minutes (300,000ms) with pre-serialized JSON
+      setCache(cacheKey, response, 300_000);
       
       res.json(response);
     } catch (error) {
