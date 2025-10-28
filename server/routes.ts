@@ -79,6 +79,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
+  // GET /api/admin/diagnostics - Check current database state (admin only)
+  app.get("/api/admin/diagnostics", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ message: 'Admin authentication required' });
+      }
+
+      const protocols = await storage.getProtocols();
+      const totalVolume = protocols.reduce((sum, p) => sum + (p.volume24h || 0), 0);
+      const auditedCount = protocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length;
+      
+      res.json({
+        databaseStats: {
+          totalProtocols: protocols.length,
+          totalVolume: totalVolume,
+          totalVolumeFormatted: totalVolume >= 1e9 ? `$${(totalVolume / 1e9).toFixed(2)}B` : `$${(totalVolume / 1e6).toFixed(2)}M`,
+          auditedCount: auditedCount,
+        },
+        sampleProtocols: protocols.slice(0, 10).map(p => ({
+          name: p.name,
+          volume24h: p.volume24h,
+          audited: p.audited,
+          auditCount: p.auditCount
+        })),
+        environment: process.env.NODE_ENV || 'unknown',
+        databaseUrl: process.env.DATABASE_URL ? 'Connected' : 'Not connected'
+      });
+    } catch (error) {
+      console.error('[DIAGNOSTICS] Error:', error);
+      res.status(500).json({ message: 'Failed to fetch diagnostics' });
+    }
+  });
+
   // POST /api/admin/refresh-protocols - Force refresh all protocols from DeFiLlama
   app.post("/api/admin/refresh-protocols", async (req: Request, res: Response) => {
     try {
