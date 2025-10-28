@@ -68,6 +68,17 @@ export default function Dashboard() {
   // Protocols to display (either filtered or all loaded)
   const protocols = allProtocols;
 
+  // Fetch cross-chain volume data
+  const { data: volumeData } = useQuery<{
+    totalVolume: number;
+    protocolCount: number;
+    chainCount: number;
+  }>({
+    queryKey: ['/api/volume/cross-chain'],
+    enabled: isOnline,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   // Fetch blacklist
   const { data: blacklist = [] } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
@@ -312,7 +323,7 @@ export default function Dashboard() {
       <TrendingTicker onProtocolClick={handleViewDetails} />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <StatsCard
             label="Total Protocols"
             value={stats.total.toLocaleString()}
@@ -330,6 +341,19 @@ export default function Dashboard() {
             })()}
             icon={DollarSign}
             tooltip="Total Value Locked across all tracked protocols"
+          />
+          <StatsCard
+            label="Total Volume"
+            value={(() => {
+              const vol = volumeData?.totalVolume || 0;
+              if (vol >= 1_000_000_000_000) return `$${(vol / 1_000_000_000_000).toFixed(2)}T`;
+              if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(2)}B`;
+              if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(2)}M`;
+              if (vol >= 1_000) return `$${(vol / 1_000).toFixed(2)}K`;
+              return `$${vol.toFixed(2)}`;
+            })()}
+            icon={BarChart3}
+            tooltip="Total 24h trading volume across all tracked DeFi protocols on JERUSALEM"
           />
           <StatsCard
             label="Chains Supported"
