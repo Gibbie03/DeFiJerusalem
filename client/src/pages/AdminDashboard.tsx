@@ -78,20 +78,18 @@ export default function AdminDashboard() {
       return await res.json();
     },
     onSuccess: async (data) => {
-      // Invalidate and refetch ALL queries to ensure fresh data across entire app
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['/api/protocols'], refetchType: 'all' }),
-        queryClient.invalidateQueries({ queryKey: ['/api/volume/cross-chain'], refetchType: 'all' }),
-        queryClient.invalidateQueries({ queryKey: ['/api/protocols/trending'], refetchType: 'all' }),
-        queryClient.invalidateQueries({ queryKey: ['/api/protocols/new'], refetchType: 'all' }),
-        queryClient.invalidateQueries({ queryKey: ['/api/scans'], refetchType: 'all' }),
-        queryClient.invalidateQueries({ queryKey: ['/api/blacklist'], refetchType: 'all' }),
-      ]);
-      
       toast({
         title: 'Protocols Refreshed',
-        description: `Successfully refreshed ${data.protocolCount} protocols (${data.auditedCount} audited). All caches cleared.`,
+        description: `Successfully refreshed ${data.protocolCount} protocols (${data.auditedCount} audited). Reloading app...`,
       });
+      
+      // Clear React Query cache completely
+      queryClient.clear();
+      
+      // Force hard reload after 1 second to ensure all caches are cleared
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     },
     onError: (error) => {
       toast({
