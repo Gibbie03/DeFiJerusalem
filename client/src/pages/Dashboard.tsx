@@ -24,6 +24,7 @@ import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 interface PaginatedResponse {
   protocols: Protocol[];
   total: number;
+  auditedCount: number;
   limit: number;
   offset: number;
   hasMore: boolean;
@@ -245,7 +246,7 @@ export default function Dashboard() {
   const stats = useMemo(() => ({
     total: initialData?.total || protocols.length,
     chains: 126,
-    audited: protocols.filter(p => p.audited || (p.auditCount && p.auditCount > 0)).length,
+    audited: initialData?.auditedCount || 0,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
     totalTVL: protocols.reduce((sum, p) => sum + p.tvl, 0)
   }), [protocols, blacklist, initialData]);
