@@ -117,12 +117,27 @@ export class DAppDiscovery {
         const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
         const category = this.classifyCategory(p);
         
-        // Extract contract address - DeFiLlama returns either a string or null
-        // (Note: Some protocols have no address, e.g., CEXs)
+        // Extract contract address - DeFiLlama returns either a string, object, or null
+        // Most protocols return an object like { ethereum: '0x...', bsc: '0x...' }
         let contractAddress: string | null = null;
-        if (p.address && typeof p.address === 'string') {
-          // Simple string address (usually Ethereum mainnet)
-          contractAddress = p.address.toLowerCase();
+        if (p.address) {
+          if (typeof p.address === 'string') {
+            // Simple string address (usually Ethereum mainnet)
+            contractAddress = p.address.toLowerCase();
+          } else if (typeof p.address === 'object' && p.address !== null) {
+            // Address is an object with chain names as keys
+            // Prefer Ethereum address for De.Fi API compatibility
+            const addressObj = p.address as Record<string, string>;
+            if (addressObj.ethereum || addressObj.Ethereum) {
+              contractAddress = (addressObj.ethereum || addressObj.Ethereum).toLowerCase();
+            } else {
+              // Fallback: take first available address from any chain
+              const firstAddress = Object.values(addressObj)[0];
+              if (firstAddress && typeof firstAddress === 'string') {
+                contractAddress = firstAddress.toLowerCase();
+              }
+            }
+          }
         }
         
         // Get real volume data from DeFiLlama volume endpoints

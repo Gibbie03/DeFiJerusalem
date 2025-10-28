@@ -44,6 +44,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
 ## Recent Changes (October 28, 2025)
+- **CRITICAL BUG FIX - Contract Address Extraction**: Fixed bug where DeFiLlama's address objects `{ethereum: '0x...', bsc: '0x...'}` weren't being parsed correctly. Previously only extracted string addresses. Now extracts Ethereum addresses (preferred for De.Fi API) or first available chain address. This enables De.Fi enrichment for hundreds more protocols.
 - **Comprehensive SEO Optimization**: Implemented enterprise-grade SEO with meta tags, Open Graph/Twitter Cards, JSON-LD structured data (WebApplication, FAQPage, BreadcrumbList), sitemap.xml, robots.txt, and rich snippets for Google search visibility.
 - **De.Fi API Integration**: Integrated De.Fi's security API to enrich top 100 protocols (by TVL) with real audit data, security scores, multisig/timelock verification, and audit reports. Provides authoritative security analysis to supplement DeFiLlama data.
 - **Volume Data Accuracy**: Updated to fetch real 24h volume from 5 DeFiLlama endpoints (DEX, derivatives, options, aggregators, fees) instead of estimating. Provides accurate volume for 1,264+ protocols with real trading data.
