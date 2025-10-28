@@ -78,6 +78,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
+  // GET /api/volume/cross-chain - Track volume across all chains and protocols
+  app.get("/api/volume/cross-chain", apiLimiter, async (req: Request, res: Response) => {
+    try {
+      res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+      
+      // Get all protocols from database
+      const protocols = await storage.getProtocols();
+      
+      // Aggregate volume by chain
+      const volumeByChain: Record<string, number> = {};
+      let totalVolume = 0;
+      let protocolCount = 0;
+      
+      protocols.forEach(protocol => {
+        // Add to total volume
+        totalVolume += protocol.volume24h || 0;
+        protocolCount++;
+        
+        // Add to each chain's volume
+        protocol.chains.forEach(chain => {
+          if (!volumeByChain[chain]) {
+            volumeByChain[chain] = 0;
+          }
+          // Distribute protocol volume across its chains
+          volumeByChain[chain] += (protocol.volume24h || 0) / protocol.chains.length;
+        });
+      });
+      
+      // Sort chains by volume (descending)
+      const chainStats = Object.entries(volumeByChain)
+        .map(([chain, volume]) => ({
+          chain,
+          volume,
+          percentage: (volume / totalVolume) * 100
+        }))
+        .sort((a, b) => b.volume - a.volume);
+      
+      // Get top protocols by volume
+      const topProtocols = [...protocols]
+        .sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0))
+        .slice(0, 10)
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          volume24h: p.volume24h,
+          chains: p.chains
+        }));
+      
+      const response = {
+        totalVolume,
+        protocolCount,
+        chainCount: chainStats.length,
+        chainStats,
+        topProtocols,
+        timestamp: new Date().toISOString()
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching cross-chain volume:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch cross-chain volume data"
+      });
+    }
+  });
+
   // GET /api/protocols - Fetch protocols with pagination support
   app.get("/api/protocols", apiLimiter, async (req, res) => {
     try {
