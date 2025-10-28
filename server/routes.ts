@@ -48,8 +48,18 @@ function setCache(key: string, data: any, ttlMs: number): void {
   });
 }
 
-function clearCache(key: string): void {
-  cache.delete(key);
+function clearCache(keyPrefix?: string): void {
+  if (!keyPrefix) {
+    cache.clear();
+    return;
+  }
+  
+  // Clear all keys with prefix (for filtered queries like protocols-{...})
+  for (const key of cache.keys()) {
+    if (key.startsWith(keyPrefix)) {
+      cache.delete(key);
+    }
+  }
 }
 
 // Background refresh tracking
