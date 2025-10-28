@@ -642,6 +642,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/blacklist - Manually blacklist a protocol (Admin only)
+  app.post("/api/admin/blacklist", async (req: Request, res: Response) => {
+    try {
+      // Check admin authentication
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const { protocolId } = req.body;
+
+      if (!protocolId || typeof protocolId !== 'string') {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Protocol ID is required' 
+        });
+      }
+
+      // Fetch protocol data
+      const protocol = await storage.getProtocol(protocolId);
+      if (!protocol) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Protocol not found' 
+        });
+      }
+
+      // Check if already blacklisted
+      const existingBlacklist = await storage.getBlacklist();
+      const alreadyBlacklisted = existingBlacklist.some(entry => entry.dappId === protocolId);
+      if (alreadyBlacklisted) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Protocol is already blacklisted' 
+        });
+      }
+
+      // Create blacklist entry
+      const blacklistEntry = {
+        id: `manual-${Date.now()}-${Math.random()}`,
+        dappId: protocol.id,
+        dappName: protocol.name,
+        severity: 'HIGH' as const,
+        threats: [{
+          type: 'MANUAL_BLACKLIST',
+          severity: 'HIGH' as const,
+          message: 'Manually blacklisted by administrator'
+        }],
+        reason: 'Manually blacklisted by administrator',
+        status: 'ACTIVE' as const,
+      };
+
+      await storage.addToBlacklist(blacklistEntry);
+
+      // Clear caches
+      clearCache('blacklist');
+      clearCache('protocols');
+      clearCache('protocols-full');
+      
+      // Reinitialize blacklist manager
+      await initBlacklistManager();
+
+      auditLogger.log({
+        action: 'MANUAL_BLACKLIST',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        metadata: { protocolId, protocolName: protocol.name }
+      });
+
+      res.json({ 
+        success: true, 
+        message: `${protocol.name} has been blacklisted successfully` 
+      });
+    } catch (error) {
+      console.error("Error manually blacklisting protocol:", error);
+      auditLogger.logFromRequest(req, 'MANUAL_BLACKLIST_ERROR', false, { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to blacklist protocol"
+      });
+    }
+  });
+
   // DELETE /api/blacklist/:id - Remove a blacklist entry (Admin only)
   app.delete("/api/blacklist/:id", async (req, res) => {
     try {
