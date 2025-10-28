@@ -82,7 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/protocols", apiLimiter, async (req, res) => {
     try {
       // Set HTTP cache headers for browser caching (CMC-level optimization)
-      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+      // NOTE: Adding no-cache temporarily to force fresh data
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       
       // Extract query parameters for filtering and pagination
       const { category, chain, minTvl, limit: limitParam, offset: offsetParam } = req.query;
