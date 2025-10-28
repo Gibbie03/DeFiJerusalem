@@ -1,19 +1,37 @@
-import { ExternalLink, TrendingUp, TrendingDown, Twitter, Globe } from 'lucide-react';
+import { ExternalLink, TrendingUp, TrendingDown, Twitter, Globe, Ban } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useQuery } from '@tanstack/react-query';
 import SecurityBadge from './SecurityBadge';
 
 import type { Protocol } from '@shared/schema';
+
+interface AdminSession {
+  authenticated: boolean;
+  admin?: {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+  };
+}
 
 interface ProtocolCardProps {
   protocol: Protocol;
   onViewDetails: (protocol: Protocol) => void;
   onScan?: (protocol: Protocol) => void;
+  onBlacklist?: (protocol: Protocol) => void;
 }
 
-export default function ProtocolCard({ protocol, onViewDetails, onScan }: ProtocolCardProps) {
+export default function ProtocolCard({ protocol, onViewDetails, onScan, onBlacklist }: ProtocolCardProps) {
+  const { data: session } = useQuery<AdminSession>({
+    queryKey: ['/api/admin/session'],
+  });
+
+  const isAdmin = session?.authenticated === true;
+
   const formatTVL = (num: number) => {
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
     if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
@@ -69,7 +87,16 @@ export default function ProtocolCard({ protocol, onViewDetails, onScan }: Protoc
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={(e) => { e.stopPropagation(); window.open(`https://defillama.com/protocol/${protocol.id}`, '_blank'); }}
+            data-testid="button-dapps"
+          >
+            <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+            DApps
+          </Button>
           {protocol.website && (
             <Button 
               size="icon" 
@@ -92,7 +119,7 @@ export default function ProtocolCard({ protocol, onViewDetails, onScan }: Protoc
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {onScan && (
             <Button 
               size="sm" 
@@ -101,6 +128,17 @@ export default function ProtocolCard({ protocol, onViewDetails, onScan }: Protoc
               data-testid="button-scan"
             >
               Scan
+            </Button>
+          )}
+          {isAdmin && onBlacklist && (
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={(e) => { e.stopPropagation(); onBlacklist(protocol); }}
+              data-testid="button-blacklist"
+            >
+              <Ban className="w-3.5 h-3.5 mr-1.5" />
+              Blacklist
             </Button>
           )}
           <Button 
