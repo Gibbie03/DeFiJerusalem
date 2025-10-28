@@ -398,6 +398,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProtocolsByTvlGrowth(limit: number = 50): Promise<Protocol[]> {
+    // Use NOT EXISTS subquery to avoid duplicate rows from multiple security scans per protocol
     const result = await db
       .select({
         id: protocols.id,
@@ -414,15 +415,18 @@ export class DatabaseStorage implements IStorage {
         sponsorshipTier: protocols.sponsorshipTier,
         featuredPosition: protocols.featuredPosition,
         sponsoredUntil: protocols.sponsoredUntil,
-        isBlacklisted: securityScans.isBlacklisted,
       })
       .from(protocols)
-      .leftJoin(securityScans, eq(protocols.id, securityScans.protocolId))
       .where(and(
         gt(protocols.change24h, 0), // Positive growth
         gte(protocols.securityScore, 50), // Exclude critical risk protocols (score < 50)
         gt(sql`${protocols.tvl} * ${protocols.change24h} / 100`, 100), // Absolute growth > $100 (meaningful growth)
-        or(isNull(securityScans.isBlacklisted), eq(securityScans.isBlacklisted, false)) // Exclude blacklisted protocols
+        // Exclude blacklisted protocols using NOT EXISTS subquery (avoids duplicate rows)
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${securityScans} 
+          WHERE ${securityScans.protocolId} = ${protocols.id} 
+          AND ${securityScans.isBlacklisted} = true
+        )`
       ))
       .orderBy(desc(protocols.change24h)) // Sort by percentage growth
       .limit(limit);
