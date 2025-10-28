@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import bcryptjs from "bcryptjs";
 import { storage } from "./storage";
 import { DAppDiscovery } from "./lib/dapp-discovery";
@@ -9,21 +10,42 @@ import { auditLogger } from "./lib/audit-logger";
 import { insertProtocolSchema, insertTutorialVideoSchema } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 
-// Simple in-memory cache with TTL
-const cache = new Map<string, { data: any; expires: number }>();
+// Pre-serialized cache for CMC-level performance (avoids re-serialization overhead)
+interface CacheEntry {
+  data: any;  // Original data object
+  serialized: string;  // Pre-serialized JSON string
+  etag: string;  // Content-based ETag
+  expires: number;
+}
 
-function getCache(key: string): any | null {
+const cache = new Map<string, CacheEntry>();
+
+// Generate strong content-based ETag using MD5 hash
+function generateETag(data: string): string {
+  return `"${crypto.createHash('md5').update(data).digest('hex')}"`;
+}
+
+function getCache(key: string): CacheEntry | null {
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expires) {
     cache.delete(key);
     return null;
   }
-  return entry.data;
+  return entry;
 }
 
 function setCache(key: string, data: any, ttlMs: number): void {
-  cache.set(key, { data, expires: Date.now() + ttlMs });
+  // Pre-serialize JSON to avoid repeated serialization on every request
+  const serialized = JSON.stringify(data);
+  const etag = generateETag(serialized);
+  
+  cache.set(key, { 
+    data, 
+    serialized, 
+    etag, 
+    expires: Date.now() + ttlMs 
+  });
 }
 
 function clearCache(key: string): void {
@@ -79,16 +101,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check cache first (60s TTL for CMC-level speed)
       const cached = getCache(cacheKey);
       if (cached) {
-        // Add ETag for conditional requests (CMC-level optimization)
-        const etag = `W/"protocols-${cacheKey}-${cached.length}"`;
-        res.set('ETag', etag);
+        // Set content-based ETag
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
         
         // If client has same ETag, return 304 Not Modified (saves bandwidth)
-        if (req.headers['if-none-match'] === etag) {
+        if (req.headers['if-none-match'] === cached.etag) {
           return res.status(304).end();
         }
         
-        return res.json(cached);
+        // Send pre-serialized JSON directly (no re-serialization overhead)
+        return res.send(cached.serialized);
       }
 
       // Try to load from database first (fastest)
@@ -119,7 +142,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Failed to persist test drainers:', err)
         );
         
-        res.json(protocolsWithTestDrainers);
+        // Send with ETag immediately (first-hit optimization)
+        const cacheEntry = getCache(cacheKey);
+        if (cacheEntry) {
+          res.set('ETag', cacheEntry.etag);
+          res.set('Content-Type', 'application/json');
+          res.send(cacheEntry.serialized);
+        } else {
+          res.json(protocolsWithTestDrainers);
+        }
         
         // Background refresh with guard (only once every 5 minutes)
         const now = Date.now();
@@ -153,7 +184,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Cache for 60 seconds
       setCache(cacheKey, allProtocols, 60 * 1000);
       
-      res.json(allProtocols);
+      // Send with ETag immediately (first-hit optimization)
+      const cacheEntry = getCache(cacheKey);
+      if (cacheEntry) {
+        res.set('ETag', cacheEntry.etag);
+        res.set('Content-Type', 'application/json');
+        res.send(cacheEntry.serialized);
+      } else {
+        res.json(allProtocols);
+      }
     } catch (error) {
       console.error("Error fetching protocols:", error);
       res.status(500).json({ 
@@ -331,23 +370,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check cache first (5 minute TTL)
       const cached = getCache('blacklist');
       if (cached) {
-        // ETag for conditional requests
-        const etag = `W/"blacklist-${cached.length}"`;
-        res.set('ETag', etag);
+        // Set content-based ETag
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
         
-        if (req.headers['if-none-match'] === etag) {
+        if (req.headers['if-none-match'] === cached.etag) {
           return res.status(304).end();
         }
         
-        return res.json(cached);
+        // Send pre-serialized JSON directly
+        return res.send(cached.serialized);
       }
 
       const blacklist = await storage.getBlacklist();
       setCache('blacklist', blacklist, 5 * 60 * 1000); // 5 minutes
       
-      // Add ETag to response
-      const etag = `W/"blacklist-${blacklist.length}"`;
-      res.set('ETag', etag);
+      // Get the cached entry with ETag
+      const cacheEntry = getCache('blacklist');
+      if (cacheEntry) {
+        res.set('ETag', cacheEntry.etag);
+        res.set('Content-Type', 'application/json');
+        return res.send(cacheEntry.serialized);
+      }
       
       res.json(blacklist);
     } catch (error) {
@@ -420,9 +464,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/protocols/new - Get recently discovered protocols
-  app.get("/api/protocols/new", async (req, res) => {
+  app.get("/api/protocols/new", apiLimiter, async (req, res) => {
     try {
+      // HTTP cache headers (CMC-level optimization)
+      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+      
+      // Check cache first (2 minute TTL)
+      const cached = getCache('new');
+      if (cached) {
+        // Set content-based ETag
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
+        
+        if (req.headers['if-none-match'] === cached.etag) {
+          return res.status(304).end();
+        }
+        
+        // Send pre-serialized JSON directly
+        return res.send(cached.serialized);
+      }
+
       const protocols = await storage.getProtocolsByDiscoveryDate(50);
+      setCache('new', protocols, 2 * 60 * 1000); // 2 minutes
+      
+      // Get the cached entry with ETag
+      const cacheEntry = getCache('new');
+      if (cacheEntry) {
+        res.set('ETag', cacheEntry.etag);
+        res.set('Content-Type', 'application/json');
+        return res.send(cacheEntry.serialized);
+      }
+      
       res.json(protocols);
     } catch (error) {
       console.error("Error fetching new protocols:", error);
@@ -436,17 +508,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/protocols/trending - Get trending protocols by TVL growth (with rate limiting)
   app.get("/api/protocols/trending", apiLimiter, async (req, res) => {
     try {
-      // HTTP cache headers
+      // HTTP cache headers (CMC-level optimization)
       res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
       
       // Check cache first (2 minute TTL)
       const cached = getCache('trending');
       if (cached) {
-        return res.json(cached);
+        // Set content-based ETag
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
+        
+        if (req.headers['if-none-match'] === cached.etag) {
+          return res.status(304).end();
+        }
+        
+        // Send pre-serialized JSON directly
+        return res.send(cached.serialized);
       }
 
       const protocols = await storage.getProtocolsByTvlGrowth(50);
       setCache('trending', protocols, 2 * 60 * 1000); // 2 minutes
+      
+      // Get the cached entry with ETag
+      const cacheEntry = getCache('trending');
+      if (cacheEntry) {
+        res.set('ETag', cacheEntry.etag);
+        res.set('Content-Type', 'application/json');
+        return res.send(cacheEntry.serialized);
+      }
+      
       res.json(protocols);
     } catch (error) {
       console.error("Error fetching trending protocols:", error);
@@ -466,25 +556,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check cache first (3 minute TTL)
       const cached = getCache('scans');
       if (cached) {
-        // ETag for conditional requests
-        const scanCount = Object.keys(cached).length;
-        const etag = `W/"scans-${scanCount}"`;
-        res.set('ETag', etag);
+        // Set content-based ETag
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
         
-        if (req.headers['if-none-match'] === etag) {
+        if (req.headers['if-none-match'] === cached.etag) {
           return res.status(304).end();
         }
         
-        return res.json(cached);
+        // Send pre-serialized JSON directly
+        return res.send(cached.serialized);
       }
 
       const scans = await storage.getAllSecurityScans();
       setCache('scans', scans, 3 * 60 * 1000); // 3 minutes
       
-      // Add ETag to response
-      const scanCount = Object.keys(scans).length;
-      const etag = `W/"scans-${scanCount}"`;
-      res.set('ETag', etag);
+      // Get the cached entry with ETag
+      const cacheEntry = getCache('scans');
+      if (cacheEntry) {
+        res.set('ETag', cacheEntry.etag);
+        res.set('Content-Type', 'application/json');
+        return res.send(cacheEntry.serialized);
+      }
       
       res.json(scans);
     } catch (error) {

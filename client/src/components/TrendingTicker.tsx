@@ -26,8 +26,11 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
     refetchInterval: 60000, // Refresh every minute
   });
 
+  // Ensure protocols is always an array
+  const protocolsArray = Array.isArray(protocols) ? protocols : [];
+  
   // Top 10 trending protocols
-  const trending = protocols.slice(0, 10);
+  const trending = protocolsArray.slice(0, 10);
 
   if (trending.length === 0) return null;
 
