@@ -13,13 +13,13 @@ JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed 
 ## System Architecture
 
 ### UI/UX Decisions
-The application features a cybersecurity-themed dark mode with Shield iconography. Protocols are displayed in a CoinMarketCap-style table with rank, formatted TVL, color-coded 24h changes, logos, and category badges. Navigation uses an expandable/collapsible shadcn sidebar. Ad spaces are integrated for monetization, and the protocol table implements pagination. Security ratings have a color-coded legend and informational tooltips.
+The application features a cybersecurity-themed dark mode with Shield iconography. Protocols are displayed in a CoinMarketCap-style table with rank, formatted TVL, color-coded 24h changes, 7-day TVL sparkline charts, logos, and category badges. Navigation uses an expandable/collapsible shadcn sidebar. Ad spaces are integrated for monetization, and the protocol table implements pagination with "Load More" functionality. Security ratings have a color-coded legend and informational tooltips. Dashboard stats display actual blockchain count (126+), total protocols, and audited protocols count.
 
 ### Technical Implementations
 The frontend uses React, Wouter for routing, TanStack Query for data fetching, Shadcn UI for components, and Tailwind CSS for styling. The backend uses Express.js, Drizzle ORM, and Neon PostgreSQL. Validation is handled by Zod, drizzle-zod, and react-hook-form. Performance is optimized through client-side techniques (e.g., `React.memo`, `useCallback`, debounced search) and server-side multi-tier caching, HTTP Cache-Control headers, Gzip compression, parallel scan execution, batch DB writes, and an intelligent pagination system that provides instant loading (500 protocols initially) with "Load More" functionality for complete data access.
 
 ### Feature Specifications
-- **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table, supporting 15+ categories. Implements smart pagination with instant initial load (500 protocols) and "Load More" button for accessing complete dataset.
+- **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table, supporting 15+ categories. Implements smart pagination with instant initial load (500 protocols) and "Load More" button for accessing complete dataset. Default sort is by security score ranking.
 - **Pagination System**: Best-of-both-worlds approach - loads 500 protocols instantly for speed, then provides "Load More" button to fetch additional 500 protocols per click. Works with filtered views and maintains performance through dual caching strategy.
 - **Security Analysis**: Conducts comprehensive scans for 29 distinct threat categories, including wallet drainers, phishing, rug pulls, and smart contract vulnerabilities. Includes a verification system to prevent false positives.
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted based on threat patterns.
@@ -29,9 +29,10 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Scanning Mechanism**: Supports manual "Scan All" and automated weekly security scans.
 - **Admin Panel**: Secure admin interface with bcrypt authentication, session management, and full protocol management capabilities, including sponsorship management.
 - **Sponsorship & Featured Listings System**: A comprehensive monetization system with 2 pricing tiers for enhanced protocol visibility.
+- **Protocol Customization System**: Allows protocol owners/teams to submit customization requests ($200 fee) to edit descriptions, links, logos, and add audit information (improves security score). Includes secure payment verification workflow with admin approval process.
 
 ### System Design Choices
-- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `sponsor_payments`, and `admin_users` tables, optimized with indexing.
+- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `sponsor_payments`, `protocol_customizations`, and `admin_users` tables, optimized with indexing.
 - **UPSERT-Based Persistence**: Uses PostgreSQL's `ON CONFLICT DO UPDATE` for atomic updates and persistence of test drainer protocols.
 - **API Routes**: RESTful API for managing application data, including secure admin authentication endpoints. Protocols endpoint supports pagination with limit/offset parameters.
 - **Dual Caching Strategy**: Caches full dataset (`protocols-full`) for pagination efficiency and individual pages (`protocols-{filters,limit,offset}`) with MD5-based ETags. TTL: 60s for protocols, 2-5min for other endpoints.
