@@ -49,7 +49,7 @@ export default function Dashboard() {
   const debouncedSearch = useDebounce(searchValue, 300);
 
   // Fetch initial protocols from API with pagination
-  const { data: initialData, isLoading, refetch } = useQuery<PaginatedResponse>({
+  const { data: initialData, isLoading, refetch } = useQuery<PaginatedResponse & { totalTVL?: number }>({
     queryKey: ['/api/protocols'],
     enabled: isOnline,
     staleTime: 30 * 60 * 1000, // 30 minutes
@@ -282,7 +282,7 @@ export default function Dashboard() {
     chains: 126,
     audited: initialData?.auditedCount || 0,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
-    totalTVL: protocols.reduce((sum, p) => sum + p.tvl, 0)
+    totalTVL: initialData?.totalTVL || protocols.reduce((sum, p) => sum + p.tvl, 0)
   }), [protocols, blacklist, initialData]);
 
   const handleRefresh = useCallback(async () => {
