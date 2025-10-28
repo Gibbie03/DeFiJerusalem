@@ -103,6 +103,11 @@ export class DatabaseStorage implements IStorage {
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
+      defiSecurityScore: null,
+      defiAuditReports: null,
+      defiHasMultisig: null,
+      defiHasTimelock: null,
+      defiDataFetchedAt: null,
     }));
   }
 
@@ -145,6 +150,11 @@ export class DatabaseStorage implements IStorage {
       sponsoredUntil: result.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (result.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: result.featuredPosition,
+      defiSecurityScore: result.defiSecurityScore ?? null,
+      defiAuditReports: result.defiAuditReports as any ?? null,
+      defiHasMultisig: result.defiHasMultisig ?? null,
+      defiHasTimelock: result.defiHasTimelock ?? null,
+      defiDataFetchedAt: result.defiDataFetchedAt?.toISOString() ?? null,
     };
   }
 
@@ -379,6 +389,11 @@ export class DatabaseStorage implements IStorage {
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
+      defiSecurityScore: null,
+      defiAuditReports: null,
+      defiHasMultisig: null,
+      defiHasTimelock: null,
+      defiDataFetchedAt: null,
     }));
   }
 
@@ -401,8 +416,12 @@ export class DatabaseStorage implements IStorage {
         sponsoredUntil: protocols.sponsoredUntil,
       })
       .from(protocols)
-      .where(gt(protocols.change24h, 0))
-      .orderBy(desc(protocols.change24h))
+      .where(and(
+        gt(protocols.change24h, 0), // Positive growth
+        gte(protocols.securityScore, 50), // Exclude critical risk protocols (score < 50)
+        gt(sql`${protocols.tvl} * ${protocols.change24h} / 100`, 100) // Absolute growth > $100
+      ))
+      .orderBy(desc(sql`${protocols.tvl} * ${protocols.change24h} / 100`)) // Sort by absolute dollar growth
       .limit(limit);
     
     return result.map(p => ({
@@ -429,6 +448,11 @@ export class DatabaseStorage implements IStorage {
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
+      defiSecurityScore: null,
+      defiAuditReports: null,
+      defiHasMultisig: null,
+      defiHasTimelock: null,
+      defiDataFetchedAt: null,
     }));
   }
 
@@ -479,6 +503,11 @@ export class DatabaseStorage implements IStorage {
       sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
       sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
       featuredPosition: p.featuredPosition,
+      defiSecurityScore: null,
+      defiAuditReports: null,
+      defiHasMultisig: null,
+      defiHasTimelock: null,
+      defiDataFetchedAt: null,
     }));
   }
 

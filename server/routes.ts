@@ -79,6 +79,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
+  // Initialize De.Fi enrichment if no protocols have De.Fi data
+  const initDefiEnrichment = async () => {
+    try {
+      const dbProtocols = await storage.getProtocols();
+      const hasDefiData = dbProtocols.some(p => p.defiSecurityScore !== null);
+      
+      if (!hasDefiData && dbProtocols.length > 0) {
+        console.log('[STARTUP] No De.Fi data found, fetching fresh protocol data for enrichment...');
+        
+        // Fetch fresh protocols from DeFiLlama (includes contract addresses)
+        const freshProtocols = await discovery.fetchFromMultipleSources();
+        
+        const topProtocols = freshProtocols
+          .filter(p => p.tvl > 0)
+          .sort((a, b) => b.tvl - a.tvl)
+          .slice(0, 100);
+        
+        const protocolsWithAddresses = topProtocols.filter(p => (p as any).contractAddress);
+        
+        if (protocolsWithAddresses.length > 0) {
+          console.log(`[DE.FI] Enriching ${protocolsWithAddresses.length} protocols with De.Fi audit data...`);
+          
+          const auditMap = await defiApi.enrichProtocolsWithAudits(
+            protocolsWithAddresses.map(p => ({ 
+              id: p.id, 
+              address: (p as any).contractAddress 
+            }))
+          );
+          
+          console.log(`[DE.FI] Successfully enriched ${auditMap.size} protocols`);
+          
+          // Update protocols with De.Fi data
+          for (const [protocolId, auditData] of auditMap.entries()) {
+            const existingProtocol = dbProtocols.find(p => p.id === protocolId);
+            if (existingProtocol) {
+              await storage.updateProtocol(protocolId, {
+                defiSecurityScore: auditData.securityScore,
+                defiAuditReports: auditData.auditReports as any,
+                defiHasMultisig: auditData.hasMultisig,
+                defiHasTimelock: auditData.hasTimelock,
+                defiDataFetchedAt: new Date().toISOString(),
+                auditCount: Math.max(existingProtocol.auditCount, auditData.auditCount || 0),
+                audited: true,
+              });
+            }
+          }
+          
+          console.log('[STARTUP] De.Fi enrichment completed successfully');
+          clearCache(); // Clear cache to reflect new data
+        } else {
+          console.log('[STARTUP] No protocols with contract addresses found');
+        }
+      } else if (hasDefiData) {
+        console.log('[STARTUP] De.Fi data already present, skipping enrichment');
+      } else {
+        console.log('[STARTUP] No protocols in database, skipping De.Fi enrichment');
+      }
+    } catch (error) {
+      console.error('[STARTUP] Failed to initialize De.Fi enrichment:', error);
+      // Don't fail startup if enrichment fails
+    }
+  };
+  
+  // Run De.Fi enrichment in background (non-blocking)
+  initDefiEnrichment().catch(console.error);
+
   // GET /api/admin/diagnostics - Check current database state (admin only)
   app.get("/api/admin/diagnostics", async (req: Request, res: Response) => {
     try {
