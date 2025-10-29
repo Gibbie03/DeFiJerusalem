@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, BarChart3, Info } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -67,15 +67,6 @@ export default function Dashboard() {
   // Protocols to display (either filtered or all loaded)
   const protocols = allProtocols;
 
-  // Fetch cross-chain volume data
-  const { data: volumeData } = useQuery<{
-    totalVolume: number;
-    protocolCount: number;
-    chainCount: number;
-  }>({
-    queryKey: ['/api/volume/cross-chain'],
-    enabled: isOnline,
-  });
 
   // Fetch blacklist
   const { data: blacklist = [] } = useQuery<BlacklistEntry[]>({
@@ -348,7 +339,7 @@ export default function Dashboard() {
       <TrendingTicker onProtocolClick={handleViewDetails} />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatsCard
             label="Total Protocols"
             value={stats.total.toLocaleString()}
@@ -368,19 +359,6 @@ export default function Dashboard() {
             tooltip="Total Value Locked across all tracked protocols"
           />
           <StatsCard
-            label="Total Volume"
-            value={(() => {
-              const vol = volumeData?.totalVolume || 0;
-              if (vol >= 1_000_000_000_000) return `$${(vol / 1_000_000_000_000).toFixed(2)}T`;
-              if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(2)}B`;
-              if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(2)}M`;
-              if (vol >= 1_000) return `$${(vol / 1_000).toFixed(2)}K`;
-              return `$${vol.toFixed(2)}`;
-            })()}
-            icon={BarChart3}
-            tooltip="Aggregated 24h trading volume from DeFiLlama's DEX, derivatives, and options endpoints. Includes real volume data for 1,000+ protocols. Remaining protocols use TVL-based estimates. Data refreshes every 5 minutes."
-          />
-          <StatsCard
             label="Chains Supported"
             value="126+"
             icon={TrendingUp}
@@ -390,7 +368,7 @@ export default function Dashboard() {
             label="Audited"
             value={stats.audited.toLocaleString()}
             icon={Shield}
-            tooltip="Protocols with audit data from DeFiLlama. Note: Many audited protocols may show as unaudited due to incomplete API data. Always verify audit status on the protocol's official website. This is a known limitation of DeFiLlama's public API."
+            tooltip="Total protocols with audit data from DeFiLlama. View individual protocol pages for detailed audit information."
           />
           <StatsCard
             label="Blacklisted"

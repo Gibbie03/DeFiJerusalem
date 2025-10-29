@@ -41,7 +41,7 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">Trending</span>
         <div className="flex-1 overflow-hidden">
           <div className="animate-scroll-left flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
-            {[...trending, ...trending].map((protocol, index) => {
+            {[...trending, ...trending, ...trending].map((protocol, index) => {
               const rank = (index % trending.length) + 1;
               return (
                 <button
