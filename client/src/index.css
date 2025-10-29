@@ -344,16 +344,9 @@
     }
   }
 
-  /* Mobile: Fast roll - 15 seconds for full cycle */
+  /* Mobile & Desktop: 60 seconds for full cycle (15 repetitions in 1 minute) */
   .animate-scroll-left {
-    animation: scroll-left 15s linear infinite;
-  }
-
-  /* Desktop: Slower roll - 60 seconds for full cycle */
-  @media (min-width: 640px) {
-    .animate-scroll-left {
-      animation: scroll-left 60s linear infinite;
-    }
+    animation: scroll-left 60s linear infinite;
   }
 
   .animate-scroll-left:hover {
