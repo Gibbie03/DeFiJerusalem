@@ -344,9 +344,9 @@
     }
   }
 
-  /* Mobile: 25-second cycle, scrolls 25000 items (5000 reps × 10 protocols × 50% = 25000) */
+  /* Mobile: DexScreener-style speed (18s cycle, moderate readable speed) */
   .animate-scroll-left-mobile {
-    animation: scroll-left 25s linear infinite;
+    animation: scroll-left 18s linear infinite;
   }
 
   .animate-scroll-left-mobile:hover {
