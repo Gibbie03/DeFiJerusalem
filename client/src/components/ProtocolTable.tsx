@@ -248,7 +248,8 @@ const ProtocolRow = memo(({
 
 ProtocolRow.displayName = 'ProtocolRow';
 
-export default function ProtocolTable({ 
+// Memoize the entire table component for CMC-level performance
+const ProtocolTable = memo(function ProtocolTable({ 
   protocols, 
   securityScans, 
   onViewDetails,
@@ -315,4 +316,8 @@ export default function ProtocolTable({
       </div>
     </TooltipProvider>
   );
-}
+});
+
+ProtocolTable.displayName = 'ProtocolTable';
+
+export default ProtocolTable;

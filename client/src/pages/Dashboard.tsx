@@ -143,7 +143,7 @@ export default function Dashboard() {
     }
   }, [protocols, scanMutation]);
 
-  // Load more protocols function
+  // Load more protocols function with deduplication
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || isLoadingMore || !isOnline) return;
     
@@ -168,14 +168,52 @@ export default function Dashboard() {
       const data: PaginatedResponse = await response.json();
       
       if (data.protocols && data.protocols.length > 0) {
-        setAllProtocols(prev => [...prev, ...data.protocols]);
+        // DEDUPLICATION: Use Set to prevent duplicate protocols (both from previous state and within current response)
+        let dedupedCount = 0;
+        setAllProtocols(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newProtocols: Protocol[] = [];
+          
+          // Filter out duplicates from both previous state AND within the current response
+          for (const protocol of data.protocols) {
+            if (!existingIds.has(protocol.id)) {
+              existingIds.add(protocol.id); // Add to set to catch duplicates within the same batch
+              newProtocols.push(protocol);
+            }
+          }
+          
+          dedupedCount = newProtocols.length;
+          
+          if (dedupedCount === 0) {
+            console.warn('[DEDUP] All protocols in this batch already loaded (all duplicates)');
+            return prev;
+          }
+          
+          return [...prev, ...newProtocols];
+        });
+        
+        // Critical: Always advance offset by original response length to match backend pagination
+        // This allows pagination to progress even when encountering duplicate-only batches
         setCurrentOffset(prev => prev + data.protocols.length);
+        
+        // Keep hasMore in sync with API response to allow continued pagination
         setHasMore(data.hasMore);
         
-        toast({
-          title: "Loaded More Protocols",
-          description: `Loaded ${data.protocols.length} additional protocols. Total: ${currentOffset + data.protocols.length}`,
-        });
+        if (dedupedCount === 0) {
+          // All duplicates - log and notify user, but allow pagination to continue
+          console.warn('[DEDUP] Encountered full duplicate batch - advancing offset but no new data added');
+          toast({
+            title: "No New Protocols",
+            description: `All ${data.protocols.length} protocols in this batch were duplicates. Click "Load More" to continue.`,
+          });
+        } else {
+          // New protocols found - show accurate metrics
+          const skippedCount = data.protocols.length - dedupedCount;
+          toast({
+            title: "Loaded More Protocols",
+            description: `Loaded ${dedupedCount} new protocols${skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : ''}. Total: ${allProtocols.length + dedupedCount}`,
+          });
+        }
       }
     } catch (error) {
       toast({
