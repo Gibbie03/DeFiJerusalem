@@ -35,6 +35,7 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
   
   // Top 10 trending protocols
   const trending = protocolsArray.slice(0, 10);
+  
 
   // Calculate animation duration based on content width to ensure all 10 protocols cross
   useEffect(() => {
@@ -49,14 +50,14 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
     };
 
     if (mobileElement) {
-      // Mobile: Slow scrolling speed to show more protocols (100 pixels per second)
-      const duration = calculateDuration(mobileElement, 100);
+      // Mobile: Very fast scrolling (2000 pixels per second) to show all 10 quickly
+      const duration = calculateDuration(mobileElement, 2000);
       mobileElement.style.animationDuration = `${duration}s`;
     }
 
     if (desktopElement) {
-      // Desktop: Moderate scrolling speed (80 pixels per second)
-      const duration = calculateDuration(desktopElement, 80);
+      // Desktop: Fast scrolling speed (1000 pixels per second)
+      const duration = calculateDuration(desktopElement, 1000);
       desktopElement.style.animationDuration = `${duration}s`;
     }
   }, [trending]);
@@ -90,20 +91,20 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
         
-        {/* Mobile version: Duplicate to ensure all 10 cross viewport, scroll 50% */}
+        {/* Mobile version: Show all 10 protocols once, then restart */}
         <div className="flex-1 overflow-hidden sm:hidden">
           <div ref={mobileTickerRef} className="animate-scroll-left-mobile-once flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
-            {/* Show protocols twice - scroll to -50% ensures all 10 pass through */}
+            {/* Duplicate protocols - scroll 50% to show all 10 once */}
             {[...trending, ...trending].map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
           </div>
         </div>
 
-        {/* Desktop version: Duplicate to ensure all 10 cross viewport, scroll 50% */}
+        {/* Desktop version: Show all 10 protocols once, then restart */}
         <div className="flex-1 overflow-hidden hidden sm:block">
           <div ref={desktopTickerRef} className="animate-scroll-left-desktop-once flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
-            {/* Show protocols twice - scroll to -50% ensures all 10 pass through */}
+            {/* Duplicate protocols - scroll 50% to show all 10 once */}
             {[...trending, ...trending].map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
