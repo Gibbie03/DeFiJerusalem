@@ -61,10 +61,10 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
         
-        {/* Mobile version: 300 repetitions = 3000 items, scrolls 1500 items in 25 seconds */}
+        {/* Mobile version: 1200 repetitions = 12000 items, scrolls 6000 items in 25 seconds */}
         <div className="flex-1 overflow-hidden sm:hidden">
           <div className="animate-scroll-left-mobile flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
-            {Array(300).fill(trending).flat().map((protocol, index) => 
+            {Array(1200).fill(trending).flat().map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
           </div>
