@@ -344,7 +344,7 @@
     }
   }
 
-  /* Mobile: Fast 15-second cycle */
+  /* Mobile: Fast 15-second cycle with 100 repetitions */
   .animate-scroll-left-mobile {
     animation: scroll-left 15s linear infinite;
   }
