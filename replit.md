@@ -77,3 +77,39 @@ To enable contract verification tracking, you need to set up API keys for blockc
 - `POST /api/discovery/scan` - Trigger contract discovery (Body: `{ "chains": ["ethereum", "bsc", "polygon"] }`)
 - `GET /api/discovery/contracts` - View discovered contracts (Query params: `status`, `chain`, `limit`)
 - `PATCH /api/discovery/contracts/:id/status` - Update contract status (Body: `{ "status": "approved" }`)
+
+## Whitelist System (False Positive Prevention)
+
+The whitelist system prevents legitimate protocols from being falsely flagged as scams. This is especially important for:
+- Official protocol integrations (e.g., Morpho+Aave/Compound)
+- Gaming/NFT protocols with similar names (e.g., Aavegotchi)
+- Wrapped assets and bridges (e.g., tzBTC, PulseChain Bridge)
+
+**Whitelist Criteria**:
+- Verification source (DeFiLlama, Official Documentation, Exchange Listings)
+- Optional: CertiK security score, DeFi Safety score
+- Optional: Minimum TVL threshold
+- Optional: Major exchange listings
+
+**Admin Endpoints**:
+- `GET /api/whitelist` - View all whitelisted protocols (public)
+- `POST /api/admin/whitelist` - Add protocol to whitelist (admin only)
+  - Body: `{ "protocolId": "morpho", "reason": "Verified lending protocol", "verificationSource": "DeFiLlama", "certikScore": 85, "minTvl": 500000000 }`
+- `DELETE /api/admin/whitelist/:protocolId` - Remove from whitelist (admin only)
+- `POST /api/admin/whitelist/seed` - Seed whitelist with 10 pre-verified legitimate protocols (admin only)
+
+**Pre-Verified Protocols** (seedable via `/api/admin/whitelist/seed`):
+1. Morpho (all variants) - Official Aave/Compound integration
+2. Aavegotchi - Gaming protocol on Aave ecosystem
+3. Kraken Bitcoin - Official Kraken product
+4. Revert Finance - Verified DeFi protocol
+5. PulseChain Bridge - Official bridge
+6. tzBTC - Wrapped Bitcoin on Tezos
+7. APX Bridge - Verified bridge
+8. Mezo Network - Layer 2 protocol
+
+**Context-Aware IMPOSTER Detection**:
+The security scanner now uses intelligent heuristics to distinguish legitimate integrations from actual scams:
+- Protocols with TVL > $50M + audits are exempt from imposter checks
+- Expanded VERIFIED_PROTOCOLS list includes 40+ major protocols and their variants
+- Whitelist overrides imposter detection for pre-verified protocols
