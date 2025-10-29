@@ -344,7 +344,7 @@
     }
   }
 
-  /* Mobile: 18s cycle, 400 reps = 2x faster (scrolls 2000 items in 18s) */
+  /* Mobile: 18s cycle, 1200 reps = 3x faster (scrolls 6000 items in 18s) */
   .animate-scroll-left-mobile {
     animation: scroll-left 18s linear infinite;
   }
