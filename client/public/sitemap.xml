@@ -5,40 +5,40 @@
   
   <!-- Homepage - Main DeFi Security Scanner -->
   <url>
-    <loc>https://jerusalem-defi-security-scanner.replit.app/</loc>
-    <lastmod>2025-10-28</lastmod>
+    <loc>https://defijerusalem.com/</loc>
+    <lastmod>2025-10-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   
   <!-- Blacklist Page - Critical Security Information -->
   <url>
-    <loc>https://jerusalem-defi-security-scanner.replit.app/blacklist</loc>
-    <lastmod>2025-10-28</lastmod>
+    <loc>https://defijerusalem.com/blacklist</loc>
+    <lastmod>2025-10-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   
   <!-- Sponsorship Guide - Monetization & Featured Listings -->
   <url>
-    <loc>https://jerusalem-defi-security-scanner.replit.app/sponsorship</loc>
-    <lastmod>2025-10-28</lastmod>
+    <loc>https://defijerusalem.com/sponsorship</loc>
+    <lastmod>2025-10-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <!-- Protocol Customization - Edit Protocol Information -->
   <url>
-    <loc>https://jerusalem-defi-security-scanner.replit.app/customize</loc>
-    <lastmod>2025-10-28</lastmod>
+    <loc>https://defijerusalem.com/customize</loc>
+    <lastmod>2025-10-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   
   <!-- Tutorials Page - Educational Content -->
   <url>
-    <loc>https://jerusalem-defi-security-scanner.replit.app/tutorials</loc>
-    <lastmod>2025-10-28</lastmod>
+    <loc>https://defijerusalem.com/tutorials</loc>
+    <lastmod>2025-10-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>

@@ -31,4 +31,4 @@ Disallow: /admin/*
 Crawl-delay: 1
 
 # Sitemap location
-Sitemap: https://jerusalem-defi-security-scanner.replit.app/sitemap.xml
+Sitemap: https://defijerusalem.com/sitemap.xml

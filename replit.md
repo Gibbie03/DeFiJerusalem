@@ -29,7 +29,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Admin Panel**: Secure admin interface with bcrypt authentication and full protocol management capabilities, including sponsorship and contract discovery management.
 - **Sponsorship & Featured Listings System**: Comprehensive monetization system with multiple pricing tiers for enhanced protocol visibility.
 - **Protocol Customization System**: Allows protocol owners to submit customization requests (e.g., edit descriptions, logos, add audit info) with a payment and admin approval workflow.
-- **SEO Optimization**: Implemented enterprise-grade SEO with meta tags, Open Graph/Twitter Cards, JSON-LD structured data, sitemap.xml, robots.txt, and rich snippets.
+- **SEO Optimization**: Implemented enterprise-grade SEO with meta tags, Open Graph/Twitter Cards, JSON-LD structured data, sitemap.xml, robots.txt, and rich snippets. **Custom domain**: defijerusalem.com (configured and ready for Google indexing).
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `sponsor_payments`, `protocol_customizations`, `admin_users`, and `discovered_contracts` tables, optimized with indexing.
