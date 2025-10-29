@@ -1,7 +1,8 @@
 import type { BlacklistEntry, SecurityScan, Protocol } from '@shared/schema';
+import { calculateLegitimacyScore, extractSecurityMetrics } from './security-verification';
 
-// Type for blacklist entry without timestamp and website (DB auto-generates these)
-type BlacklistEntryForInsert = Omit<BlacklistEntry, 'timestamp' | 'website'>;
+// Type for blacklist entry without timestamp (DB auto-generates)
+type BlacklistEntryForInsert = Omit<BlacklistEntry, 'timestamp'>;
 
 // BlacklistManager - Tracks threats
 export class BlacklistManager {
@@ -20,15 +21,25 @@ export class BlacklistManager {
       ? scanResult.threats.map(t => t.message).join('; ')
       : `Automatically blacklisted due to ${scanResult.severity} security score (${scanResult.score} points)`;
     
-    // Create entry without timestamp and website (DB will auto-generate timestamp, storage will fetch website)
+    // Calculate legitimacy score to help identify false positives
+    const securityMetrics = extractSecurityMetrics(dapp);
+    const { score: legitimacyScore } = calculateLegitimacyScore(dapp, securityMetrics);
+    
+    // Create entry with social links and security metrics for verification
     const entry: BlacklistEntryForInsert = {
       id: `${Date.now()}-${Math.random()}`,
       dappId: dapp.id,
       dappName: dapp.name,
+      website: dapp.website || null,
+      twitter: dapp.twitter || null,
+      github: dapp.github || null,
       severity: scanResult.severity,
       threats: scanResult.threats,
       reason: reason,
       status: 'ACTIVE',
+      legitimacyScore,
+      securityMetrics,
+      lastVetted: null,
     };
     
     return { entry, updatedList: [...this.blacklist] };
