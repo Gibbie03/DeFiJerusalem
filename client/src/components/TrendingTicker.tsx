@@ -39,27 +39,32 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
 
   // Calculate animation duration based on content width to ensure all 10 protocols cross
   useEffect(() => {
-    const mobileElement = mobileTickerRef.current;
-    const desktopElement = desktopTickerRef.current;
+    // Use setTimeout to ensure elements are rendered before measuring
+    const timeoutId = setTimeout(() => {
+      const mobileElement = mobileTickerRef.current;
+      const desktopElement = desktopTickerRef.current;
 
-    // Calculate duration based on content width and desired speed (pixels per second)
-    const calculateDuration = (element: HTMLElement, pixelsPerSecond: number) => {
-      const contentWidth = element.scrollWidth / 2; // Divide by 2 since we duplicate content
-      const duration = contentWidth / pixelsPerSecond;
-      return duration;
-    };
+      // Calculate duration based on content width and desired speed (pixels per second)
+      const calculateDuration = (element: HTMLElement, pixelsPerSecond: number) => {
+        const contentWidth = element.scrollWidth / 2; // Divide by 2 since we duplicate content
+        const duration = contentWidth / pixelsPerSecond;
+        return duration;
+      };
 
-    if (mobileElement) {
-      // Mobile: Very slow (200 pixels per second) for comfortable reading
-      const duration = calculateDuration(mobileElement, 200);
-      mobileElement.style.animationDuration = `${duration}s`;
-    }
+      if (mobileElement && mobileElement.scrollWidth > 0) {
+        // Mobile: VERY slow (100 pixels per second) - takes ~16.5 seconds to show all 10
+        const duration = calculateDuration(mobileElement, 100);
+        mobileElement.style.animationDuration = `${duration}s`;
+      }
 
-    if (desktopElement) {
-      // Desktop: Slow (150 pixels per second) for comfortable reading
-      const duration = calculateDuration(desktopElement, 150);
-      desktopElement.style.animationDuration = `${duration}s`;
-    }
+      if (desktopElement && desktopElement.scrollWidth > 0) {
+        // Desktop: VERY slow (75 pixels per second) - takes ~22 seconds to show all 10
+        const duration = calculateDuration(desktopElement, 75);
+        desktopElement.style.animationDuration = `${duration}s`;
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [trending]);
 
   if (trending.length === 0) return null;
