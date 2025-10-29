@@ -334,33 +334,33 @@
     inset: -1px;
   }
 
-  /* Scrolling ticker animation - scroll exactly 50% to show all 10 protocols */
-  @keyframes scroll-left-once {
+  /* Ticker animation: scroll all content from right to left, then reset */
+  @keyframes scroll-ticker {
     0% {
       transform: translateX(0);
     }
     100% {
-      transform: translateX(-50%);
+      transform: translateX(-100%);
     }
   }
 
-  /* Mobile: Fast scroll - duration calculated dynamically via JS */
-  .animate-scroll-left-mobile-once {
-    animation: scroll-left-once linear infinite;
+  /* Mobile ticker - duration calculated dynamically via JS */
+  .animate-ticker-mobile {
+    animation: scroll-ticker linear infinite;
     /* Duration set via JavaScript based on content width */
   }
 
-  .animate-scroll-left-mobile-once:hover {
+  .animate-ticker-mobile:hover {
     animation-play-state: paused;
   }
 
-  /* Desktop: Moderate scroll - duration calculated dynamically via JS */
-  .animate-scroll-left-desktop-once {
-    animation: scroll-left-once linear infinite;
+  /* Desktop ticker - duration calculated dynamically via JS */
+  .animate-ticker-desktop {
+    animation: scroll-ticker linear infinite;
     /* Duration set via JavaScript based on content width */
   }
 
-  .animate-scroll-left-desktop-once:hover {
+  .animate-ticker-desktop:hover {
     animation-play-state: paused;
   }
 }
