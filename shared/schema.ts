@@ -66,6 +66,23 @@ export const blacklistEntries = pgTable('blacklist_entries', {
   reason: text('reason'),
   status: text('status').notNull(),
   timestamp: timestamp('timestamp').notNull().defaultNow(),
+  website: text('website'),
+  twitter: text('twitter'),
+  github: text('github'),
+  legitimacyScore: real('legitimacy_score').default(0),
+  securityMetrics: json('security_metrics').$type<{
+    hasAudit: boolean;
+    auditFirms: string[];
+    tvl: number;
+    holderCount: number | null;
+    hasOpenSource: boolean;
+    hasMultisig: boolean;
+    hasTimelock: boolean;
+    hasBugBounty: boolean;
+    hasDoxxedTeam: boolean;
+    communitySize: number | null;
+  }>(),
+  lastVetted: timestamp('last_vetted'),
 });
 
 export const tutorialVideos = pgTable('tutorial_videos', {
@@ -184,16 +201,34 @@ export type SecurityScan = {
   score: number;
 };
 
+export type SecurityMetrics = {
+  hasAudit: boolean;
+  auditFirms: string[];
+  tvl: number;
+  holderCount: number | null;
+  hasOpenSource: boolean;
+  hasMultisig: boolean;
+  hasTimelock: boolean;
+  hasBugBounty: boolean;
+  hasDoxxedTeam: boolean;
+  communitySize: number | null;
+};
+
 export type BlacklistEntry = {
   id: string;
   dappId: string;
   dappName: string;
   website: string | null;
+  twitter: string | null;
+  github: string | null;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   threats: Threat[];
   reason: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   timestamp: string;
+  legitimacyScore: number;
+  securityMetrics: SecurityMetrics | null;
+  lastVetted: string | null;
 };
 
 export type TutorialVideo = {
