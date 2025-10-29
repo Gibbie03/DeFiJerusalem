@@ -170,6 +170,18 @@ const ProtocolRow = memo(({
         </Tooltip>
       </td>
 
+      {/* Volume 24h */}
+      <td className="px-3 py-4 text-right">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="font-semibold cursor-help text-muted-foreground">{formatTVL(Number(protocol.volume24h) || 0)}</div>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p className="font-mono">{formatExactTVL(Number(protocol.volume24h) || 0)}</p>
+          </TooltipContent>
+        </Tooltip>
+      </td>
+
       {/* 24h Change */}
       <td className="px-3 py-4 text-right">
         <div className={`font-semibold ${
@@ -273,6 +285,7 @@ export default function ProtocolTable({
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">#</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Name</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">TVL</th>
+                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Volume 24h</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">24h %</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">7d %</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Last 7 Days (TVL)</th>

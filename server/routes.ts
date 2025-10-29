@@ -393,11 +393,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
         const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
         const totalTVL = allProtocols.reduce((sum: number, p: any) => sum + (p.tvl || 0), 0);
+        const totalVolume = allProtocols.reduce((sum: number, p: any) => sum + (Number(p.volume24h) || 0), 0);
         const response = {
           protocols: paginatedData,
           total: allProtocols.length,
           auditedCount,
           totalTVL,
+          totalVolume,
           limit: validLimit,
           offset: validOffset,
           hasMore: (validOffset + validLimit) < allProtocols.length
@@ -446,11 +448,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
         const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
         const totalTVL = allProtocols.reduce((sum: number, p: any) => sum + (p.tvl || 0), 0);
+        const totalVolume = allProtocols.reduce((sum: number, p: any) => sum + (Number(p.volume24h) || 0), 0);
         const response = {
           protocols: paginatedData,
           total: allProtocols.length,
           auditedCount,
           totalTVL,
+          totalVolume,
           limit: validLimit,
           offset: validOffset,
           hasMore: (validOffset + validLimit) < allProtocols.length
@@ -505,11 +509,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
       const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
       const totalTVL = allProtocols.reduce((sum: number, p: any) => sum + (p.tvl || 0), 0);
+      const totalVolume = allProtocols.reduce((sum: number, p: any) => sum + (Number(p.volume24h) || 0), 0);
       const response = {
         protocols: paginatedData,
         total: allProtocols.length,
         auditedCount,
         totalTVL,
+        totalVolume,
         limit: validLimit,
         offset: validOffset,
         hasMore: (validOffset + validLimit) < allProtocols.length

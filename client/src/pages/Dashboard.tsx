@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, Info } from 'lucide-react';
+import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, Info, Activity } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ interface PaginatedResponse {
   protocols: Protocol[];
   total: number;
   auditedCount: number;
+  totalTVL?: number;
+  totalVolume?: number;
   limit: number;
   offset: number;
   hasMore: boolean;
@@ -269,7 +271,8 @@ export default function Dashboard() {
     chains: 126,
     audited: initialData?.auditedCount || 0,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
-    totalTVL: initialData?.totalTVL || protocols.reduce((sum, p) => sum + p.tvl, 0)
+    totalTVL: initialData?.totalTVL || protocols.reduce((sum, p) => sum + p.tvl, 0),
+    totalVolume: initialData?.totalVolume || protocols.reduce((sum, p) => sum + (Number(p.volume24h) || 0), 0)
   }), [protocols, blacklist, initialData]);
 
   const handleRefresh = useCallback(async () => {
@@ -337,7 +340,7 @@ export default function Dashboard() {
       <TrendingTicker onProtocolClick={handleViewDetails} />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatsCard
             label="Total Protocols"
             value={stats.total.toLocaleString()}
@@ -355,6 +358,19 @@ export default function Dashboard() {
             })()}
             icon={DollarSign}
             tooltip="Total Value Locked across all tracked protocols"
+          />
+          <StatsCard
+            label="Total Volume"
+            value={(() => {
+              const vol = stats.totalVolume;
+              if (vol >= 1_000_000_000_000) return `$${(vol / 1_000_000_000_000).toFixed(2)}T`;
+              if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(2)}B`;
+              if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(2)}M`;
+              if (vol >= 1_000) return `$${(vol / 1_000).toFixed(2)}K`;
+              return `$${vol.toFixed(2)}`;
+            })()}
+            icon={Activity}
+            tooltip="Total 24h trading volume across all tracked protocols"
           />
           <StatsCard
             label="Chains Supported"
