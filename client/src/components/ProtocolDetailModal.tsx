@@ -1,5 +1,5 @@
-import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, BarChart3, Ban } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, TrendingUp, Ban } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -72,6 +72,9 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
               <Badge variant="secondary" className="mt-1">{protocol.category}</Badge>
             </div>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Detailed information about {protocol.name} including TVL, security score, audit data, and links to external resources.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -144,15 +147,12 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
               </p>
               <p className="text-lg font-bold font-mono">{formatTVL(protocol.tvl)}</p>
             </div>
-            <div className="relative group">
+            <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                <BarChart3 className="w-3 h-3" />
+                <TrendingUp className="w-3 h-3" />
                 Volume 24h
               </p>
               <p className="text-lg font-bold font-mono" data-testid="text-volume-24h">{formatTVL(protocol.volume24h)}</p>
-              <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-48 p-2 text-xs bg-popover text-popover-foreground border border-border rounded-md shadow-lg">
-                Estimated 24h trading volume based on TVL and protocol category
-              </div>
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
