@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -53,6 +53,12 @@ export interface IStorage {
   getDiscoveredContracts(filters?: { status?: string; chain?: string; limit?: number }): Promise<DiscoveredContract[]>;
   updateDiscoveredContractStatus(id: string, status: string): Promise<void>;
   promoteContractToProtocol(contractId: string, protocolId: string): Promise<void>;
+  
+  // Whitelist methods
+  addToWhitelist(entry: InsertProtocolWhitelist): Promise<ProtocolWhitelist>;
+  getWhitelist(): Promise<ProtocolWhitelist[]>;
+  isProtocolWhitelisted(protocolId: string): Promise<boolean>;
+  removeFromWhitelist(protocolId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -895,6 +901,66 @@ export class DatabaseStorage implements IStorage {
       promotedToProtocol: contract.promotedToProtocol ?? false,
       protocolId: contract.protocolId,
       metadata: contract.metadata as any,
+    };
+  }
+
+  async addToWhitelist(entry: InsertProtocolWhitelist): Promise<ProtocolWhitelist> {
+    const id = `wl_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const [result] = await db
+      .insert(protocolWhitelist)
+      .values({ ...entry, id })
+      .onConflictDoUpdate({
+        target: protocolWhitelist.protocolId,
+        set: {
+          reason: entry.reason,
+          verificationSource: entry.verificationSource,
+          certikScore: entry.certikScore,
+          defiSafetyScore: entry.defiSafetyScore,
+          minTvl: entry.minTvl,
+          exchangeListings: entry.exchangeListings,
+          lastVerified: new Date(),
+        }
+      })
+      .returning();
+    
+    return this.mapWhitelistEntry(result);
+  }
+
+  async getWhitelist(): Promise<ProtocolWhitelist[]> {
+    const results = await db.select().from(protocolWhitelist);
+    return results.map(r => this.mapWhitelistEntry(r));
+  }
+
+  async isProtocolWhitelisted(protocolId: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(protocolWhitelist)
+      .where(eq(protocolWhitelist.protocolId, protocolId))
+      .limit(1);
+    
+    return result.length > 0;
+  }
+
+  async removeFromWhitelist(protocolId: string): Promise<void> {
+    await db
+      .delete(protocolWhitelist)
+      .where(eq(protocolWhitelist.protocolId, protocolId));
+  }
+
+  private mapWhitelistEntry(entry: any): ProtocolWhitelist {
+    return {
+      id: entry.id,
+      protocolId: entry.protocolId,
+      protocolName: entry.protocolName,
+      reason: entry.reason,
+      verificationSource: entry.verificationSource,
+      certikScore: entry.certikScore ?? null,
+      defiSafetyScore: entry.defiSafetyScore ?? null,
+      minTvl: entry.minTvl ?? null,
+      exchangeListings: entry.exchangeListings ?? null,
+      addedBy: entry.addedBy,
+      addedAt: entry.addedAt.toISOString(),
+      lastVerified: entry.lastVerified.toISOString(),
     };
   }
 }

@@ -966,6 +966,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/whitelist - Get protocol whitelist
+  app.get("/api/whitelist", async (req: Request, res: Response) => {
+    try {
+      const whitelist = await storage.getWhitelist();
+      res.json(whitelist);
+    } catch (error) {
+      console.error("Error fetching whitelist:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch whitelist",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/admin/whitelist - Add protocol to whitelist (Admin only)
+  app.post("/api/admin/whitelist", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const { protocolId, reason, verificationSource, certikScore, defiSafetyScore, minTvl, exchangeListings } = req.body;
+
+      if (!protocolId || !reason || !verificationSource) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Protocol ID, reason, and verification source are required' 
+        });
+      }
+
+      // Fetch protocol data
+      const allProtocols = await storage.getProtocols();
+      const protocol = allProtocols.find(p => p.id === protocolId);
+      if (!protocol) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Protocol not found' 
+        });
+      }
+
+      const whitelistEntry = {
+        protocolId,
+        protocolName: protocol.name,
+        reason,
+        verificationSource,
+        certikScore: certikScore ?? null,
+        defiSafetyScore: defiSafetyScore ?? null,
+        minTvl: minTvl ?? null,
+        exchangeListings: exchangeListings ?? null,
+        addedBy: req.session.adminUsername || 'admin',
+      };
+
+      await storage.addToWhitelist(whitelistEntry);
+
+      auditLogger.log({
+        action: 'WHITELIST_ADD',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        details: { protocolId, protocolName: protocol.name, reason }
+      });
+
+      res.json({ 
+        success: true, 
+        message: `${protocol.name} has been added to whitelist` 
+      });
+    } catch (error) {
+      console.error("Error adding to whitelist:", error);
+      auditLogger.logFromRequest(req, 'WHITELIST_ADD_ERROR', false, { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to add to whitelist"
+      });
+    }
+  });
+
+  // DELETE /api/admin/whitelist/:protocolId - Remove from whitelist (Admin only)
+  app.delete("/api/admin/whitelist/:protocolId", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const { protocolId } = req.params;
+      
+      await storage.removeFromWhitelist(protocolId);
+
+      auditLogger.log({
+        action: 'WHITELIST_REMOVE',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        details: { protocolId }
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Protocol removed from whitelist" 
+      });
+    } catch (error) {
+      console.error("Error removing from whitelist:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to remove from whitelist"
+      });
+    }
+  });
+
+  // POST /api/admin/whitelist/seed - Seed whitelist with legitimate protocols (Admin only)
+  app.post("/api/admin/whitelist/seed", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Admin authentication required' 
+        });
+      }
+
+      const { seedWhitelist } = await import('./lib/seed-whitelist');
+      const results = await seedWhitelist();
+
+      auditLogger.log({
+        action: 'WHITELIST_SEED',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        details: results
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Whitelist seeded: ${results.addedCount} added, ${results.skippedCount} already whitelisted`,
+        results
+      });
+    } catch (error) {
+      console.error("Error seeding whitelist:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to seed whitelist"
+      });
+    }
+  });
+
   // POST /api/discovery/scan - Discover new contracts from blockchain explorers (Admin only)
   app.post("/api/discovery/scan", async (req: Request, res: Response) => {
     if (!req.session.adminId) {
