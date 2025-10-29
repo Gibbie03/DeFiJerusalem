@@ -344,9 +344,9 @@
     }
   }
 
-  /* Mobile: 30-second cycle with 200 repetitions (same speed as before) */
+  /* Mobile: 20-second cycle with 200 repetitions (1.5x faster) */
   .animate-scroll-left-mobile {
-    animation: scroll-left 30s linear infinite;
+    animation: scroll-left 20s linear infinite;
   }
 
   .animate-scroll-left-mobile:hover {
