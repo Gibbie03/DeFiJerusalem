@@ -123,6 +123,41 @@ export const sponsorPayments = pgTable('sponsor_payments', {
   statusIdx: index('sponsor_payments_status_idx').on(table.status),
 }));
 
+export const discoveredContracts = pgTable('discovered_contracts', {
+  id: text('id').primaryKey(),
+  contractAddress: text('contract_address').notNull(),
+  contractName: text('contract_name'),
+  chain: text('chain').notNull(),
+  contractType: text('contract_type'),
+  verifiedAt: timestamp('verified_at'),
+  discoveredAt: timestamp('discovered_at').notNull().defaultNow(),
+  compilerVersion: text('compiler_version'),
+  optimization: boolean('optimization'),
+  sourceCode: text('source_code'),
+  abi: json('abi').$type<any[]>(),
+  creatorAddress: text('creator_address'),
+  txHash: text('tx_hash'),
+  explorerUrl: text('explorer_url'),
+  status: text('status').notNull().default('pending'),
+  reviewedAt: timestamp('reviewed_at'),
+  promotedToProtocol: boolean('promoted_to_protocol').default(false),
+  protocolId: text('protocol_id'),
+  metadata: json('metadata').$type<{
+    isERC20?: boolean;
+    isERC721?: boolean;
+    isProxy?: boolean;
+    isGovernance?: boolean;
+    hasLiquidity?: boolean;
+    estimatedTVL?: number;
+    socialLinks?: { website?: string; twitter?: string; github?: string };
+  }>(),
+}, (table) => ({
+  chainIdx: index('discovered_contracts_chain_idx').on(table.chain),
+  discoveredAtIdx: index('discovered_contracts_discovered_at_idx').on(table.discoveredAt),
+  statusIdx: index('discovered_contracts_status_idx').on(table.status),
+  contractAddressIdx: index('discovered_contracts_address_idx').on(table.contractAddress),
+}));
+
 export const adminUsers = pgTable('admin_users', {
   id: text('id').primaryKey(),
   username: text('username').notNull().unique(),
@@ -299,6 +334,36 @@ export type ProtocolCustomization = {
   appliedAt: string | null;
 };
 
+export type DiscoveredContract = {
+  id: string;
+  contractAddress: string;
+  contractName: string | null;
+  chain: string;
+  contractType: string | null;
+  verifiedAt: string | null;
+  discoveredAt: string;
+  compilerVersion: string | null;
+  optimization: boolean | null;
+  sourceCode: string | null;
+  abi: any[] | null;
+  creatorAddress: string | null;
+  txHash: string | null;
+  explorerUrl: string | null;
+  status: 'pending' | 'reviewed' | 'approved' | 'rejected';
+  reviewedAt: string | null;
+  promotedToProtocol: boolean;
+  protocolId: string | null;
+  metadata: {
+    isERC20?: boolean;
+    isERC721?: boolean;
+    isProxy?: boolean;
+    isGovernance?: boolean;
+    hasLiquidity?: boolean;
+    estimatedTVL?: number;
+    socialLinks?: { website?: string; twitter?: string; github?: string };
+  } | null;
+};
+
 export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -333,10 +398,17 @@ export const insertProtocolCustomizationSchema = createInsertSchema(protocolCust
   appliedAt: true
 });
 
+export const insertDiscoveredContractSchema = createInsertSchema(discoveredContracts).omit({ 
+  id: true, 
+  discoveredAt: true,
+  reviewedAt: true
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
 export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
 export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
+export type InsertDiscoveredContract = z.infer<typeof insertDiscoveredContractSchema>;
 export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
 
 // API response types
