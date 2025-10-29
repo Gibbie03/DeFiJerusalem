@@ -29,8 +29,8 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
   // Ensure protocols is always an array
   const protocolsArray = Array.isArray(protocols) ? protocols : [];
   
-  // Top 10 trending protocols
-  const trending = protocolsArray.slice(0, 10);
+  // Top 30 trending protocols (to achieve 2 sec per protocol over 60 sec cycle)
+  const trending = protocolsArray.slice(0, 30);
 
   if (trending.length === 0) return null;
 
