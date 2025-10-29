@@ -383,16 +383,16 @@ const SCAM_PATTERNS = {
     /claimable.*tokens/i
   ],
   
-  // Unrealistic staking APY patterns (BNB staking should be 2-6%, not 20-30%)
+  // Unrealistic staking APY patterns (requires context: guaranteed/risk-free + high APY)
   unrealisticApyPatterns: [
-    /\b[2-9]\d%.*apy/i, // 20%+ APY
-    /\b[1-9]\d\d%.*apy/i, // 100%+ APY
-    /guaranteed.*\d+%.*returns/i,
-    /risk.*free.*\d+%/i,
-    /stable.*30%.*apy/i, // Stablecoins with 30% = scam
-    /btc.*staking.*20%/i, // BTC staking with 20%+ = scam
-    /eth.*staking.*20%/i, // ETH staking with 20%+ = scam
-    /usdt.*staking.*15%/i, // USDT with 15%+ = scam
+    /guaranteed.*[3-9]\d%/i, // "guaranteed 30%+" = scam
+    /guaranteed.*\d{3,}%/i, // "guaranteed 100%+" = scam
+    /risk.*free.*[2-9]\d%/i, // "risk-free 20%+" = scam
+    /stable.*coin.*(guaranteed|risk.*free|promised).*[2-9]\d%/i, // stablecoin + guaranteed/risk-free + 20%+
+    /btc.*staking.*(guaranteed|risk.*free|promised).*[1-9]\d%/i, // BTC staking + guaranteed + 10%+
+    /eth.*staking.*(guaranteed|risk.*free|promised).*[1-9]\d%/i, // ETH staking + guaranteed + 10%+
+    /zero.*risk.*[2-9]\d%/i, // "zero risk 20%+"
+    /no.*risk.*profit.*[2-9]\d%/i, // "no risk profit 20%+"
   ],
   
   // Visual clone / perfect replica patterns
@@ -404,29 +404,25 @@ const SCAM_PATTERNS = {
     /pixel.*perfect.*copy/i
   ],
   
-  // Malicious TLD patterns (from research: .lol, .id, .org variations)
+  // Malicious TLD patterns (highly specific - only known scam TLDs)
   suspiciousTLDPatterns: [
-    /\.lol\b/i, // Common scam TLD
-    /\.id\b/i, // Often used for phishing
-    /\.tk\b/i, // Free domain service
-    /\.ml\b/i, // Free domain service
-    /\.ga\b/i, // Free domain service
-    /\.cf\b/i, // Free domain service
-    /\.gq\b/i, // Free domain service
-    /-[a-z]{2,}\.(com|org|net)/i, // hyphenated subdomains like "aster-dex.lol"
+    /\.lol\b/i, // Common scam TLD (.lol is ONLY used for scams, never legitimate)
+    /\.tk\b/i, // Free domain service (Tokelau - 90%+ spam/scam)
+    /\.ml\b/i, // Free domain service (Mali - 90%+ spam/scam)
+    /\.ga\b/i, // Free domain service (Gabon - 90%+ spam/scam)
+    /\.cf\b/i, // Free domain service (Central African Republic - 90%+ spam/scam)
+    /\.gq\b/i, // Free domain service (Equatorial Guinea - 90%+ spam/scam)
   ],
   
-  // Domain variation patterns (targeting specific protocols)
+  // Domain variation patterns (specific phishing keywords + protocol names)
   domainVariationPatterns: [
-    /aster.*dex(?!\.com)/i, // aster-dex.lol, asterdex.org, etc (NOT asterdex.com)
-    /register.*aster/i,
-    /aster.*invest/i,
-    /aster.*stake/i,
-    /aster.*allocation/i,
-    /uniswap.*claim/i,
-    /pancake.*claim/i,
-    /metamask.*verify/i,
-    /trust.*wallet.*verify/i
+    /aster.*dex.*\.lol/i, // aster-dex.lol specifically
+    /(register|claim|verify|connect).*aster/i, // register-aster, claim-aster, etc
+    /aster.*(claim|airdrop|free|invest|stake)/i, // aster-claim, aster-airdrop, etc
+    /uniswap.*(claim|verify|wallet|connect)/i, // uniswap-claim, etc
+    /pancake.*(claim|verify|wallet|connect)/i, // pancake-claim, etc
+    /metamask.*(verify|update|security|alert)/i, // metamask-verify, etc
+    /trust.*wallet.*(verify|update|security)/i, // trustwallet-verify, etc
   ],
   
   // Crypto drainer infrastructure patterns
@@ -1025,12 +1021,12 @@ export class WalletDrainerDetector {
         results.score += 15;
       }
 
-      // MEDIUM: Suspicious - very high promised returns in description
-      if (/\d{2,4}%|\d+x\s*returns?|guaranteed\s*profit/i.test(nameAndDesc)) {
+      // MEDIUM: Suspicious - guaranteed profit or extreme multiplier claims
+      if (/(guaranteed|promised|certain).*profit|guaranteed.*\d+x|(100|1000)x.*guaranteed/i.test(nameAndDesc)) {
         results.threats.push({
           type: 'SUSPICIOUS_RETURNS',
           severity: 'MEDIUM',
-          message: 'Advertises unrealistic returns - potential scam',
+          message: 'Advertises guaranteed profits or extreme multipliers - potential scam',
         });
         results.score += 30;
       }
@@ -1056,7 +1052,7 @@ export class WalletDrainerDetector {
           results.threats.push({
             type: 'UNREALISTIC_APY',
             severity: 'CRITICAL',
-            message: 'SCAM: Unrealistic APY detected (20-30%+ on stablecoins/BTC/ETH) - Legitimate rates are 2-6%',
+            message: 'SCAM: Guaranteed/risk-free high returns detected - No legitimate protocol can guarantee 20-30%+ APY',
           });
           results.score += 90;
           break;

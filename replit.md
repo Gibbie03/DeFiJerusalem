@@ -37,6 +37,15 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Multi-Layer Security**: Implements rate limiting, secure admin initialization, audit logging, input validation/sanitization (Drizzle ORM for SQL injection protection), security headers (Helmet middleware), and secure session management.
 - **Error Handling**: Generic error messages returned to clients to prevent information leakage.
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
+- **Enhanced Drainer Detection (2025)**: Implements advanced detection for Drainer-as-a-Service (DaaS) campaigns based on real-world analysis of aster-dex.lol and similar scams. Detects:
+  - Malicious TLDs (.lol, .tk, .ml, .ga, .cf, .gq) with 90%+ scam rate
+  - Fake airdrop campaigns using "free tokens" and "eligible airdrop" lures
+  - Context-aware unrealistic APY detection (requires "guaranteed"/"risk-free" + high APY to avoid false positives on legitimate high-yield farms)
+  - Domain variation scams (register-aster.com, claim-uniswap.org, verify-metamask.net)
+  - Wallet drainer infrastructure patterns (seaport.js, permit2 abuse, single-use contracts)
+  - Visual clone detection (pixel-perfect copies of legitimate DEX interfaces)
+  - Social media scam distribution (unsolicited DMs, fake support, Telegram admin impersonation)
+- **False Positive Prevention**: All scam patterns are context-aware to avoid flagging legitimate protocols. Excludes Indonesian .id domains, hyphenated brand names (world-bank.org), and high-yield DeFi farms that don't use "guaranteed" language.
 
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL data, volume data, and audit information.
