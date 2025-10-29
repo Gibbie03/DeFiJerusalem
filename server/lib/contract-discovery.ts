@@ -159,7 +159,6 @@ export async function fetchContractDetails(
     // Fetch contract creation transaction
     let creatorAddress: string | null = null;
     let txHash: string | null = null;
-    let verifiedAt: Date | null = null;
 
     try {
       const txUrl = new URL(explorer.baseUrl);
@@ -200,7 +199,7 @@ export async function fetchContractDetails(
       contractName: contractData.ContractName || null,
       chain,
       contractType: metadata.contractType,
-      verifiedAt: verifiedAt ? verifiedAt.toISOString() : null,
+      verifiedAt: null,
       compilerVersion: contractData.CompilerVersion || null,
       optimization: contractData.OptimizationUsed === '1',
       sourceCode: contractData.SourceCode || null,

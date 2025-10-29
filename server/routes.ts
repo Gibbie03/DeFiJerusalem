@@ -966,6 +966,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/discovery/scan - Discover new contracts from blockchain explorers (Admin only)
+  app.post("/api/discovery/scan", async (req: Request, res: Response) => {
+    if (!req.session.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    try {
+      const { discoverContractsMultiChain, filterDeFiContracts } = 
+        await import('./lib/contract-discovery');
+      
+      const { chains } = req.body;
+      const selectedChains = chains || ['ethereum', 'bsc', 'polygon'];
+      
+      console.log(`Starting contract discovery on chains: ${selectedChains.join(', ')}`);
+      
+      const allContracts = await discoverContractsMultiChain(selectedChains);
+      const defiContracts = filterDeFiContracts(allContracts);
+      
+      // Save discovered contracts to database
+      const savedContracts = [];
+      for (const contract of defiContracts) {
+        try {
+          const saved = await storage.addDiscoveredContract(contract as any);
+          savedContracts.push(saved);
+        } catch (error) {
+          console.error(`Error saving contract ${contract.contractAddress}:`, error);
+        }
+      }
+      
+      auditLogger.log({
+        action: 'CONTRACT_DISCOVERY',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        details: { 
+          chains: selectedChains,
+          totalFound: allContracts.length,
+          defiFound: defiContracts.length,
+          saved: savedContracts.length
+        }
+      });
+      
+      res.json({
+        success: true,
+        totalFound: allContracts.length,
+        defiFound: defiContracts.length,
+        saved: savedContracts.length,
+        contracts: savedContracts
+      });
+    } catch (error) {
+      console.error("Error discovering contracts:", error);
+      auditLogger.logFromRequest(req, 'CONTRACT_DISCOVERY_ERROR', false, { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      res.status(500).json({ 
+        error: "Failed to discover contracts",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/discovery/contracts - Get discovered contracts
+  app.get("/api/discovery/contracts", async (req: Request, res: Response) => {
+    if (!req.session.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    try {
+      const { status, chain, limit } = req.query;
+      
+      const contracts = await storage.getDiscoveredContracts({
+        status: status as string | undefined,
+        chain: chain as string | undefined,
+        limit: limit ? parseInt(limit as string) : 100
+      });
+      
+      res.json(contracts);
+    } catch (error) {
+      console.error("Error fetching discovered contracts:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch contracts",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // PATCH /api/discovery/contracts/:id/status - Update contract status (Admin only)
+  app.patch("/api/discovery/contracts/:id/status", async (req: Request, res: Response) => {
+    if (!req.session.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!['pending', 'reviewed', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      
+      await storage.updateDiscoveredContractStatus(id, status);
+      
+      auditLogger.log({
+        action: 'UPDATE_CONTRACT_STATUS',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        details: { contractId: id, newStatus: status }
+      });
+      
+      res.json({ success: true, message: "Contract status updated" });
+    } catch (error) {
+      console.error("Error updating contract status:", error);
+      res.status(500).json({ 
+        error: "Failed to update status",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/tutorials - Get all tutorial videos
   app.get("/api/tutorials", async (req, res) => {
     try {

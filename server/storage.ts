@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -47,6 +47,12 @@ export interface IStorage {
   updateCustomizationStatus(id: string, status: string, reviewNotes?: string): Promise<void>;
   updateCustomizationPayment(id: string, paymentStatus: string, txHash?: string, currency?: string): Promise<void>;
   getAllCustomizations(): Promise<ProtocolCustomization[]>;
+  
+  // Contract discovery methods
+  addDiscoveredContract(contract: InsertDiscoveredContract): Promise<DiscoveredContract>;
+  getDiscoveredContracts(filters?: { status?: string; chain?: string; limit?: number }): Promise<DiscoveredContract[]>;
+  updateDiscoveredContractStatus(id: string, status: string): Promise<void>;
+  promoteContractToProtocol(contractId: string, protocolId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -802,6 +808,97 @@ export class DatabaseStorage implements IStorage {
       approvedAt: c.approvedAt?.toISOString() ?? null,
       appliedAt: c.appliedAt?.toISOString() ?? null,
     }));
+  }
+
+  async addDiscoveredContract(contract: InsertDiscoveredContract): Promise<DiscoveredContract> {
+    const id = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const [result] = await db
+      .insert(discoveredContracts)
+      .values({ ...contract, id })
+      .onConflictDoNothing()
+      .returning();
+    
+    if (!result) {
+      const [existing] = await db
+        .select()
+        .from(discoveredContracts)
+        .where(
+          and(
+            eq(discoveredContracts.contractAddress, contract.contractAddress),
+            eq(discoveredContracts.chain, contract.chain)
+          )
+        );
+      
+      return this.mapDiscoveredContract(existing);
+    }
+    
+    return this.mapDiscoveredContract(result);
+  }
+
+  async getDiscoveredContracts(filters?: { status?: string; chain?: string; limit?: number }): Promise<DiscoveredContract[]> {
+    const conditions = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(discoveredContracts.status, filters.status));
+    }
+    
+    if (filters?.chain) {
+      conditions.push(eq(discoveredContracts.chain, filters.chain));
+    }
+    
+    let query = db
+      .select()
+      .from(discoveredContracts)
+      .orderBy(desc(discoveredContracts.discoveredAt));
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    const results = await query;
+    return results.map(r => this.mapDiscoveredContract(r));
+  }
+
+  async updateDiscoveredContractStatus(id: string, status: string): Promise<void> {
+    await db
+      .update(discoveredContracts)
+      .set({ status, reviewedAt: new Date() })
+      .where(eq(discoveredContracts.id, id));
+  }
+
+  async promoteContractToProtocol(contractId: string, protocolId: string): Promise<void> {
+    await db
+      .update(discoveredContracts)
+      .set({ promotedToProtocol: true, protocolId, status: 'approved' })
+      .where(eq(discoveredContracts.id, contractId));
+  }
+
+  private mapDiscoveredContract(contract: any): DiscoveredContract {
+    return {
+      id: contract.id,
+      contractAddress: contract.contractAddress,
+      contractName: contract.contractName,
+      chain: contract.chain,
+      contractType: contract.contractType,
+      verifiedAt: contract.verifiedAt?.toISOString() ?? null,
+      discoveredAt: contract.discoveredAt.toISOString(),
+      compilerVersion: contract.compilerVersion,
+      optimization: contract.optimization,
+      sourceCode: contract.sourceCode,
+      abi: contract.abi as any[] | null,
+      creatorAddress: contract.creatorAddress,
+      txHash: contract.txHash,
+      explorerUrl: contract.explorerUrl,
+      status: contract.status as 'pending' | 'reviewed' | 'approved' | 'rejected',
+      reviewedAt: contract.reviewedAt?.toISOString() ?? null,
+      promotedToProtocol: contract.promotedToProtocol ?? false,
+      protocolId: contract.protocolId,
+      metadata: contract.metadata as any,
+    };
   }
 }
 
