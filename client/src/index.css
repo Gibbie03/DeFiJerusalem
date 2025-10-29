@@ -344,9 +344,9 @@
     }
   }
 
-  /* Mobile: DexScreener-style speed (18s cycle, moderate readable speed) */
+  /* Mobile: 2x DexScreener speed (9s cycle for faster scrolling) */
   .animate-scroll-left-mobile {
-    animation: scroll-left 18s linear infinite;
+    animation: scroll-left 9s linear infinite;
   }
 
   .animate-scroll-left-mobile:hover {

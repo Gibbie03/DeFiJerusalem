@@ -61,7 +61,7 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
         
-        {/* Mobile version: DexScreener-style speed (moderate, readable) */}
+        {/* Mobile version: 2x DexScreener speed (9s cycle) */}
         <div className="flex-1 overflow-hidden sm:hidden">
           <div className="animate-scroll-left-mobile flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
             {Array(100).fill(trending).flat().map((protocol, index) => 
