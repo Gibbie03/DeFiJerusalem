@@ -36,26 +36,26 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
 
   return (
     <div className="bg-muted/30 border-b border-border overflow-hidden">
-      <div className="flex items-center gap-3 px-4 sm:px-6 py-2.5">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2.5">
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">Trending</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
         <div className="flex-1 overflow-hidden">
-          <div className="animate-scroll-left flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
+          <div className="animate-scroll-left flex gap-4 sm:gap-6 whitespace-nowrap" data-testid="trending-ticker">
             {[...trending, ...trending].map((protocol, index) => {
               const rank = (index % trending.length) + 1;
               return (
                 <button
                   key={`${protocol.id}-${index}`}
                   onClick={() => onProtocolClick?.(protocol)}
-                  className="inline-flex items-center gap-2 hover-elevate active-elevate-2 px-2 py-1 rounded transition-colors"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 hover-elevate active-elevate-2 px-1.5 sm:px-2 py-1 rounded transition-colors text-xs sm:text-sm"
                   data-testid={`trending-protocol-${protocol.id}`}
                 >
-                  <span className="text-xs font-bold text-primary/60 min-w-[1.5rem]">#{rank}</span>
-                  <span className="text-sm font-semibold text-foreground">{protocol.name}</span>
-                  <span className={`text-xs font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  <span className="font-bold text-primary/60 min-w-[1.2rem] sm:min-w-[1.5rem]">#{rank}</span>
+                  <span className="font-semibold text-foreground">{protocol.name}</span>
+                  <span className={`font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
                   </span>
-                  <span className="text-xs text-muted-foreground font-medium">
+                  <span className="text-muted-foreground font-medium hidden xs:inline">
                     {formatTVL(protocol.tvl)}
                   </span>
                 </button>
