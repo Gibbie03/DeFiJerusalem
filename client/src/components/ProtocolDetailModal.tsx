@@ -35,7 +35,6 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
   // Check admin session
   const { data: session } = useQuery<{ authenticated: boolean }>({
     queryKey: ['/api/admin/session'],
-    staleTime: 5 * 60 * 1000,
   });
   const isAdmin = session?.authenticated === true;
 

@@ -44,6 +44,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
 ## Recent Changes (October 29, 2025)
+- **CRITICAL FIX - React Query staleTime Overrides**: Fixed production data staleness issue where Dashboard and ProtocolDetailModal were overriding global `staleTime: 0` setting with long cache times (5-30 minutes). Removed all `staleTime` overrides from component-level queries, ensuring all queries use global `staleTime: 0` for fresh data fetches. This fixes published site showing incorrect volume ($29.93M instead of $95B+) and audited count (6 instead of 2,625).
 - **COMPREHENSIVE CACHE FIX - Multi-Layer Cache Elimination**: Completely disabled ALL caching layers to fix persistent mobile browser cache issues:
   - **Server-Side**: Added aggressive no-cache middleware that intercepts res.set() to prevent routes from overriding cache headers. All API responses now return: `Cache-Control: no-cache, no-store, must-revalidate, private, max-age=0`, `Pragma: no-cache`, `Expires: 0`. Removed all ETags to prevent 304 Not Modified responses.
   - **Client-Side**: Added timestamp-based cache busting (`_t=Date.now()`) to all API requests. Added `cache: "no-store"` fetch directive. Maintained React Query fixes: `staleTime: 0`, `refetchOnMount: true`.

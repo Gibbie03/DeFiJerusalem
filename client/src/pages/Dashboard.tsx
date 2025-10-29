@@ -52,7 +52,6 @@ export default function Dashboard() {
   const { data: initialData, isLoading, refetch } = useQuery<PaginatedResponse & { totalTVL?: number }>({
     queryKey: ['/api/protocols'],
     enabled: isOnline,
-    staleTime: 30 * 60 * 1000, // 30 minutes
     retry: 3,
   });
 
@@ -76,7 +75,6 @@ export default function Dashboard() {
   }>({
     queryKey: ['/api/volume/cross-chain'],
     enabled: isOnline,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch blacklist
