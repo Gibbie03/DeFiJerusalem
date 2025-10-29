@@ -366,6 +366,119 @@ const SCAM_PATTERNS = {
     /centralized.*wrapping/i,
     /peg.*at.*risk/i,
     /collateral.*mismatch/i
+  ],
+  
+  // ===== ENHANCED DRAINER-AS-A-SERVICE (DaaS) PATTERNS =====
+  
+  // Fake airdrop scam patterns (from aster-dex.lol analysis)
+  fakeAirdropScamPatterns: [
+    /free.*\$?[a-z]{3,10}.*token/i, // "free $ASTER tokens"
+    /eligible.*airdrop/i,
+    /exclusive.*airdrop/i,
+    /claim.*airdrop.*now/i,
+    /limited.*airdrop.*spots/i,
+    /airdrop.*expiring/i,
+    /snapshot.*eligible/i,
+    /airdrop.*allocation/i,
+    /claimable.*tokens/i
+  ],
+  
+  // Unrealistic staking APY patterns (BNB staking should be 2-6%, not 20-30%)
+  unrealisticApyPatterns: [
+    /\b[2-9]\d%.*apy/i, // 20%+ APY
+    /\b[1-9]\d\d%.*apy/i, // 100%+ APY
+    /guaranteed.*\d+%.*returns/i,
+    /risk.*free.*\d+%/i,
+    /stable.*30%.*apy/i, // Stablecoins with 30% = scam
+    /btc.*staking.*20%/i, // BTC staking with 20%+ = scam
+    /eth.*staking.*20%/i, // ETH staking with 20%+ = scam
+    /usdt.*staking.*15%/i, // USDT with 15%+ = scam
+  ],
+  
+  // Visual clone / perfect replica patterns
+  perfectClonePatterns: [
+    /official.*clone/i,
+    /mirror.*site/i,
+    /replica.*platform/i,
+    /identical.*ui/i,
+    /pixel.*perfect.*copy/i
+  ],
+  
+  // Malicious TLD patterns (from research: .lol, .id, .org variations)
+  suspiciousTLDPatterns: [
+    /\.lol\b/i, // Common scam TLD
+    /\.id\b/i, // Often used for phishing
+    /\.tk\b/i, // Free domain service
+    /\.ml\b/i, // Free domain service
+    /\.ga\b/i, // Free domain service
+    /\.cf\b/i, // Free domain service
+    /\.gq\b/i, // Free domain service
+    /-[a-z]{2,}\.(com|org|net)/i, // hyphenated subdomains like "aster-dex.lol"
+  ],
+  
+  // Domain variation patterns (targeting specific protocols)
+  domainVariationPatterns: [
+    /aster.*dex(?!\.com)/i, // aster-dex.lol, asterdex.org, etc (NOT asterdex.com)
+    /register.*aster/i,
+    /aster.*invest/i,
+    /aster.*stake/i,
+    /aster.*allocation/i,
+    /uniswap.*claim/i,
+    /pancake.*claim/i,
+    /metamask.*verify/i,
+    /trust.*wallet.*verify/i
+  ],
+  
+  // Crypto drainer infrastructure patterns
+  drainerInfrastructurePatterns: [
+    /seaport\.js/i, // Common drainer script
+    /wallet.*connect\.js/i, // Malicious wallet connection
+    /drainer.*script/i,
+    /approval.*all/i,
+    /set.*approval.*for.*all/i,
+    /permit2/i, // Used by drainers
+    /single.*use.*contract/i, // Inferno Drainer technique
+    /disposable.*contract/i
+  ],
+  
+  // Social media distribution patterns
+  socialMediaScamPatterns: [
+    /dm.*for.*support/i,
+    /telegram.*admin/i,
+    /whatsapp.*support/i,
+    /instagram.*giveaway/i,
+    /twitter.*dm.*airdrop/i,
+    /discord.*mod.*help/i,
+    /never.*dm.*first/i // Ironically, scammers sometimes use this
+  ],
+  
+  // Offshore / anonymous registration patterns
+  offshoreRegistrationPatterns: [
+    /seychelles.*registered/i,
+    /bvi.*incorporated/i, // British Virgin Islands
+    /cayman.*islands/i,
+    /panama.*registered/i,
+    /offshore.*entity/i,
+    /anonymous.*registration/i,
+    /privacy.*jurisdiction/i
+  ],
+  
+  // Fake volume / metrics patterns
+  fakeVolumePatterns: [
+    /billion.*volume.*months.*old/i,
+    /\$\d+b.*tvl.*new.*project/i,
+    /record.*volume.*launch/i,
+    /unprecedented.*growth/i,
+    /viral.*success/i
+  ],
+  
+  // No recovery / irreversible warning patterns (ironically used by scammers)
+  noRecoveryWarningPatterns: [
+    /transactions.*irreversible/i,
+    /no.*refunds/i,
+    /cannot.*undo/i,
+    /permanent.*loss/i,
+    /non.*custodial.*risk/i // Used to justify not helping victims
   ]
 };
 
@@ -920,6 +1033,125 @@ export class WalletDrainerDetector {
           message: 'Advertises unrealistic returns - potential scam',
         });
         results.score += 30;
+      }
+
+      // ===== ENHANCED DRAINER-AS-A-SERVICE (DaaS) DETECTION =====
+
+      // CRITICAL: Check for fake airdrop scams (aster-dex.lol technique)
+      for (const pattern of SCAM_PATTERNS.fakeAirdropScamPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'FAKE_AIRDROP',
+            severity: 'CRITICAL',
+            message: 'SCAM: Fake airdrop detected - Claims free tokens to lure victims into wallet drainer',
+          });
+          results.score += 95;
+          break;
+        }
+      }
+
+      // CRITICAL: Check for unrealistic staking APY (aster-dex.lol red flag)
+      for (const pattern of SCAM_PATTERNS.unrealisticApyPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'UNREALISTIC_APY',
+            severity: 'CRITICAL',
+            message: 'SCAM: Unrealistic APY detected (20-30%+ on stablecoins/BTC/ETH) - Legitimate rates are 2-6%',
+          });
+          results.score += 90;
+          break;
+        }
+      }
+
+      // CRITICAL: Check for malicious TLDs (.lol, .tk, .ml, etc.)
+      for (const pattern of SCAM_PATTERNS.suspiciousTLDPatterns) {
+        if (pattern.test(website)) {
+          results.threats.push({
+            type: 'MALICIOUS_TLD',
+            severity: 'CRITICAL',
+            message: 'SCAM DOMAIN: Uses suspicious TLD commonly associated with phishing (.lol, .tk, .ml, .ga, .cf)',
+          });
+          results.score += 100; // Instant blacklist
+          break;
+        }
+      }
+
+      // CRITICAL: Check for domain variations (aster-dex.lol, register-asterdex.com, etc.)
+      for (const pattern of SCAM_PATTERNS.domainVariationPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'DOMAIN_VARIATION',
+            severity: 'CRITICAL',
+            message: 'SCAM: Impersonating legitimate protocol with fake domain variation',
+          });
+          results.score += 100; // Instant blacklist
+          break;
+        }
+      }
+
+      // CRITICAL: Check for crypto drainer infrastructure
+      for (const pattern of SCAM_PATTERNS.drainerInfrastructurePatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'DRAINER_INFRASTRUCTURE',
+            severity: 'CRITICAL',
+            message: 'DANGER: Wallet drainer infrastructure detected (malicious approval scripts)',
+          });
+          results.score += 100; // Instant blacklist
+          break;
+        }
+      }
+
+      // HIGH: Check for social media scam distribution patterns
+      for (const pattern of SCAM_PATTERNS.socialMediaScamPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'SOCIAL_MEDIA_SCAM',
+            severity: 'HIGH',
+            message: 'Social media scam pattern - Unsolicited DMs or fake support accounts',
+          });
+          results.score += 70;
+          break;
+        }
+      }
+
+      // HIGH: Check for offshore/anonymous registration
+      for (const pattern of SCAM_PATTERNS.offshoreRegistrationPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'OFFSHORE_REGISTRATION',
+            severity: 'HIGH',
+            message: 'Offshore registration (Seychelles, BVI, Cayman) - Common for exit scams',
+          });
+          results.score += 60;
+          break;
+        }
+      }
+
+      // HIGH: Check for fake volume/metrics claims
+      for (const pattern of SCAM_PATTERNS.fakeVolumePatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'FAKE_VOLUME',
+            severity: 'HIGH',
+            message: 'Suspicious metrics - Claims billions in volume while being new project',
+          });
+          results.score += 65;
+          break;
+        }
+      }
+
+      // MEDIUM: Check for visual clone patterns
+      for (const pattern of SCAM_PATTERNS.perfectClonePatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'VISUAL_CLONE',
+            severity: 'MEDIUM',
+            message: 'Visual clone detected - May be impersonating legitimate platform design',
+          });
+          results.score += 50;
+          break;
+        }
       }
 
       // Apply verification score (subtract from total) - this reduces false positives
