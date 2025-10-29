@@ -344,9 +344,9 @@
     }
   }
 
-  /* Mobile: 10-second cycle with 200 repetitions (ultra-fast) */
+  /* Mobile: 25-second cycle, scrolls 1500 items (300 reps × 10 protocols × 50% = 1500) */
   .animate-scroll-left-mobile {
-    animation: scroll-left 10s linear infinite;
+    animation: scroll-left 25s linear infinite;
   }
 
   .animate-scroll-left-mobile:hover {
