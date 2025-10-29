@@ -50,14 +50,14 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
     };
 
     if (mobileElement) {
-      // Mobile: 25% slower (1500 pixels per second) to show more protocols at once
-      const duration = calculateDuration(mobileElement, 1500);
+      // Mobile: Very slow (200 pixels per second) for comfortable reading
+      const duration = calculateDuration(mobileElement, 200);
       mobileElement.style.animationDuration = `${duration}s`;
     }
 
     if (desktopElement) {
-      // Desktop: 25% slower (750 pixels per second)
-      const duration = calculateDuration(desktopElement, 750);
+      // Desktop: Slow (150 pixels per second) for comfortable reading
+      const duration = calculateDuration(desktopElement, 150);
       desktopElement.style.animationDuration = `${duration}s`;
     }
   }, [trending]);
