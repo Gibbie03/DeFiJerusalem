@@ -7,7 +7,7 @@ import { DAppDiscovery } from "./lib/dapp-discovery";
 import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { auditLogger } from "./lib/audit-logger";
-import { insertProtocolSchema, insertTutorialVideoSchema } from "@shared/schema";
+import { insertProtocolSchema, insertTutorialVideoSchema, type Protocol } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 
 // Pre-serialized cache for CMC-level performance (avoids re-serialization overhead)
@@ -780,11 +780,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create blacklist entry
+      // Create blacklist entry with social links and legitimacy verification
+      const { extractSecurityMetrics, calculateLegitimacyScore } = 
+        await import('./lib/security-verification');
+      
+      const securityMetrics = extractSecurityMetrics(protocol);
+      const { score: legitimacyScore } = calculateLegitimacyScore(protocol, securityMetrics);
+      
       const blacklistEntry = {
         id: `manual-${Date.now()}-${Math.random()}`,
         dappId: protocol.id,
         dappName: protocol.name,
+        website: protocol.website || null,
+        twitter: protocol.twitter || null,
+        github: protocol.github || null,
         severity: 'HIGH' as const,
         threats: [{
           type: 'MANUAL_BLACKLIST',
@@ -793,6 +802,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }],
         reason: 'Manually blacklisted by administrator',
         status: 'ACTIVE' as const,
+        legitimacyScore,
+        securityMetrics,
+        lastVetted: null,
       };
 
       await storage.addToBlacklist(blacklistEntry);
@@ -852,6 +864,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error deleting blacklist entry:", error);
       res.status(500).json({ 
         error: "Failed to delete blacklist entry",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/blacklist/vet - Re-vet blacklisted protocols and remove legitimate ones (Admin only)
+  app.post("/api/blacklist/vet", async (req, res) => {
+    try {
+      const blacklist = await storage.getBlacklist();
+      const protocols = await storage.getProtocols();
+      
+      const results = {
+        total: blacklist.length,
+        vettedCount: 0,
+        removedCount: 0,
+        keptCount: 0,
+        removed: [] as Array<{ id: string; name: string; score: number }>,
+        kept: [] as Array<{ id: string; name: string; score: number; rating: string }>
+      };
+
+      for (const entry of blacklist) {
+        // Find corresponding protocol
+        const protocol = protocols.find((p: Protocol) => p.id === entry.dappId);
+        if (!protocol) {
+          console.log(`Protocol not found for blacklist entry: ${entry.dappId}`);
+          continue;
+        }
+
+        // Re-calculate legitimacy score with updated data
+        const { calculateLegitimacyScore, extractSecurityMetrics, shouldRemoveFromBlacklist, getLegitimacyRating } = 
+          await import('./lib/security-verification');
+        
+        const securityMetrics = extractSecurityMetrics(protocol);
+        const { score: legitimacyScore } = calculateLegitimacyScore(protocol, securityMetrics);
+        const rating = getLegitimacyRating(legitimacyScore);
+        
+        results.vettedCount++;
+
+        // Update the blacklist entry with new legitimacy score and vetting timestamp
+        await storage.updateBlacklistLegitimacy(entry.id, {
+          legitimacyScore,
+          securityMetrics,
+          website: protocol.website,
+          twitter: protocol.twitter,
+          github: protocol.github,
+          lastVetted: new Date().toISOString()
+        });
+
+        // If legitimacy score >= 70%, remove from blacklist
+        if (shouldRemoveFromBlacklist(legitimacyScore)) {
+          await storage.deleteBlacklistEntry(entry.id);
+          results.removedCount++;
+          results.removed.push({
+            id: entry.id,
+            name: entry.dappName,
+            score: legitimacyScore
+          });
+          
+          console.log(`✓ Removed ${entry.dappName} from blacklist (legitimacy score: ${legitimacyScore}%)`);
+        } else {
+          results.keptCount++;
+          results.kept.push({
+            id: entry.id,
+            name: entry.dappName,
+            score: legitimacyScore,
+            rating: rating.rating
+          });
+          
+          console.log(`✗ Kept ${entry.dappName} in blacklist (legitimacy score: ${legitimacyScore}%, ${rating.rating})`);
+        }
+      }
+
+      // Clear blacklist cache and reinitialize
+      clearCache('blacklist');
+      await initBlacklistManager();
+
+      auditLogger.log({
+        action: 'BLACKLIST_VET',
+        username: req.session.adminUsername || 'unknown',
+        ip: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        success: true,
+        details: results
+      });
+
+      res.json({
+        success: true,
+        message: `Vetting complete: ${results.removedCount} protocols removed, ${results.keptCount} kept`,
+        results
+      });
+    } catch (error) {
+      console.error("Error vetting blacklist:", error);
+      auditLogger.logFromRequest(req, 'BLACKLIST_VET_ERROR', false, { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      res.status(500).json({ 
+        error: "Failed to vet blacklist",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }

@@ -8,8 +8,16 @@ export interface IStorage {
   addProtocol(protocol: InsertProtocol): Promise<Protocol>;
   bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void>;
   getBlacklist(): Promise<BlacklistEntry[]>;
-  addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp' | 'website'>): Promise<BlacklistEntry>;
+  addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry>;
   deleteBlacklistEntry(entryId: string): Promise<void>;
+  updateBlacklistLegitimacy(entryId: string, updates: {
+    legitimacyScore: number;
+    securityMetrics: any;
+    website: string | null;
+    twitter: string | null;
+    github: string | null;
+    lastVetted: string;
+  }): Promise<void>;
   getSecurityScan(protocolId: string): Promise<SecurityScan | undefined>;
   getAllSecurityScans(): Promise<Record<string, SecurityScan>>;
   addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void>;
@@ -192,19 +200,8 @@ export class DatabaseStorage implements IStorage {
 
   async getBlacklist(): Promise<BlacklistEntry[]> {
     const result = await db
-      .select({
-        id: blacklistEntries.id,
-        dappId: blacklistEntries.dappId,
-        dappName: blacklistEntries.dappName,
-        severity: blacklistEntries.severity,
-        threats: blacklistEntries.threats,
-        reason: blacklistEntries.reason,
-        status: blacklistEntries.status,
-        timestamp: blacklistEntries.timestamp,
-        website: protocols.website,
-      })
+      .select()
       .from(blacklistEntries)
-      .leftJoin(protocols, eq(blacklistEntries.dappId, protocols.id))
       .orderBy(desc(blacklistEntries.timestamp));
       
     return result.map(entry => ({
@@ -212,6 +209,8 @@ export class DatabaseStorage implements IStorage {
       dappId: entry.dappId,
       dappName: entry.dappName,
       website: entry.website,
+      twitter: entry.twitter,
+      github: entry.github,
       severity: entry.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
       threats: entry.threats.map((t: any) => ({
         type: t.type,
@@ -221,27 +220,28 @@ export class DatabaseStorage implements IStorage {
       reason: entry.reason,
       status: entry.status as 'ACTIVE' | 'INACTIVE',
       timestamp: entry.timestamp.toISOString(),
+      legitimacyScore: entry.legitimacyScore || 0,
+      securityMetrics: entry.securityMetrics,
+      lastVetted: entry.lastVetted?.toISOString() || null,
     }));
   }
 
-  async addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp' | 'website'>): Promise<BlacklistEntry> {
+  async addToBlacklist(entry: Omit<BlacklistEntry, 'timestamp'>): Promise<BlacklistEntry> {
     const [result] = await db
       .insert(blacklistEntries)
-      .values([entry])
+      .values([{
+        ...entry,
+        lastVetted: entry.lastVetted ? new Date(entry.lastVetted) : null
+      }])
       .returning();
-    
-    // Fetch website from protocols table
-    const [protocolData] = await db
-      .select({ website: protocols.website })
-      .from(protocols)
-      .where(eq(protocols.id, result.dappId))
-      .limit(1);
     
     return {
       id: result.id,
       dappId: result.dappId,
       dappName: result.dappName,
-      website: protocolData?.website ?? null,
+      website: result.website,
+      twitter: result.twitter,
+      github: result.github,
       severity: result.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
       threats: result.threats.map(t => ({
         type: t.type,
@@ -251,11 +251,34 @@ export class DatabaseStorage implements IStorage {
       reason: result.reason,
       status: result.status as 'ACTIVE' | 'INACTIVE',
       timestamp: result.timestamp.toISOString(),
+      legitimacyScore: result.legitimacyScore || 0,
+      securityMetrics: result.securityMetrics,
+      lastVetted: result.lastVetted?.toISOString() || null,
     };
   }
 
   async deleteBlacklistEntry(entryId: string): Promise<void> {
     await db.delete(blacklistEntries).where(eq(blacklistEntries.id, entryId));
+  }
+
+  async updateBlacklistLegitimacy(entryId: string, updates: {
+    legitimacyScore: number;
+    securityMetrics: any;
+    website: string | null;
+    twitter: string | null;
+    github: string | null;
+    lastVetted: string;
+  }): Promise<void> {
+    await db.update(blacklistEntries)
+      .set({
+        legitimacyScore: updates.legitimacyScore,
+        securityMetrics: updates.securityMetrics,
+        website: updates.website,
+        twitter: updates.twitter,
+        github: updates.github,
+        lastVetted: new Date(updates.lastVetted)
+      })
+      .where(eq(blacklistEntries.id, entryId));
   }
 
   async getSecurityScan(protocolId: string): Promise<SecurityScan | undefined> {
