@@ -81,13 +81,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AGGRESSIVE NO-CACHE MIDDLEWARE - Fixes mobile browser caching issues
   // Disables ALL caching layers: browser cache, mobile OS cache, CDN cache, ETags
   app.use((req, res, next) => {
-    // Disable ALL forms of caching
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    
-    // Remove ETag header to prevent 304 Not Modified responses
-    res.removeHeader('ETag');
+    // Intercept res.set() to prevent routes from overriding cache headers
+    const originalSet = res.set.bind(res);
+    res.set = function(field: any, value?: any) {
+      // Block cache-related headers from being set by routes
+      if (typeof field === 'string') {
+        const lowerField = field.toLowerCase();
+        if (lowerField === 'cache-control' || lowerField === 'etag' || 
+            lowerField === 'pragma' || lowerField === 'expires') {
+          return this; // Ignore these header attempts
+        }
+      } else if (typeof field === 'object') {
+        // Handle object form: res.set({ 'Cache-Control': '...' })
+        const filteredObject: any = {};
+        for (const key in field) {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey !== 'cache-control' && lowerKey !== 'etag' && 
+              lowerKey !== 'pragma' && lowerKey !== 'expires') {
+            filteredObject[key] = field[key];
+          }
+        }
+        if (Object.keys(filteredObject).length > 0) {
+          return originalSet(filteredObject);
+        }
+        return this;
+      }
+      return originalSet(field, value);
+    };
+
+    // Set aggressive no-cache headers
+    originalSet('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
+    originalSet('Pragma', 'no-cache');
+    originalSet('Expires', '0');
     
     // Continue to next middleware
     next();
