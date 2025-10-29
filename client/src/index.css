@@ -344,12 +344,21 @@
     }
   }
 
-  /* Mobile & Desktop: 60 seconds for full cycle (15 repetitions in 1 minute) */
-  .animate-scroll-left {
+  /* Mobile: 120 repetitions in 60 seconds */
+  .animate-scroll-left-mobile {
     animation: scroll-left 60s linear infinite;
   }
 
-  .animate-scroll-left:hover {
+  .animate-scroll-left-mobile:hover {
+    animation-play-state: paused;
+  }
+
+  /* Desktop: 15 repetitions in 60 seconds */
+  .animate-scroll-left-desktop {
+    animation: scroll-left 60s linear infinite;
+  }
+
+  .animate-scroll-left-desktop:hover {
     animation-play-state: paused;
   }
 }

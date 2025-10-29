@@ -34,33 +34,48 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
 
   if (trending.length === 0) return null;
 
+  const renderProtocol = (protocol: Protocol, index: number, totalLength: number) => {
+    const rank = (index % totalLength) + 1;
+    return (
+      <button
+        key={`${protocol.id}-${index}`}
+        onClick={() => onProtocolClick?.(protocol)}
+        className="inline-flex items-center gap-1.5 sm:gap-2 hover-elevate active-elevate-2 px-1.5 sm:px-2 py-1 rounded transition-colors text-xs sm:text-sm"
+        data-testid={`trending-protocol-${protocol.id}`}
+      >
+        <span className="font-bold text-primary/60 min-w-[1.2rem] sm:min-w-[1.5rem]">#{rank}</span>
+        <span className="font-semibold text-foreground">{protocol.name}</span>
+        <span className={`font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
+        </span>
+        <span className="text-muted-foreground font-medium hidden xs:inline">
+          {formatTVL(protocol.tvl)}
+        </span>
+      </button>
+    );
+  };
+
   return (
     <div className="bg-muted/30 border-b border-border overflow-hidden">
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2.5">
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
-        <div className="flex-1 overflow-hidden">
-          <div className="animate-scroll-left flex gap-4 sm:gap-6 whitespace-nowrap" data-testid="trending-ticker">
-            {Array(15).fill(trending).flat().map((protocol, index) => {
-              const rank = (index % trending.length) + 1;
-              return (
-                <button
-                  key={`${protocol.id}-${index}`}
-                  onClick={() => onProtocolClick?.(protocol)}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 hover-elevate active-elevate-2 px-1.5 sm:px-2 py-1 rounded transition-colors text-xs sm:text-sm"
-                  data-testid={`trending-protocol-${protocol.id}`}
-                >
-                  <span className="font-bold text-primary/60 min-w-[1.2rem] sm:min-w-[1.5rem]">#{rank}</span>
-                  <span className="font-semibold text-foreground">{protocol.name}</span>
-                  <span className={`font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
-                  </span>
-                  <span className="text-muted-foreground font-medium hidden xs:inline">
-                    {formatTVL(protocol.tvl)}
-                  </span>
-                </button>
-              );
-            })}
+        
+        {/* Mobile version: 120 repetitions */}
+        <div className="flex-1 overflow-hidden sm:hidden">
+          <div className="animate-scroll-left-mobile flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
+            {Array(120).fill(trending).flat().map((protocol, index) => 
+              renderProtocol(protocol, index, trending.length)
+            )}
+          </div>
+        </div>
+
+        {/* Desktop version: 15 repetitions */}
+        <div className="flex-1 overflow-hidden hidden sm:block">
+          <div className="animate-scroll-left-desktop flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
+            {Array(15).fill(trending).flat().map((protocol, index) => 
+              renderProtocol(protocol, index, trending.length)
+            )}
           </div>
         </div>
       </div>
