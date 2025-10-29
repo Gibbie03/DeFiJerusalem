@@ -1193,10 +1193,10 @@ export class WalletDrainerDetector {
       // If protocol has high legitimacy score (≥70), high TVL (≥$5M), or significant audit count,
       // cap severity at HIGH and require manual review instead of auto-blacklisting
       const hasHighLegitimacy = verificationScore >= 70;
-      const hasHighTVL = dapp.tvl >= 5_000_000;
+      const hasEstablishedTVL = dapp.tvl >= 5_000_000;
       const hasMultipleAudits = dapp.auditCount >= 2;
       
-      if (results.severity === 'CRITICAL' && (hasHighLegitimacy || hasHighTVL || hasMultipleAudits)) {
+      if (results.severity === 'CRITICAL' && (hasHighLegitimacy || hasEstablishedTVL || hasMultipleAudits)) {
         // Downgrade to HIGH severity - requires manual review
         results.severity = 'HIGH';
         results.threats.push({
