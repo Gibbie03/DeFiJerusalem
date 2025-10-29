@@ -1,5 +1,8 @@
 import type { BlacklistEntry, SecurityScan, Protocol } from '@shared/schema';
 
+// Type for blacklist entry without timestamp and website (DB auto-generates these)
+type BlacklistEntryForInsert = Omit<BlacklistEntry, 'timestamp' | 'website'>;
+
 // BlacklistManager - Tracks threats
 export class BlacklistManager {
   private blacklist: BlacklistEntry[];
@@ -9,7 +12,7 @@ export class BlacklistManager {
   }
 
   addToBlacklist(dapp: Protocol, scanResult: SecurityScan): {
-    entry: BlacklistEntry;
+    entry: BlacklistEntryForInsert;
     updatedList: BlacklistEntry[];
   } {
     // Generate reason from threats
@@ -17,7 +20,8 @@ export class BlacklistManager {
       ? scanResult.threats.map(t => t.message).join('; ')
       : `Automatically blacklisted due to ${scanResult.severity} security score (${scanResult.score} points)`;
     
-    const entry: BlacklistEntry = {
+    // Create entry without timestamp and website (DB will auto-generate timestamp, storage will fetch website)
+    const entry: BlacklistEntryForInsert = {
       id: `${Date.now()}-${Math.random()}`,
       dappId: dapp.id,
       dappName: dapp.name,
@@ -25,9 +29,8 @@ export class BlacklistManager {
       threats: scanResult.threats,
       reason: reason,
       status: 'ACTIVE',
-      timestamp: new Date().toISOString(), // String for API/frontend
     };
-    this.blacklist.push(entry);
+    
     return { entry, updatedList: [...this.blacklist] };
   }
 
