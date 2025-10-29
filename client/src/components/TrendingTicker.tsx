@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Protocol } from '@shared/schema';
 import { TrendingUp } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 const formatTVL = (tvl: number): string => {
   if (tvl === 0) return 'No Data';
@@ -26,11 +27,45 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
     refetchInterval: 60000, // Refresh every minute
   });
 
+  const mobileTickerRef = useRef<HTMLDivElement>(null);
+  const desktopTickerRef = useRef<HTMLDivElement>(null);
+
   // Ensure protocols is always an array
   const protocolsArray = Array.isArray(protocols) ? protocols : [];
   
   // Top 10 trending protocols
   const trending = protocolsArray.slice(0, 10);
+
+  // Restart animation when it completes
+  useEffect(() => {
+    const mobileElement = mobileTickerRef.current;
+    const desktopElement = desktopTickerRef.current;
+
+    const restartAnimation = (e: AnimationEvent) => {
+      const target = e.target as HTMLElement;
+      // Force reflow to restart animation
+      target.style.animation = 'none';
+      requestAnimationFrame(() => {
+        target.style.animation = '';
+      });
+    };
+
+    if (mobileElement) {
+      mobileElement.addEventListener('animationiteration', restartAnimation);
+    }
+    if (desktopElement) {
+      desktopElement.addEventListener('animationiteration', restartAnimation);
+    }
+
+    return () => {
+      if (mobileElement) {
+        mobileElement.removeEventListener('animationiteration', restartAnimation);
+      }
+      if (desktopElement) {
+        desktopElement.removeEventListener('animationiteration', restartAnimation);
+      }
+    };
+  }, []);
 
   if (trending.length === 0) return null;
 
@@ -61,19 +96,19 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
         
-        {/* Mobile version: 3600 reps = 36000 items, scrolls 18000 items in 18s (9x faster) */}
+        {/* Mobile version: Show top 10 once, then restart */}
         <div className="flex-1 overflow-hidden sm:hidden">
-          <div className="animate-scroll-left-mobile flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
-            {Array(3600).fill(trending).flat().map((protocol, index) => 
+          <div ref={mobileTickerRef} className="animate-scroll-left-mobile-once flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
+            {trending.map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
           </div>
         </div>
 
-        {/* Desktop version: 15 repetitions */}
+        {/* Desktop version: Show top 10 once, then restart */}
         <div className="flex-1 overflow-hidden hidden sm:block">
-          <div className="animate-scroll-left-desktop flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
-            {Array(15).fill(trending).flat().map((protocol, index) => 
+          <div ref={desktopTickerRef} className="animate-scroll-left-desktop-once flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
+            {trending.map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
           </div>

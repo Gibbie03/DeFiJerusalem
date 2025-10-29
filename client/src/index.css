@@ -334,31 +334,31 @@
     inset: -1px;
   }
 
-  /* Scrolling ticker animation */
-  @keyframes scroll-left {
+  /* Scrolling ticker animation - no loop version */
+  @keyframes scroll-left-once {
     0% {
       transform: translateX(0);
     }
     100% {
-      transform: translateX(-50%);
+      transform: translateX(-100%);
     }
   }
 
-  /* Mobile: 18s cycle, 3600 reps = 9x faster (scrolls 18000 items in 18s) */
-  .animate-scroll-left-mobile {
-    animation: scroll-left 18s linear infinite;
+  /* Mobile: Fast scroll - show all 10 protocols then restart */
+  .animate-scroll-left-mobile-once {
+    animation: scroll-left-once 18s linear infinite;
   }
 
-  .animate-scroll-left-mobile:hover {
+  .animate-scroll-left-mobile-once:hover {
     animation-play-state: paused;
   }
 
-  /* Desktop: 15 repetitions in 60 seconds */
-  .animate-scroll-left-desktop {
-    animation: scroll-left 60s linear infinite;
+  /* Desktop: Moderate scroll - show all 10 protocols then restart */
+  .animate-scroll-left-desktop-once {
+    animation: scroll-left-once 30s linear infinite;
   }
 
-  .animate-scroll-left-desktop:hover {
+  .animate-scroll-left-desktop-once:hover {
     animation-play-state: paused;
   }
 }
