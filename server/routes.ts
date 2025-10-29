@@ -968,7 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // POST /api/discovery/scan - Discover new contracts from blockchain explorers (Admin only)
   app.post("/api/discovery/scan", async (req: Request, res: Response) => {
-    if (!req.session.isAdmin) {
+    if (!req.session.adminId) {
       return res.status(403).json({ error: "Admin access required" });
     }
 
@@ -1030,7 +1030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/discovery/contracts - Get discovered contracts
   app.get("/api/discovery/contracts", async (req: Request, res: Response) => {
-    if (!req.session.isAdmin) {
+    if (!req.session.adminId) {
       return res.status(403).json({ error: "Admin access required" });
     }
 
@@ -1055,7 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PATCH /api/discovery/contracts/:id/status - Update contract status (Admin only)
   app.patch("/api/discovery/contracts/:id/status", async (req: Request, res: Response) => {
-    if (!req.session.isAdmin) {
+    if (!req.session.adminId) {
       return res.status(403).json({ error: "Admin access required" });
     }
 

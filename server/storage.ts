@@ -812,25 +812,22 @@ export class DatabaseStorage implements IStorage {
 
   async addDiscoveredContract(contract: InsertDiscoveredContract): Promise<DiscoveredContract> {
     const id = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Try to insert, update on conflict (deduplication)
     const [result] = await db
       .insert(discoveredContracts)
-      .values({ ...contract, id })
-      .onConflictDoNothing()
+      .values({ ...contract as any, id })
+      .onConflictDoUpdate({
+        target: [discoveredContracts.contractAddress, discoveredContracts.chain],
+        set: {
+          contractName: contract.contractName,
+          contractType: contract.contractType,
+          compilerVersion: contract.compilerVersion,
+          optimization: contract.optimization,
+          metadata: contract.metadata,
+        }
+      })
       .returning();
-    
-    if (!result) {
-      const [existing] = await db
-        .select()
-        .from(discoveredContracts)
-        .where(
-          and(
-            eq(discoveredContracts.contractAddress, contract.contractAddress),
-            eq(discoveredContracts.chain, contract.chain)
-          )
-        );
-      
-      return this.mapDiscoveredContract(existing);
-    }
     
     return this.mapDiscoveredContract(result);
   }

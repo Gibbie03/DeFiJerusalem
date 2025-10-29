@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { pgTable, text, boolean, real, integer, timestamp, json, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, real, integer, timestamp, json, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
 // Database Tables
@@ -156,6 +156,7 @@ export const discoveredContracts = pgTable('discovered_contracts', {
   discoveredAtIdx: index('discovered_contracts_discovered_at_idx').on(table.discoveredAt),
   statusIdx: index('discovered_contracts_status_idx').on(table.status),
   contractAddressIdx: index('discovered_contracts_address_idx').on(table.contractAddress),
+  uniqueContractChain: uniqueIndex('discovered_contracts_unique_contract_chain').on(table.contractAddress, table.chain),
 }));
 
 export const adminUsers = pgTable('admin_users', {
