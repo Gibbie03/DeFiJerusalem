@@ -3,7 +3,7 @@ import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 // Whitelist of well-established, verified protocols
 const VERIFIED_PROTOCOLS = new Set([
   // Major CEXs (Centralized Exchanges)
-  'binance', 'binance cex', 'coinbase', 'kraken', 'nexo', 'celsius',
+  'binance', 'binance cex', 'coinbase', 'kraken', 'kraken bitcoin', 'nexo', 'celsius',
   'mexc', 'mexc global', 'bybit', 'okx', 'okex', 'bitget', 'gate.io', 'gate', 
   'kucoin', 'huobi', 'crypto.com', 'bitfinex', 'gemini', 'bitstamp',
   
@@ -18,19 +18,29 @@ const VERIFIED_PROTOCOLS = new Set([
   // Lending platforms
   'aave', 'aave v2', 'aave v3', 'aave arc',
   'compound', 'compound v2', 'compound v3', 'compound finance',
+  'morpho', 'morpho v0 aavev2', 'morpho v0 compoundv2', 'morpho blue', 'morpho aave', 'morpho compound',
   'maker', 'makerdao', 'venus', 'benqi', 'radiant', 'radiant capital',
+  'revert', 'revert finance', 'revert compoundor',
   
   // Bridges
   'stargate', 'stargate finance', 'synapse', 'synapse protocol', 'hop protocol', 'across', 'across protocol', 'celer', 'celer network',
+  'pulsechain', 'pulsechain bridge', 'apx', 'apx bridge', 'mezo', 'mezo network',
   
   // Liquid Staking
   'lido', 'lido finance', 'rocket pool', 'frax', 'frax finance', 'ankr', 'stader',
   
+  // Wrapped Assets
+  'wbtc', 'wrapped bitcoin', 'tzbtc', 'renbtc', 'weth', 'wrapped ether',
+  
   // Layer 2s / Chains
   'arbitrum', 'optimism', 'polygon', 'base', 'avalanche', 'bnb chain', 'zksync',
   
+  // Gaming & NFT Protocols
+  'aavegotchi', 'axie infinity', 'sandbox', 'decentraland', 'gods unchained',
+  
   // Other established protocols
-  'gmx', 'yearn', 'yearn finance', 'convex', 'convex finance', 'olympus', 'olympus dao', 'platypus', 'platypus finance', 'joe'
+  'gmx', 'yearn', 'yearn finance', 'convex', 'convex finance', 'olympus', 'olympus dao', 'platypus', 'platypus finance', 'joe',
+  'jito', 'jito dao', 'jito labs'
 ]);
 
 // Trusted domain patterns for verification
@@ -578,15 +588,22 @@ export class WalletDrainerDetector {
       }
 
       // CRITICAL: Check for typosquatting/imposter protocols
-      for (const pattern of SCAM_PATTERNS.typosquatPatterns) {
-        if (pattern.test(nameAndDesc) || pattern.test(website)) {
-          results.threats.push({
-            type: 'IMPOSTER',
-            severity: 'CRITICAL',
-            message: 'Potential imposter protocol - name resembles popular DeFi protocol',
-          });
-          results.score += 90;
-          break;
+      // Skip if protocol is in verified list or has high TVL + audits (likely legitimate integration)
+      const hasHighTVL = dapp.tvl > 50_000_000; // $50M+
+      const hasAudits = dapp.audited && dapp.auditCount > 0;
+      const likelyLegit = hasHighTVL && hasAudits;
+      
+      if (!likelyLegit) {
+        for (const pattern of SCAM_PATTERNS.typosquatPatterns) {
+          if (pattern.test(nameAndDesc) || pattern.test(website)) {
+            results.threats.push({
+              type: 'IMPOSTER',
+              severity: 'CRITICAL',
+              message: 'Potential imposter protocol - name resembles popular DeFi protocol',
+            });
+            results.score += 90;
+            break;
+          }
         }
       }
 

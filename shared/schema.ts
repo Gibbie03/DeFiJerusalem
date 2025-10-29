@@ -198,6 +198,23 @@ export const protocolCustomizations = pgTable('protocol_customizations', {
   paymentStatusIdx: index('protocol_customizations_payment_status_idx').on(table.paymentStatus),
 }));
 
+export const protocolWhitelist = pgTable('protocol_whitelist', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull().unique(),
+  protocolName: text('protocol_name').notNull(),
+  reason: text('reason').notNull(),
+  verificationSource: text('verification_source').notNull(),
+  certikScore: real('certik_score'),
+  defiSafetyScore: real('defi_safety_score'),
+  minTvl: real('min_tvl'),
+  exchangeListings: json('exchange_listings').$type<string[]>(),
+  addedBy: text('added_by').notNull().default('system'),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
+  lastVerified: timestamp('last_verified').notNull().defaultNow(),
+}, (table) => ({
+  protocolIdIdx: index('protocol_whitelist_protocol_id_idx').on(table.protocolId),
+}));
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -365,6 +382,21 @@ export type DiscoveredContract = {
   } | null;
 };
 
+export type ProtocolWhitelist = {
+  id: string;
+  protocolId: string;
+  protocolName: string;
+  reason: string;
+  verificationSource: string;
+  certikScore: number | null;
+  defiSafetyScore: number | null;
+  minTvl: number | null;
+  exchangeListings: string[] | null;
+  addedBy: string;
+  addedAt: string;
+  lastVerified: string;
+};
+
 export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -405,12 +437,19 @@ export const insertDiscoveredContractSchema = createInsertSchema(discoveredContr
   reviewedAt: true
 });
 
+export const insertProtocolWhitelistSchema = createInsertSchema(protocolWhitelist).omit({ 
+  id: true, 
+  addedAt: true,
+  lastVerified: true
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
 export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
 export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
 export type InsertDiscoveredContract = z.infer<typeof insertDiscoveredContractSchema>;
 export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
+export type InsertProtocolWhitelist = z.infer<typeof insertProtocolWhitelistSchema>;
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());
