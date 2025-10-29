@@ -344,18 +344,20 @@
     }
   }
 
-  /* Mobile: Fast scroll - show all 10 protocols then restart */
+  /* Mobile: Fast scroll - duration calculated dynamically via JS */
   .animate-scroll-left-mobile-once {
-    animation: scroll-left-once 18s linear infinite;
+    animation: scroll-left-once linear infinite;
+    /* Duration set via JavaScript based on content width */
   }
 
   .animate-scroll-left-mobile-once:hover {
     animation-play-state: paused;
   }
 
-  /* Desktop: Moderate scroll - show all 10 protocols then restart */
+  /* Desktop: Moderate scroll - duration calculated dynamically via JS */
   .animate-scroll-left-desktop-once {
-    animation: scroll-left-once 30s linear infinite;
+    animation: scroll-left-once linear infinite;
+    /* Duration set via JavaScript based on content width */
   }
 
   .animate-scroll-left-desktop-once:hover {

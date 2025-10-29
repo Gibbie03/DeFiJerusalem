@@ -36,36 +36,30 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
   // Top 10 trending protocols
   const trending = protocolsArray.slice(0, 10);
 
-  // Restart animation when it completes
+  // Calculate animation duration based on content width to ensure all 10 protocols cross
   useEffect(() => {
     const mobileElement = mobileTickerRef.current;
     const desktopElement = desktopTickerRef.current;
 
-    const restartAnimation = (e: AnimationEvent) => {
-      const target = e.target as HTMLElement;
-      // Force reflow to restart animation
-      target.style.animation = 'none';
-      requestAnimationFrame(() => {
-        target.style.animation = '';
-      });
+    // Calculate duration based on content width and desired speed (pixels per second)
+    const calculateDuration = (element: HTMLElement, pixelsPerSecond: number) => {
+      const contentWidth = element.scrollWidth / 2; // Divide by 2 since we duplicate content
+      const duration = contentWidth / pixelsPerSecond;
+      return duration;
     };
 
     if (mobileElement) {
-      mobileElement.addEventListener('animationiteration', restartAnimation);
-    }
-    if (desktopElement) {
-      desktopElement.addEventListener('animationiteration', restartAnimation);
+      // Mobile: Fast scrolling speed (1000 pixels per second)
+      const duration = calculateDuration(mobileElement, 1000);
+      mobileElement.style.animationDuration = `${duration}s`;
     }
 
-    return () => {
-      if (mobileElement) {
-        mobileElement.removeEventListener('animationiteration', restartAnimation);
-      }
-      if (desktopElement) {
-        desktopElement.removeEventListener('animationiteration', restartAnimation);
-      }
-    };
-  }, []);
+    if (desktopElement) {
+      // Desktop: Moderate scrolling speed (500 pixels per second)
+      const duration = calculateDuration(desktopElement, 500);
+      desktopElement.style.animationDuration = `${duration}s`;
+    }
+  }, [trending]);
 
   if (trending.length === 0) return null;
 
