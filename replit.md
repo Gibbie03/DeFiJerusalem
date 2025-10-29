@@ -43,8 +43,12 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Error Handling**: Generic error messages returned to clients to prevent information leakage.
 - **Threat Detection Coverage**: Protects against wallet drainers, phishing, rug pulls, governance attacks, smart contract backdoors, oracle manipulation, bridge exploits, Ponzi schemes, migration scams, honeypot tokens, and regulatory violations across 126+ blockchain chains.
 
-## Recent Changes (October 28, 2025)
-- **CRITICAL FIX - React Query Mobile Cache Issue**: Fixed aggressive client-side caching that persisted across different mobile browsers. Changed `staleTime: Infinity → 0` and added `refetchOnMount: true` to force fresh data fetches. Added app-level cache invalidation on mount to clear stale data. Fixes volume showing "No Data", stats showing old cached values, and trending showing only 6 protocols instead of 50.
+## Recent Changes (October 29, 2025)
+- **COMPREHENSIVE CACHE FIX - Multi-Layer Cache Elimination**: Completely disabled ALL caching layers to fix persistent mobile browser cache issues:
+  - **Server-Side**: Added aggressive no-cache middleware that intercepts res.set() to prevent routes from overriding cache headers. All API responses now return: `Cache-Control: no-cache, no-store, must-revalidate, private, max-age=0`, `Pragma: no-cache`, `Expires: 0`. Removed all ETags to prevent 304 Not Modified responses.
+  - **Client-Side**: Added timestamp-based cache busting (`_t=Date.now()`) to all API requests. Added `cache: "no-store"` fetch directive. Maintained React Query fixes: `staleTime: 0`, `refetchOnMount: true`.
+  - **Cache Clearing Endpoint**: Added `GET /api/cache/clear` for manual server-side cache flush during testing.
+  - **Impact**: Eliminates browser cache, mobile OS HTTP cache, CDN cache, ETag cache, and React Query cache. Forces fresh data on every request. Fixes volume showing "No Data", stats showing old cached values, and trending showing only 6 protocols instead of 50.
 - **Sidebar UX Improvement**: Configured sidebar to start collapsed by default on desktop, overlay on top of content (instead of squeezing it), and auto-close when navigating between pages. Provides cleaner initial view while maintaining easy access via hamburger menu.
 - **Trending Ticker Rankings**: Added rank numbers (#1, #2, #3, etc.) to trending ticker displayed on homepage, showing position in the trending list.
 - **Admin Auto-Navigation Fix**: Fixed admin page to automatically navigate to dashboard after login without requiring manual page refresh. Added query invalidation to force session refresh.
