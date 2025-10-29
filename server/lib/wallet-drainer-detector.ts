@@ -817,15 +817,15 @@ export class WalletDrainerDetector {
         }
       }
 
-      // HIGH: Check for unverified contracts
+      // MEDIUM: Check for unverified contracts (downgraded from HIGH to reduce false positives)
       for (const pattern of SCAM_PATTERNS.unverifiedContractPatterns) {
         if (pattern.test(nameAndDesc) || (!dapp.audited && verificationScore < 30)) {
           results.threats.push({
             type: 'UNVERIFIED_CONTRACT',
-            severity: 'HIGH',
+            severity: 'MEDIUM',
             message: 'Unverified contract - source code not verified on block explorer',
           });
-          results.score += 60;
+          results.score += 10;
           break;
         }
       }
@@ -869,16 +869,31 @@ export class WalletDrainerDetector {
         }
       }
 
-      // HIGH: Check for bridge exploit risks
+      // Contextual: Check for bridge exploit risks (only HIGH for new/unaudited bridges)
       if (dapp.category === 'Bridge' || /bridge/i.test(nameAndDesc)) {
+        // Check if this is a new or unaudited bridge
+        const isNewBridge = dapp.age && dapp.age < 90;
+        const isUnauditedBridge = !dapp.audited;
+        const hasLowTVL = dapp.tvl < 5_000_000; // Less than $5M TVL
+        
+        // Only flag as HIGH risk if it's new, unaudited, AND has low TVL (not an established bridge)
         for (const pattern of SCAM_PATTERNS.bridgeExploitPatterns) {
-          if (pattern.test(nameAndDesc) || (dapp.age && dapp.age < 90) || !dapp.audited) {
+          if (pattern.test(nameAndDesc) && isNewBridge && isUnauditedBridge && hasLowTVL) {
             results.threats.push({
               type: 'BRIDGE_EXPLOIT_RISK',
               severity: 'HIGH',
-              message: 'Bridge security risk - cross-chain bridges are #1 DeFi hack target ($2B+ stolen)',
+              message: 'Bridge security risk - new unaudited bridge with low TVL',
             });
-            results.score += 55;
+            results.score += 30;
+            break;
+          } else if (pattern.test(nameAndDesc) && (isNewBridge || isUnauditedBridge)) {
+            // Medium risk for bridges that are either new OR unaudited (but not both)
+            results.threats.push({
+              type: 'BRIDGE_EXPLOIT_RISK',
+              severity: 'MEDIUM',
+              message: 'Bridge security advisory - cross-chain bridges require careful review',
+            });
+            results.score += 10;
             break;
           }
         }
@@ -1006,15 +1021,14 @@ export class WalletDrainerDetector {
         results.score += 40;
       }
 
-      // HIGH: Check if no audit exists (reduce penalty for established protocols)
+      // MEDIUM: Check if no audit exists (downgraded from HIGH to reduce false positives)
       if (!dapp.audited && !dapp.auditCount && verificationScore < 50) {
-        const penalty = verificationScore > 25 ? 15 : 30; // Reduced penalty for somewhat established protocols
         results.threats.push({
           type: 'NO_AUDIT',
-          severity: verificationScore > 25 ? 'MEDIUM' : 'HIGH',
+          severity: 'MEDIUM',
           message: 'No security audit found',
         });
-        results.score += penalty;
+        results.score += 10;
       }
 
       // HIGH: Check if team is anonymous (reduce penalty for high TVL protocols)
@@ -1174,6 +1188,23 @@ export class WalletDrainerDetector {
       if (results.score >= 80) results.severity = 'CRITICAL';
       else if (results.score >= 50) results.severity = 'HIGH';
       else if (results.score >= 25) results.severity = 'MEDIUM';
+
+      // LEGITIMACY BACKSTOP: Prevent auto-blacklisting of established protocols
+      // If protocol has high legitimacy score (≥70), high TVL (≥$5M), or significant audit count,
+      // cap severity at HIGH and require manual review instead of auto-blacklisting
+      const hasHighLegitimacy = verificationScore >= 70;
+      const hasHighTVL = dapp.tvl >= 5_000_000;
+      const hasMultipleAudits = dapp.auditCount >= 2;
+      
+      if (results.severity === 'CRITICAL' && (hasHighLegitimacy || hasHighTVL || hasMultipleAudits)) {
+        // Downgrade to HIGH severity - requires manual review
+        results.severity = 'HIGH';
+        results.threats.push({
+          type: 'MANUAL_REVIEW_REQUIRED',
+          severity: 'HIGH',
+          message: 'High-risk threats detected on established protocol - requires manual security review',
+        });
+      }
 
       results.isBlacklisted = results.severity === 'CRITICAL';
       return results;
