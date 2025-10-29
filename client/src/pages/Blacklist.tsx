@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2, ExternalLink } from 'lucide-react';
+import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2, ExternalLink, Twitter, Github, CheckCircle2, XCircle } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -142,6 +142,20 @@ export default function Blacklist() {
       case 'HIGH': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
       case 'MEDIUM': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+    }
+  };
+
+  const getLegitimacyRating = (score: number) => {
+    if (score >= 90) {
+      return { label: 'HIGHLY LEGITIMATE', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: CheckCircle2 };
+    } else if (score >= 70) {
+      return { label: 'LEGITIMATE', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: CheckCircle2 };
+    } else if (score >= 50) {
+      return { label: 'MODERATE RISK', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: AlertTriangle };
+    } else if (score >= 30) {
+      return { label: 'HIGH RISK', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20', icon: AlertOctagon };
+    } else {
+      return { label: 'CRITICAL RISK', color: 'bg-red-500/10 text-red-500 border-red-500/20', icon: XCircle };
     }
   };
 
@@ -334,6 +348,85 @@ export default function Blacklist() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Social Links */}
+                  {(entry.website || entry.twitter || entry.github) && (
+                    <div className="flex items-center gap-3 pb-3 border-b">
+                      <p className="text-sm font-medium text-muted-foreground">Links:</p>
+                      <div className="flex items-center gap-2">
+                        {entry.website && (
+                          <a 
+                            href={entry.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
+                            data-testid={`link-website-detailed-${entry.id}`}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Website
+                          </a>
+                        )}
+                        {entry.twitter && (
+                          <a 
+                            href={entry.twitter} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
+                            data-testid={`link-twitter-${entry.id}`}
+                          >
+                            <Twitter className="w-3 h-3" />
+                            Twitter
+                          </a>
+                        )}
+                        {entry.github && (
+                          <a 
+                            href={entry.github} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
+                            data-testid={`link-github-${entry.id}`}
+                          >
+                            <Github className="w-3 h-3" />
+                            GitHub
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legitimacy Score */}
+                  {entry.legitimacyScore !== undefined && entry.legitimacyScore !== null && (() => {
+                    const rating = getLegitimacyRating(entry.legitimacyScore);
+                    const LegitimacyIcon = rating.icon;
+                    return (
+                      <div className="flex items-center justify-between pb-3 border-b">
+                        <div>
+                          <p className="text-sm font-medium mb-1">Legitimacy Assessment:</p>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={rating.color}>
+                              <LegitimacyIcon className="w-3 h-3 mr-1" />
+                              {rating.label}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Score: {entry.legitimacyScore}/100
+                            </span>
+                          </div>
+                        </div>
+                        {entry.legitimacyScore >= 70 && (
+                          <div className="text-xs text-green-500 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            May be removed on next vetting
+                          </div>
+                        )}
+                        {entry.lastVetted && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Last vetted: {new Date(entry.lastVetted).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {entry.reason && (
                     <div>
                       <p className="text-sm font-medium mb-1">Reason:</p>
