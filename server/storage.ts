@@ -172,8 +172,18 @@ export class DatabaseStorage implements IStorage {
           target: protocols.id,
           set: {
             tvl: sql`EXCLUDED.tvl`,
+            volume24h: sql`EXCLUDED.volume_24h`,
             change24h: sql`EXCLUDED.change_24h`,
+            audited: sql`EXCLUDED.audited`,
+            auditCount: sql`EXCLUDED.audit_count`,
+            auditNote: sql`EXCLUDED.audit_note`,
+            auditLinks: sql`EXCLUDED.audit_links`,
             securityScore: sql`EXCLUDED.security_score`,
+            logo: sql`EXCLUDED.logo`,
+            website: sql`EXCLUDED.website`,
+            twitter: sql`EXCLUDED.twitter`,
+            github: sql`EXCLUDED.github`,
+            description: sql`EXCLUDED.description`,
             lastUpdated: new Date(),
           },
         });
