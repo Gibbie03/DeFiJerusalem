@@ -96,19 +96,21 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
         
-        {/* Mobile version: Show top 10 once, then restart */}
+        {/* Mobile version: Duplicate to ensure all 10 cross viewport, scroll 50% */}
         <div className="flex-1 overflow-hidden sm:hidden">
           <div ref={mobileTickerRef} className="animate-scroll-left-mobile-once flex gap-4 whitespace-nowrap" data-testid="trending-ticker">
-            {trending.map((protocol, index) => 
+            {/* Show protocols twice - scroll to -50% ensures all 10 pass through */}
+            {[...trending, ...trending].map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
           </div>
         </div>
 
-        {/* Desktop version: Show top 10 once, then restart */}
+        {/* Desktop version: Duplicate to ensure all 10 cross viewport, scroll 50% */}
         <div className="flex-1 overflow-hidden hidden sm:block">
           <div ref={desktopTickerRef} className="animate-scroll-left-desktop-once flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
-            {trending.map((protocol, index) => 
+            {/* Show protocols twice - scroll to -50% ensures all 10 pass through */}
+            {[...trending, ...trending].map((protocol, index) => 
               renderProtocol(protocol, index, trending.length)
             )}
           </div>

@@ -334,13 +334,13 @@
     inset: -1px;
   }
 
-  /* Scrolling ticker animation - no loop version */
+  /* Scrolling ticker animation - scroll exactly 50% to show all 10 protocols */
   @keyframes scroll-left-once {
     0% {
       transform: translateX(0);
     }
     100% {
-      transform: translateX(-100%);
+      transform: translateX(-50%);
     }
   }
 
