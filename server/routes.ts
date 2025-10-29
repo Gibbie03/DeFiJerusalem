@@ -78,6 +78,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
+  // AGGRESSIVE NO-CACHE MIDDLEWARE - Fixes mobile browser caching issues
+  // Disables ALL caching layers: browser cache, mobile OS cache, CDN cache, ETags
+  app.use((req, res, next) => {
+    // Disable ALL forms of caching
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
+    // Remove ETag header to prevent 304 Not Modified responses
+    res.removeHeader('ETag');
+    
+    // Continue to next middleware
+    next();
+  });
+
+
+  // GET /api/cache/clear - Clear all server-side caches (public endpoint for testing)
+  app.get("/api/cache/clear", async (req: Request, res: Response) => {
+    try {
+      clearCache(); // Clear all caches
+      console.log('[CACHE] All caches cleared via API endpoint');
+      res.json({ 
+        success: true,
+        message: 'All server-side caches cleared successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[CACHE] Error clearing cache:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to clear cache' 
+      });
+    }
+  });
 
   // GET /api/admin/diagnostics - Check current database state (admin only)
   app.get("/api/admin/diagnostics", async (req: Request, res: Response) => {
