@@ -228,6 +228,27 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
                     </div>
                   </div>
                 )}
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">Protocol Links</p>
+                  <div className="flex flex-wrap gap-2">
+                    {protocol.website && (
+                      <Button variant="outline" size="sm" asChild data-testid="button-audit-card-website">
+                        <a href={protocol.website} target="_blank" rel="noopener noreferrer">
+                          <Globe className="w-3 h-3 mr-1" />
+                          Website
+                        </a>
+                      </Button>
+                    )}
+                    {protocol.twitter && (
+                      <Button variant="outline" size="sm" asChild data-testid="button-audit-card-twitter">
+                        <a href={`https://twitter.com/${protocol.twitter}`} target="_blank" rel="noopener noreferrer">
+                          <Twitter className="w-3 h-3 mr-1" />
+                          Twitter
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -324,6 +345,27 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
                     Last updated: {new Date(protocol.defiDataFetchedAt).toLocaleString()}
                   </p>
                 )}
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">Protocol Links</p>
+                  <div className="flex flex-wrap gap-2">
+                    {protocol.website && (
+                      <Button variant="outline" size="sm" asChild data-testid="button-defi-card-website">
+                        <a href={protocol.website} target="_blank" rel="noopener noreferrer">
+                          <Globe className="w-3 h-3 mr-1" />
+                          Website
+                        </a>
+                      </Button>
+                    )}
+                    {protocol.twitter && (
+                      <Button variant="outline" size="sm" asChild data-testid="button-defi-card-twitter">
+                        <a href={`https://twitter.com/${protocol.twitter}`} target="_blank" rel="noopener noreferrer">
+                          <Twitter className="w-3 h-3 mr-1" />
+                          Twitter
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

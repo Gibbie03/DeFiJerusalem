@@ -81,7 +81,7 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
     if (isMobile) {
       setOpenMobile(false);
     }
-  }, [location, setOpenMobile, isMobile]);
+  }, [location, isMobile]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
