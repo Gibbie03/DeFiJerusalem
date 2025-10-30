@@ -61,7 +61,7 @@ interface AppSidebarProps {
 export function AppSidebar({ side = "left" }: AppSidebarProps) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const { setOpenMobile, setOpen } = useSidebar();
+  const { setOpenMobile, isMobile } = useSidebar();
 
   useEffect(() => {
     const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
@@ -71,11 +71,12 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
     }
   }, []);
 
-  // Auto-close sidebar when route changes (both mobile and desktop)
+  // Auto-close sidebar when route changes (mobile only)
   useEffect(() => {
-    setOpenMobile(false);
-    setOpen(false);
-  }, [location, setOpenMobile, setOpen]);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [location, setOpenMobile, isMobile]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
