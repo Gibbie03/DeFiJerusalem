@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import type { BlacklistEntry } from '@shared/schema';
+import type { BlacklistEntry, Protocol } from '@shared/schema';
 
 export default function BlacklistDetails() {
   const params = useParams<{ id: string }>();
@@ -20,6 +20,12 @@ export default function BlacklistDetails() {
   });
 
   const entry = blacklist.find(e => e.id === params.id);
+
+  // Fetch the corresponding protocol data to get actual links
+  const { data: protocol } = useQuery<Protocol>({
+    queryKey: ['/api/protocols', entry?.dappId],
+    enabled: !!entry?.dappId,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (entryId: string) => {
@@ -216,44 +222,44 @@ export default function BlacklistDetails() {
                 </InfoRow>
               )}
 
-              {entry.website && (
+              {(entry.website || protocol?.website) && (
                 <InfoRow label="Website" dataTestId="row-website">
                   <a
-                    href={entry.website}
+                    href={entry.website || protocol?.website}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    <span className="truncate">{entry.website}</span>
+                    <span className="truncate">{entry.website || protocol?.website}</span>
                   </a>
                 </InfoRow>
               )}
 
-              {entry.twitter && (
+              {(entry.twitter || protocol?.twitter) && (
                 <InfoRow label="Twitter" dataTestId="row-twitter">
                   <a
-                    href={entry.twitter}
+                    href={entry.twitter || (protocol?.twitter ? `https://twitter.com/${protocol.twitter}` : '')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
                   >
                     <Twitter className="w-4 h-4" />
-                    <span className="truncate">{entry.twitter}</span>
+                    <span className="truncate">{entry.twitter || (protocol?.twitter ? `@${protocol.twitter}` : '')}</span>
                   </a>
                 </InfoRow>
               )}
 
-              {entry.github && (
+              {(entry.github || protocol?.github) && (
                 <InfoRow label="GitHub" dataTestId="row-github">
                   <a
-                    href={entry.github}
+                    href={entry.github || protocol?.github}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
                   >
                     <Github className="w-4 h-4" />
-                    <span className="truncate">{entry.github}</span>
+                    <span className="truncate">{entry.github || protocol?.github}</span>
                   </a>
                 </InfoRow>
               )}

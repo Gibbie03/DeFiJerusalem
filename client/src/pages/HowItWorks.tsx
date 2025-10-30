@@ -34,7 +34,7 @@ export default function HowItWorks() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="trust-score" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <TabsTrigger value="trust-score" data-testid="tab-trust-score">
             <CheckCircle className="w-4 h-4 mr-2" />
             Trust Score
