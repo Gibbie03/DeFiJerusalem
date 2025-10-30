@@ -47,7 +47,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
   - Wallet drainer infrastructure patterns (seaport.js, permit2 abuse, single-use contracts)
   - Visual clone detection (pixel-perfect copies of legitimate DEX interfaces)
   - Social media scam distribution (unsolicited DMs, fake support, Telegram admin impersonation)
-- **False Positive Prevention**: All scam patterns are context-aware to avoid flagging legitimate protocols. Excludes Indonesian .id domains, hyphenated brand names (world-bank.org), and high-yield DeFi farms that don't use "guaranteed" language.
+- **False Positive Prevention**: All scam patterns are context-aware to avoid flagging legitimate protocols. Excludes Indonesian .id domains, hyphenated brand names (world-bank.org), and high-yield DeFi farms that don't use "guaranteed" language. **TVL-Based Filtering**: Protocols with TVL > $500k are automatically excluded from UNVERIFIED_CONTRACT, NO_AUDIT, and ANONYMOUS_TEAM checks to prevent false positives on legitimate DEXs and protocols.
 
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL data, volume data, and audit information.

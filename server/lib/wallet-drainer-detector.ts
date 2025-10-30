@@ -818,15 +818,19 @@ export class WalletDrainerDetector {
       }
 
       // MEDIUM: Check for unverified contracts (downgraded from HIGH to reduce false positives)
-      for (const pattern of SCAM_PATTERNS.unverifiedContractPatterns) {
-        if (pattern.test(nameAndDesc) || (!dapp.audited && verificationScore < 30)) {
-          results.threats.push({
-            type: 'UNVERIFIED_CONTRACT',
-            severity: 'MEDIUM',
-            message: 'Unverified contract - source code not verified on block explorer',
-          });
-          results.score += 10;
-          break;
+      // IMPORTANT: Only flag protocols with low TVL to avoid false positives on legitimate DEXs/protocols
+      const hasLowTvl = dapp.tvl < 500000; // Only flag if TVL < $500k
+      if (hasLowTvl) {
+        for (const pattern of SCAM_PATTERNS.unverifiedContractPatterns) {
+          if (pattern.test(nameAndDesc) || (!dapp.audited && verificationScore < 30)) {
+            results.threats.push({
+              type: 'UNVERIFIED_CONTRACT',
+              severity: 'MEDIUM',
+              message: 'Unverified contract - source code not verified on block explorer',
+            });
+            results.score += 10;
+            break;
+          }
         }
       }
 
@@ -1022,7 +1026,8 @@ export class WalletDrainerDetector {
       }
 
       // MEDIUM: Check if no audit exists (downgraded from HIGH to reduce false positives)
-      if (!dapp.audited && !dapp.auditCount && verificationScore < 50) {
+      // IMPORTANT: Only flag protocols with low TVL to avoid false positives on legitimate protocols
+      if (!dapp.audited && !dapp.auditCount && verificationScore < 50 && hasLowTvl) {
         results.threats.push({
           type: 'NO_AUDIT',
           severity: 'MEDIUM',
@@ -1032,7 +1037,8 @@ export class WalletDrainerDetector {
       }
 
       // HIGH: Check if team is anonymous (reduce penalty for high TVL protocols)
-      if (!dapp.twitter && !dapp.github && verificationScore < 40) {
+      // IMPORTANT: Only flag protocols with low TVL to avoid false positives
+      if (!dapp.twitter && !dapp.github && verificationScore < 40 && hasLowTvl) {
         const penalty = dapp.tvl && dapp.tvl > 1_000_000 ? 10 : 25; // Lower penalty for high TVL
         results.threats.push({
           type: 'ANONYMOUS_TEAM',
