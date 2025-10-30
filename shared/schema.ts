@@ -83,7 +83,11 @@ export const blacklistEntries = pgTable('blacklist_entries', {
     communitySize: number | null;
   }>(),
   lastVetted: timestamp('last_vetted'),
-});
+}, (table) => ({
+  dappIdIdx: uniqueIndex('blacklist_entries_dapp_id_unique_idx').on(table.dappId),
+  timestampIdx: index('blacklist_entries_timestamp_idx').on(table.timestamp),
+  statusIdx: index('blacklist_entries_status_idx').on(table.status),
+}));
 
 export const tutorialVideos = pgTable('tutorial_videos', {
   id: text('id').primaryKey(),

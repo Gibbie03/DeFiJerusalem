@@ -245,6 +245,22 @@ export class DatabaseStorage implements IStorage {
         ...entry,
         lastVetted: entry.lastVetted ? new Date(entry.lastVetted) : null
       }])
+      .onConflictDoUpdate({
+        target: blacklistEntries.dappId,
+        set: {
+          dappName: entry.dappName,
+          severity: entry.severity,
+          threats: entry.threats,
+          reason: entry.reason,
+          status: entry.status,
+          website: entry.website,
+          twitter: entry.twitter,
+          github: entry.github,
+          legitimacyScore: entry.legitimacyScore,
+          securityMetrics: entry.securityMetrics,
+          lastVetted: entry.lastVetted ? new Date(entry.lastVetted) : null,
+        }
+      })
       .returning();
     
     return {
