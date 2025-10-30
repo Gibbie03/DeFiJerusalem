@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -59,6 +59,16 @@ export interface IStorage {
   getWhitelist(): Promise<ProtocolWhitelist[]>;
   isProtocolWhitelisted(protocolId: string): Promise<boolean>;
   removeFromWhitelist(protocolId: string): Promise<void>;
+  
+  // Twitter monitoring methods
+  getTwitterAlerts(filters?: { status?: string; severity?: string; category?: string; limit?: number }): Promise<TwitterAlert[]>;
+  addTwitterAlert(alert: InsertTwitterAlert): Promise<TwitterAlert>;
+  updateTwitterAlert(id: string, updates: { status?: string; reviewNotes?: string }): Promise<void>;
+  
+  // CertiK audit methods
+  getCertikAudits(filters?: { protocolId?: string; limit?: number }): Promise<CertikAudit[]>;
+  getCertikAuditByProtocolId(protocolId: string): Promise<CertikAudit | undefined>;
+  upsertCertikAudit(audit: InsertCertikAudit): Promise<CertikAudit>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -977,6 +987,171 @@ export class DatabaseStorage implements IStorage {
       addedBy: entry.addedBy,
       addedAt: entry.addedAt.toISOString(),
       lastVerified: entry.lastVerified.toISOString(),
+    };
+  }
+
+  // Twitter monitoring methods
+  async getTwitterAlerts(filters?: { status?: string; severity?: string; category?: string; limit?: number }): Promise<TwitterAlert[]> {
+    const conditions = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(twitterAlerts.status, filters.status));
+    }
+    
+    if (filters?.severity) {
+      conditions.push(eq(twitterAlerts.severity, filters.severity));
+    }
+    
+    if (filters?.category) {
+      conditions.push(eq(twitterAlerts.category, filters.category));
+    }
+    
+    let query = db.select().from(twitterAlerts);
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    const results = await query
+      .orderBy(desc(twitterAlerts.detectedAt))
+      .limit(filters?.limit || 100);
+    
+    return results.map(r => this.mapTwitterAlert(r));
+  }
+
+  async addTwitterAlert(alert: InsertTwitterAlert): Promise<TwitterAlert> {
+    const id = `tw_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const [result] = await db
+      .insert(twitterAlerts)
+      .values({ ...alert, id })
+      .returning();
+    
+    return this.mapTwitterAlert(result);
+  }
+
+  async updateTwitterAlert(id: string, updates: { status?: string; reviewNotes?: string }): Promise<void> {
+    await db
+      .update(twitterAlerts)
+      .set({
+        ...updates,
+        reviewedAt: new Date(),
+      })
+      .where(eq(twitterAlerts.id, id));
+  }
+
+  private mapTwitterAlert(alert: any): TwitterAlert {
+    return {
+      id: alert.id,
+      tweetId: alert.tweetId,
+      authorId: alert.authorId,
+      authorUsername: alert.authorUsername,
+      tweetText: alert.tweetText,
+      alertType: alert.alertType,
+      category: alert.category,
+      severity: alert.severity,
+      matchedKeywords: alert.matchedKeywords as string[],
+      extractedUrls: alert.extractedUrls as string[] | null,
+      hashtags: alert.hashtags as string[] | null,
+      mentions: alert.mentions as string[] | null,
+      protocolMentioned: alert.protocolMentioned,
+      isSuspicious: alert.isSuspicious,
+      blacklistedDomain: alert.blacklistedDomain,
+      crossReferencedProtocol: alert.crossReferencedProtocol,
+      status: alert.status,
+      reviewNotes: alert.reviewNotes,
+      tweetCreatedAt: alert.tweetCreatedAt.toISOString(),
+      detectedAt: alert.detectedAt.toISOString(),
+      reviewedAt: alert.reviewedAt?.toISOString() ?? null,
+    };
+  }
+
+  // CertiK audit methods
+  async getCertikAudits(filters?: { protocolId?: string; limit?: number }): Promise<CertikAudit[]> {
+    const conditions = [];
+    
+    if (filters?.protocolId) {
+      conditions.push(eq(certikAudits.protocolId, filters.protocolId));
+    }
+    
+    let query = db.select().from(certikAudits);
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    const results = await query
+      .orderBy(desc(certikAudits.fetchedAt))
+      .limit(filters?.limit || 50);
+    
+    return results.map(r => this.mapCertikAudit(r));
+  }
+
+  async getCertikAuditByProtocolId(protocolId: string): Promise<CertikAudit | undefined> {
+    const [result] = await db
+      .select()
+      .from(certikAudits)
+      .where(eq(certikAudits.protocolId, protocolId))
+      .orderBy(desc(certikAudits.fetchedAt))
+      .limit(1);
+    
+    return result ? this.mapCertikAudit(result) : undefined;
+  }
+
+  async upsertCertikAudit(audit: InsertCertikAudit): Promise<CertikAudit> {
+    const id = `ca_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const [result] = await db
+      .insert(certikAudits)
+      .values({ ...audit, id })
+      .onConflictDoUpdate({
+        target: certikAudits.protocolId,
+        set: {
+          protocolName: audit.protocolName,
+          securityScore: audit.securityScore,
+          codeSecurityScore: audit.codeSecurityScore,
+          marketScore: audit.marketScore,
+          governanceScore: audit.governanceScore,
+          hasAudit: audit.hasAudit,
+          auditDate: audit.auditDate,
+          auditStatus: audit.auditStatus,
+          auditReportUrl: audit.auditReportUrl,
+          vulnerabilities: audit.vulnerabilities,
+          riskCategories: audit.riskCategories,
+          onChainMonitoring: audit.onChainMonitoring,
+          kycVerified: audit.kycVerified,
+          bugBountyProgram: audit.bugBountyProgram,
+          certikSkynetUrl: audit.certikSkynetUrl,
+          dataSource: audit.dataSource,
+          lastUpdated: new Date(),
+          fetchedAt: new Date(),
+        }
+      })
+      .returning();
+    
+    return this.mapCertikAudit(result);
+  }
+
+  private mapCertikAudit(audit: any): CertikAudit {
+    return {
+      id: audit.id,
+      protocolId: audit.protocolId,
+      protocolName: audit.protocolName,
+      securityScore: audit.securityScore,
+      codeSecurityScore: audit.codeSecurityScore,
+      marketScore: audit.marketScore,
+      governanceScore: audit.governanceScore,
+      hasAudit: audit.hasAudit,
+      auditDate: audit.auditDate?.toISOString() ?? null,
+      auditStatus: audit.auditStatus,
+      auditReportUrl: audit.auditReportUrl,
+      vulnerabilities: audit.vulnerabilities as any,
+      riskCategories: audit.riskCategories as any,
+      onChainMonitoring: audit.onChainMonitoring ?? false,
+      kycVerified: audit.kycVerified ?? false,
+      bugBountyProgram: audit.bugBountyProgram ?? false,
+      certikSkynetUrl: audit.certikSkynetUrl,
+      dataSource: audit.dataSource,
+      lastUpdated: audit.lastUpdated.toISOString(),
+      fetchedAt: audit.fetchedAt.toISOString(),
     };
   }
 }

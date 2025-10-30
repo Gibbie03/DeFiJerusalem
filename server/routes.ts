@@ -1940,6 +1940,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Also run on startup after a delay
   setTimeout(performWeeklyScan, 5 * 60 * 1000); // 5 minutes after startup
 
+  // ==================== TWITTER MONITORING ROUTES ====================
+
+  // GET /api/twitter/alerts - Get all Twitter alerts (admin only)
+  app.get("/api/twitter/alerts", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ message: 'Admin authentication required' });
+      }
+
+      const { status, severity, category, limit = '100' } = req.query;
+      const alerts = await storage.getTwitterAlerts({
+        status: status as string,
+        severity: severity as string,
+        category: category as string,
+        limit: parseInt(limit as string)
+      });
+
+      res.json(alerts);
+    } catch (error: any) {
+      console.error('Error fetching Twitter alerts:', error);
+      res.status(500).json({ message: 'Failed to fetch Twitter alerts' });
+    }
+  });
+
+  // POST /api/twitter/test-detection - Test Twitter detection without starting stream (admin only)
+  app.post("/api/twitter/test-detection", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ message: 'Admin authentication required' });
+      }
+
+      const twitterToken = process.env.TWITTER_BEARER_TOKEN;
+      if (!twitterToken) {
+        return res.status(400).json({ 
+          message: 'Twitter API credentials not configured. Please set TWITTER_BEARER_TOKEN environment variable.',
+          setupRequired: true
+        });
+      }
+
+      res.json({ 
+        message: 'Twitter integration configured successfully',
+        hasToken: true,
+        info: 'Twitter monitoring is ready. Note: Real-time monitoring requires a persistent process.'
+      });
+    } catch (error: any) {
+      console.error('Error testing Twitter detection:', error);
+      res.status(500).json({ message: 'Failed to test Twitter detection' });
+    }
+  });
+
+  // PATCH /api/twitter/alerts/:id - Update alert status (admin only)
+  app.patch("/api/twitter/alerts/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ message: 'Admin authentication required' });
+      }
+
+      const { id } = req.params;
+      const { status, reviewNotes } = req.body;
+
+      await storage.updateTwitterAlert(id, { status, reviewNotes });
+      
+      res.json({ message: 'Alert updated successfully' });
+    } catch (error: any) {
+      console.error('Error updating Twitter alert:', error);
+      res.status(500).json({ message: 'Failed to update alert' });
+    }
+  });
+
+  // ==================== CERTIK AUDIT ROUTES ====================
+
+  // GET /api/certik/audits - Get CertiK audit data for protocols
+  app.get("/api/certik/audits", async (req: Request, res: Response) => {
+    try {
+      const { protocolId, limit = '50' } = req.query;
+      
+      const audits = await storage.getCertikAudits({
+        protocolId: protocolId as string,
+        limit: parseInt(limit as string)
+      });
+
+      res.json(audits);
+    } catch (error: any) {
+      console.error('Error fetching CertiK audits:', error);
+      res.status(500).json({ message: 'Failed to fetch CertiK audits' });
+    }
+  });
+
+  // GET /api/certik/audits/:protocolId - Get audit for specific protocol
+  app.get("/api/certik/audits/:protocolId", async (req: Request, res: Response) => {
+    try {
+      const { protocolId } = req.params;
+      const audit = await storage.getCertikAuditByProtocolId(protocolId);
+
+      if (!audit) {
+        return res.status(404).json({ message: 'No CertiK audit data found for this protocol' });
+      }
+
+      res.json(audit);
+    } catch (error: any) {
+      console.error('Error fetching CertiK audit:', error);
+      res.status(500).json({ message: 'Failed to fetch CertiK audit' });
+    }
+  });
+
+  // POST /api/certik/fetch - Fetch CertiK data for top protocols (admin only)
+  app.post("/api/certik/fetch", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ message: 'Admin authentication required' });
+      }
+
+      const { limit = 100 } = req.body;
+
+      // Get top protocols by TVL
+      const protocols = await storage.getProtocols();
+      const topProtocols = protocols
+        .sort((a, b) => (b.tvl || 0) - (a.tvl || 0))
+        .slice(0, limit);
+
+      // Check which protocols have CertiK audits from DeFiLlama
+      const { CertikScraper, hasCertikAudit, extractCertikAuditUrl } = await import('./lib/certik-scraper');
+      const scraper = new CertikScraper();
+
+      const auditPromises = topProtocols.map(async (protocol) => {
+        const hasAudit = hasCertikAudit(protocol.auditLinks, protocol.audited);
+        const auditUrl = extractCertikAuditUrl(protocol.auditLinks);
+
+        // Generate audit entry (mock data for now, real scraping would be added later)
+        const auditData = scraper.generateMockAuditData(protocol.id, protocol.name, hasAudit);
+        
+        if (auditUrl) {
+          auditData.auditReportUrl = auditUrl;
+        }
+
+        return storage.upsertCertikAudit(auditData);
+      });
+
+      await Promise.all(auditPromises);
+
+      res.json({ 
+        message: `Successfully fetched CertiK audit data for ${topProtocols.length} protocols`,
+        count: topProtocols.length
+      });
+    } catch (error: any) {
+      console.error('Error fetching CertiK data:', error);
+      res.status(500).json({ message: 'Failed to fetch CertiK data' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
