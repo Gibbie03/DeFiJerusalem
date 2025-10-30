@@ -225,7 +225,7 @@ export default function BlacklistDetails() {
               {(entry.website || protocol?.website) && (
                 <InfoRow label="Website" dataTestId="row-website">
                   <a
-                    href={entry.website || protocol?.website}
+                    href={entry.website || protocol?.website || ''}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
@@ -253,7 +253,7 @@ export default function BlacklistDetails() {
               {(entry.github || protocol?.github) && (
                 <InfoRow label="GitHub" dataTestId="row-github">
                   <a
-                    href={entry.github || protocol?.github}
+                    href={entry.github || protocol?.github || ''}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
