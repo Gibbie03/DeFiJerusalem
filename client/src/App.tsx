@@ -12,6 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
+import BlacklistDetails from "@/pages/BlacklistDetails";
 import Tutorials from "@/pages/Tutorials";
 import SponsorshipGuide from "@/pages/SponsorshipGuide";
 import HowItWorks from "@/pages/HowItWorks";
@@ -73,6 +74,7 @@ function Router() {
                 <Route path="/" component={Dashboard} />
                 <Route path="/new" component={NewDApps} />
                 <Route path="/trending" component={TrendingDApps} />
+                <Route path="/blacklist/:id" component={BlacklistDetails} />
                 <Route path="/blacklist" component={Blacklist} />
                 <Route path="/how-it-works" component={HowItWorks} />
                 <Route path="/tutorials" component={Tutorials} />

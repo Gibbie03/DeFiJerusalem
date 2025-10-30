@@ -1,106 +1,36 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, Trash2, ExternalLink, Twitter, Github, CheckCircle2, XCircle } from 'lucide-react';
+import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, ExternalLink, Eye } from 'lucide-react';
+import { useLocation } from 'wouter';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
-import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import type { BlacklistEntry, Protocol, SecurityScan } from '@shared/schema';
+import { queryClient } from '@/lib/queryClient';
+import type { BlacklistEntry } from '@shared/schema';
 
 export default function Blacklist() {
   const [searchValue, setSearchValue] = useState('');
-  const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: blacklist = [], isLoading } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
   });
 
-  const { data: protocols = [] } = useQuery<Protocol[]>({
-    queryKey: ['/api/protocols'],
-  });
-
-  const { data: securityScans = {} } = useQuery<Record<string, SecurityScan>>({
-    queryKey: ['/api/scans'],
-  });
-
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (entryId: string) => {
-      const res = await apiRequest('DELETE', `/api/blacklist/${entryId}`);
-      return await res.json();
-    },
-    onSuccess: (_data, entryId) => {
-      // Optimistically update the cache by removing the deleted entry
-      queryClient.setQueryData(['/api/blacklist'], (oldData: BlacklistEntry[] | undefined) => {
-        if (!oldData) return [];
-        return oldData.filter(entry => entry.id !== entryId);
-      });
-      // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
-      toast({
-        title: "Entry Removed",
-        description: "Blacklist entry has been successfully removed",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Deletion Failed",
-        description: error instanceof Error ? error.message : "Failed to delete blacklist entry",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const scanMutation = useMutation({
-    mutationFn: async (protocolIds: string[]) => {
-      const res = await apiRequest('POST', '/api/scan', { protocolIds });
-      return await res.json();
-    },
-    onSuccess: (data: { scanResults: Record<string, SecurityScan>; scannedCount: number }) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/scans'] });
-      toast({
-        title: "Security Scan Complete",
-        description: `Scanned protocol successfully`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Scan Failed",
-        description: error instanceof Error ? error.message : "Failed to scan protocol",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleDelete = (entryId: string, dappName: string) => {
-    if (confirm(`Are you sure you want to remove "${dappName}" from the blacklist?`)) {
-      deleteMutation.mutate(entryId);
-    }
-  };
-
-  const handleScanProtocol = useCallback((protocolId: string) => {
-    scanMutation.mutate([protocolId]);
-  }, [scanMutation]);
-
-  const handleViewProtocol = useCallback((dappId: string) => {
-    const protocol = protocols.find(p => p.id === dappId);
-    if (protocol) {
-      setSelectedProtocol(protocol);
-    }
-  }, [protocols]);
-
-  const filteredBlacklist = blacklist.filter(entry =>
-    entry.dappId.toLowerCase().includes(searchValue.toLowerCase()) ||
-    (entry.reason?.toLowerCase().includes(searchValue.toLowerCase()))
-  );
+  const filteredBlacklist = useMemo(() => {
+    return blacklist.filter(entry =>
+      entry.dappId.toLowerCase().includes(searchValue.toLowerCase()) ||
+      entry.dappName?.toLowerCase().includes(searchValue.toLowerCase()) ||
+      (entry.reason?.toLowerCase().includes(searchValue.toLowerCase()))
+    );
+  }, [blacklist, searchValue]);
 
   // Calculate detailed stats
   const stats = useMemo(() => {
@@ -136,28 +66,22 @@ export default function Blacklist() {
     };
   }, [blacklist]);
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityBadge = (severity: string) => {
     switch (severity) {
-      case 'CRITICAL': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'HIGH': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
-      case 'MEDIUM': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-      default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+      case 'CRITICAL':
+        return <Badge variant="destructive" className="bg-red-500/20 text-red-500 border-red-500/50">CRITICAL</Badge>;
+      case 'HIGH':
+        return <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/50">HIGH</Badge>;
+      case 'MEDIUM':
+        return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/50">MEDIUM</Badge>;
+      default:
+        return <Badge variant="outline">{severity}</Badge>;
     }
   };
 
-  const getLegitimacyRating = (score: number) => {
-    if (score >= 90) {
-      return { label: 'HIGHLY LEGITIMATE', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: CheckCircle2 };
-    } else if (score >= 70) {
-      return { label: 'LEGITIMATE', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: CheckCircle2 };
-    } else if (score >= 50) {
-      return { label: 'MODERATE RISK', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: AlertTriangle };
-    } else if (score >= 30) {
-      return { label: 'HIGH RISK', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20', icon: AlertOctagon };
-    } else {
-      return { label: 'CRITICAL RISK', color: 'bg-red-500/10 text-red-500 border-red-500/20', icon: XCircle };
-    }
-  };
+  const handleRowClick = useCallback((entryId: string) => {
+    setLocation(`/blacklist/${entryId}`);
+  }, [setLocation]);
 
   if (isLoading) {
     return <LoadingSpinner message="Loading blacklisted DApps..." />;
@@ -295,177 +219,102 @@ export default function Blacklist() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredBlacklist.map((entry) => (
-              <Card key={entry.id} className="border-l-4 border-l-red-500" data-testid={`blacklist-entry-${entry.id}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-red-500" />
-                        <button
-                          onClick={() => handleViewProtocol(entry.dappId)}
-                          className="hover:text-primary transition-colors underline decoration-dotted"
-                          data-testid={`link-protocol-${entry.id}`}
-                        >
-                          {entry.dappName || entry.dappId}
-                        </button>
-                        {entry.website && (
-                          <a 
-                            href={entry.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            data-testid={`link-website-${entry.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
-                      </CardTitle>
-                      <CardDescription>
-                        Flagged on {new Date(entry.timestamp).toLocaleDateString()}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getSeverityColor(entry.severity)}>
-                        {entry.severity}
-                      </Badge>
-                      <Badge variant={entry.status === 'ACTIVE' ? 'destructive' : 'secondary'}>
-                        {entry.status}
-                      </Badge>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(entry.id, entry.dappName || entry.dappId)}
-                        disabled={deleteMutation.isPending}
-                        data-testid={`button-delete-${entry.id}`}
-                        className="hover:bg-red-500/10 hover:text-red-500"
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                Blacklisted Protocols ({filteredBlacklist.length})
+              </CardTitle>
+              <CardDescription>
+                Click on any protocol to view detailed threat analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-[300px]">Protocol</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Threats</TableHead>
+                      <TableHead>Flagged Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBlacklist.map((entry) => (
+                      <TableRow
+                        key={entry.id}
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => handleRowClick(entry.id)}
+                        data-testid={`blacklist-row-${entry.id}`}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Social Links */}
-                  {(entry.website || entry.twitter || entry.github) && (
-                    <div className="flex items-center gap-3 pb-3 border-b">
-                      <p className="text-sm font-medium text-muted-foreground">Links:</p>
-                      <div className="flex items-center gap-2">
-                        {entry.website && (
-                          <a 
-                            href={entry.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
-                            data-testid={`link-website-detailed-${entry.id}`}
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            Website
-                          </a>
-                        )}
-                        {entry.twitter && (
-                          <a 
-                            href={entry.twitter} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
-                            data-testid={`link-twitter-${entry.id}`}
-                          >
-                            <Twitter className="w-3 h-3" />
-                            Twitter
-                          </a>
-                        )}
-                        {entry.github && (
-                          <a 
-                            href={entry.github} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
-                            data-testid={`link-github-${entry.id}`}
-                          >
-                            <Github className="w-3 h-3" />
-                            GitHub
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Legitimacy Score */}
-                  {entry.legitimacyScore !== undefined && entry.legitimacyScore !== null && (() => {
-                    const rating = getLegitimacyRating(entry.legitimacyScore);
-                    const LegitimacyIcon = rating.icon;
-                    return (
-                      <div className="flex items-center justify-between pb-3 border-b">
-                        <div>
-                          <p className="text-sm font-medium mb-1">Legitimacy Assessment:</p>
+                        <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={rating.color}>
-                              <LegitimacyIcon className="w-3 h-3 mr-1" />
-                              {rating.label}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              Score: {entry.legitimacyScore}/100
-                            </span>
-                          </div>
-                        </div>
-                        {entry.legitimacyScore >= 70 && (
-                          <div className="text-xs text-green-500 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            May be removed on next vetting
-                          </div>
-                        )}
-                        {entry.lastVetted && (
-                          <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Last vetted: {new Date(entry.lastVetted).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {entry.reason && (
-                    <div>
-                      <p className="text-sm font-medium mb-1">Reason:</p>
-                      <p className="text-sm text-muted-foreground">{entry.reason}</p>
-                    </div>
-                  )}
-                  {entry.threats && entry.threats.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Detected Threats:</p>
-                      <div className="space-y-2">
-                        {entry.threats.map((threat, idx) => (
-                          <div key={idx} className="flex items-start gap-2">
-                            <Badge variant="outline" className={`text-xs ${getSeverityColor(threat.severity)}`}>
-                              {threat.severity}
-                            </Badge>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{threat.type.replace(/_/g, ' ')}</p>
-                              <p className="text-xs text-muted-foreground">{threat.message}</p>
+                            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="font-semibold truncate" data-testid={`protocol-name-${entry.id}`}>
+                                {entry.dappName || entry.dappId}
+                              </div>
+                              {entry.website && (
+                                <a 
+                                  href={entry.website} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1 truncate"
+                                  onClick={(e) => e.stopPropagation()}
+                                  data-testid={`protocol-website-${entry.id}`}
+                                >
+                                  <ExternalLink className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{entry.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                                </a>
+                              )}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {selectedProtocol && (
-          <ProtocolDetailModal
-            isOpen={true}
-            protocol={selectedProtocol}
-            scanResult={securityScans[selectedProtocol.id]}
-            onClose={() => setSelectedProtocol(null)}
-            onScan={handleScanProtocol}
-            isScanning={scanMutation.isPending}
-          />
+                        </TableCell>
+                        <TableCell data-testid={`severity-${entry.id}`}>
+                          {getSeverityBadge(entry.severity)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={entry.status === 'ACTIVE' ? 'destructive' : 'secondary'}
+                            data-testid={`status-${entry.id}`}
+                          >
+                            {entry.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell data-testid={`threat-count-${entry.id}`}>
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold">{entry.threats.length}</span>
+                            <span className="text-xs text-muted-foreground">detected</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm" data-testid={`date-${entry.id}`}>
+                          {new Date(entry.timestamp).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowClick(entry.id);
+                            }}
+                            data-testid={`button-view-${entry.id}`}
+                            className="hover:bg-primary/10"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </main>
 
