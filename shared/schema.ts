@@ -219,6 +219,74 @@ export const protocolWhitelist = pgTable('protocol_whitelist', {
   protocolIdIdx: index('protocol_whitelist_protocol_id_idx').on(table.protocolId),
 }));
 
+export const twitterAlerts = pgTable('twitter_alerts', {
+  id: text('id').primaryKey(),
+  tweetId: text('tweet_id').notNull().unique(),
+  authorId: text('author_id').notNull(),
+  authorUsername: text('author_username'),
+  tweetText: text('tweet_text').notNull(),
+  alertType: text('alert_type').notNull(),
+  category: text('category').notNull(),
+  severity: text('severity').notNull(),
+  matchedKeywords: json('matched_keywords').$type<string[]>().notNull(),
+  extractedUrls: json('extracted_urls').$type<string[]>(),
+  hashtags: json('hashtags').$type<string[]>(),
+  mentions: json('mentions').$type<string[]>(),
+  protocolMentioned: text('protocol_mentioned'),
+  isSuspicious: boolean('is_suspicious').notNull().default(false),
+  blacklistedDomain: text('blacklisted_domain'),
+  crossReferencedProtocol: text('cross_referenced_protocol'),
+  status: text('status').notNull().default('pending'),
+  reviewNotes: text('review_notes'),
+  tweetCreatedAt: timestamp('tweet_created_at').notNull(),
+  detectedAt: timestamp('detected_at').notNull().defaultNow(),
+  reviewedAt: timestamp('reviewed_at'),
+}, (table) => ({
+  tweetIdIdx: index('twitter_alerts_tweet_id_idx').on(table.tweetId),
+  alertTypeIdx: index('twitter_alerts_alert_type_idx').on(table.alertType),
+  categoryIdx: index('twitter_alerts_category_idx').on(table.category),
+  severityIdx: index('twitter_alerts_severity_idx').on(table.severity),
+  statusIdx: index('twitter_alerts_status_idx').on(table.status),
+  detectedAtIdx: index('twitter_alerts_detected_at_idx').on(table.detectedAt),
+}));
+
+export const certikAudits = pgTable('certik_audits', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull().references(() => protocols.id),
+  protocolName: text('protocol_name').notNull(),
+  securityScore: real('security_score'),
+  codeSecurityScore: real('code_security_score'),
+  marketScore: real('market_score'),
+  governanceScore: real('governance_score'),
+  hasAudit: boolean('has_audit').notNull().default(false),
+  auditDate: timestamp('audit_date'),
+  auditStatus: text('audit_status'),
+  auditReportUrl: text('audit_report_url'),
+  vulnerabilities: json('vulnerabilities').$type<Array<{
+    severity: string;
+    category: string;
+    description: string;
+    status: string;
+  }>>(),
+  riskCategories: json('risk_categories').$type<{
+    codeRisk: string;
+    marketRisk: string;
+    governanceRisk: string;
+    operationalRisk: string;
+  }>(),
+  onChainMonitoring: boolean('on_chain_monitoring').default(false),
+  kycVerified: boolean('kyc_verified').default(false),
+  bugBountyProgram: boolean('bug_bounty_program').default(false),
+  certikSkynetUrl: text('certik_skynet_url'),
+  dataSource: text('data_source').notNull().default('skynet_scraper'),
+  lastUpdated: timestamp('last_updated').notNull().defaultNow(),
+  fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
+}, (table) => ({
+  protocolIdIdx: index('certik_audits_protocol_id_idx').on(table.protocolId),
+  securityScoreIdx: index('certik_audits_security_score_idx').on(table.securityScore),
+  fetchedAtIdx: index('certik_audits_fetched_at_idx').on(table.fetchedAt),
+}));
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -401,6 +469,63 @@ export type ProtocolWhitelist = {
   lastVerified: string;
 };
 
+export type TwitterAlert = {
+  id: string;
+  tweetId: string;
+  authorId: string;
+  authorUsername: string | null;
+  tweetText: string;
+  alertType: 'airdrop' | 'migration' | 'scam' | 'audit' | 'vulnerability';
+  category: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+  matchedKeywords: string[];
+  extractedUrls: string[] | null;
+  hashtags: string[] | null;
+  mentions: string[] | null;
+  protocolMentioned: string | null;
+  isSuspicious: boolean;
+  blacklistedDomain: string | null;
+  crossReferencedProtocol: string | null;
+  status: 'pending' | 'reviewed' | 'flagged' | 'dismissed';
+  reviewNotes: string | null;
+  tweetCreatedAt: string;
+  detectedAt: string;
+  reviewedAt: string | null;
+};
+
+export type CertikAudit = {
+  id: string;
+  protocolId: string;
+  protocolName: string;
+  securityScore: number | null;
+  codeSecurityScore: number | null;
+  marketScore: number | null;
+  governanceScore: number | null;
+  hasAudit: boolean;
+  auditDate: string | null;
+  auditStatus: string | null;
+  auditReportUrl: string | null;
+  vulnerabilities: Array<{
+    severity: string;
+    category: string;
+    description: string;
+    status: string;
+  }> | null;
+  riskCategories: {
+    codeRisk: string;
+    marketRisk: string;
+    governanceRisk: string;
+    operationalRisk: string;
+  } | null;
+  onChainMonitoring: boolean;
+  kycVerified: boolean;
+  bugBountyProgram: boolean;
+  certikSkynetUrl: string | null;
+  dataSource: string;
+  lastUpdated: string;
+  fetchedAt: string;
+};
+
 export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -447,6 +572,18 @@ export const insertProtocolWhitelistSchema = createInsertSchema(protocolWhitelis
   lastVerified: true
 });
 
+export const insertTwitterAlertSchema = createInsertSchema(twitterAlerts).omit({ 
+  id: true, 
+  detectedAt: true,
+  reviewedAt: true
+});
+
+export const insertCertikAuditSchema = createInsertSchema(certikAudits).omit({ 
+  id: true, 
+  lastUpdated: true,
+  fetchedAt: true
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
 export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
@@ -454,6 +591,8 @@ export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
 export type InsertDiscoveredContract = z.infer<typeof insertDiscoveredContractSchema>;
 export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
 export type InsertProtocolWhitelist = z.infer<typeof insertProtocolWhitelistSchema>;
+export type InsertTwitterAlert = z.infer<typeof insertTwitterAlertSchema>;
+export type InsertCertikAudit = z.infer<typeof insertCertikAuditSchema>;
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());
