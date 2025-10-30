@@ -1,4 +1,4 @@
-import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, TrendingUp, Ban } from 'lucide-react';
+import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, TrendingUp, Ban, Github } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -95,48 +95,66 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              data-testid="button-dapps-link"
-            >
-              <a 
-                href={`https://defillama.com/protocol/${protocol.id}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                View on DeFiLlama
-              </a>
-            </Button>
-            {protocol.website && (
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Protocol Links
+            </h3>
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 asChild
-                data-testid="button-website-link"
+                data-testid="button-dapps-link"
               >
-                <a href={protocol.website} target="_blank" rel="noopener noreferrer">
-                  <Globe className="w-3.5 h-3.5 mr-1.5" />
-                  Website
+                <a 
+                  href={`https://defillama.com/protocol/${protocol.id}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                  View on DeFiLlama
                 </a>
               </Button>
-            )}
-            {protocol.twitter && (
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                data-testid="button-twitter-link"
-              >
-                <a href={`https://twitter.com/${protocol.twitter}`} target="_blank" rel="noopener noreferrer">
-                  <Twitter className="w-3.5 h-3.5 mr-1.5" />
-                  Twitter
-                </a>
-              </Button>
-            )}
+              {protocol.website && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  data-testid="button-website-link"
+                >
+                  <a href={protocol.website} target="_blank" rel="noopener noreferrer">
+                    <Globe className="w-3.5 h-3.5 mr-1.5" />
+                    Website
+                  </a>
+                </Button>
+              )}
+              {protocol.twitter && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  data-testid="button-twitter-link"
+                >
+                  <a href={`https://twitter.com/${protocol.twitter}`} target="_blank" rel="noopener noreferrer">
+                    <Twitter className="w-3.5 h-3.5 mr-1.5" />
+                    Twitter
+                  </a>
+                </Button>
+              )}
+              {protocol.github && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  data-testid="button-github-link"
+                >
+                  <a href={protocol.github} target="_blank" rel="noopener noreferrer">
+                    <Github className="w-3.5 h-3.5 mr-1.5" />
+                    GitHub
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
