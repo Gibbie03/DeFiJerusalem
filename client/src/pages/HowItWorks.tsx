@@ -34,21 +34,37 @@ export default function HowItWorks() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="trust-score" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <TabsTrigger value="trust-score" data-testid="tab-trust-score">
-            <CheckCircle className="w-4 h-4 mr-2" />
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 h-auto p-2 gap-2 bg-card border">
+          <TabsTrigger 
+            value="trust-score" 
+            data-testid="tab-trust-score"
+            className="py-4 text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover-elevate"
+          >
+            <CheckCircle className="w-5 h-5 mr-2" />
             Trust Score
           </TabsTrigger>
-          <TabsTrigger value="scam-score" data-testid="tab-scam-score">
-            <AlertTriangle className="w-4 h-4 mr-2" />
+          <TabsTrigger 
+            value="scam-score" 
+            data-testid="tab-scam-score"
+            className="py-4 text-base font-semibold data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground hover-elevate"
+          >
+            <AlertTriangle className="w-5 h-5 mr-2" />
             Scam Score
           </TabsTrigger>
-          <TabsTrigger value="calculation" data-testid="tab-calculation">
-            <Target className="w-4 h-4 mr-2" />
+          <TabsTrigger 
+            value="calculation" 
+            data-testid="tab-calculation"
+            className="py-4 text-base font-semibold data-[state=active]:bg-accent data-[state=active]:text-accent-foreground hover-elevate"
+          >
+            <Target className="w-5 h-5 mr-2" />
             Calculation
           </TabsTrigger>
-          <TabsTrigger value="examples" data-testid="tab-examples">
-            <Eye className="w-4 h-4 mr-2" />
+          <TabsTrigger 
+            value="examples" 
+            data-testid="tab-examples"
+            className="py-4 text-base font-semibold data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground hover-elevate"
+          >
+            <Eye className="w-5 h-5 mr-2" />
             Examples
           </TabsTrigger>
         </TabsList>

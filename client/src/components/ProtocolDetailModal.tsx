@@ -96,14 +96,15 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
           )}
 
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
               Protocol Links
             </h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <Button
-                variant="outline"
-                size="sm"
+                variant="default"
+                size="default"
                 asChild
+                className="font-semibold"
                 data-testid="button-dapps-link"
               >
                 <a 
@@ -111,45 +112,48 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
                   target="_blank" 
                   rel="noopener noreferrer"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                  View on DeFiLlama
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  DeFiLlama
                 </a>
               </Button>
               {protocol.website && (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="default"
+                  size="default"
                   asChild
+                  className="font-semibold"
                   data-testid="button-website-link"
                 >
                   <a href={protocol.website} target="_blank" rel="noopener noreferrer">
-                    <Globe className="w-3.5 h-3.5 mr-1.5" />
+                    <Globe className="w-4 h-4 mr-2" />
                     Website
                   </a>
                 </Button>
               )}
               {protocol.twitter && (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="default"
+                  size="default"
                   asChild
+                  className="font-semibold"
                   data-testid="button-twitter-link"
                 >
                   <a href={`https://twitter.com/${protocol.twitter}`} target="_blank" rel="noopener noreferrer">
-                    <Twitter className="w-3.5 h-3.5 mr-1.5" />
+                    <Twitter className="w-4 h-4 mr-2" />
                     Twitter
                   </a>
                 </Button>
               )}
               {protocol.github && (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="default"
+                  size="default"
                   asChild
+                  className="font-semibold"
                   data-testid="button-github-link"
                 >
                   <a href={protocol.github} target="_blank" rel="noopener noreferrer">
-                    <Github className="w-3.5 h-3.5 mr-1.5" />
+                    <Github className="w-4 h-4 mr-2" />
                     GitHub
                   </a>
                 </Button>

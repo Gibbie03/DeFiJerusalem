@@ -222,47 +222,66 @@ export default function BlacklistDetails() {
                 </InfoRow>
               )}
 
-              {(entry.website || protocol?.website) && (
-                <InfoRow label="Website" dataTestId="row-website">
-                  <a
-                    href={entry.website || protocol?.website || ''}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span className="truncate">{entry.website || protocol?.website}</span>
-                  </a>
-                </InfoRow>
-              )}
+              <InfoRow label="Protocol Links" dataTestId="row-protocol-links">
+                <div className="flex flex-wrap gap-2">
+                  {(entry.website || protocol?.website) && (
+                    <Button
+                      variant="default"
+                      size="default"
+                      asChild
+                      className="font-semibold"
+                      data-testid="button-website"
+                    >
+                      <a
+                        href={entry.website || protocol?.website || ''}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Globe className="w-4 h-4 mr-2" />
+                        Website
+                      </a>
+                    </Button>
+                  )}
 
-              {(entry.twitter || protocol?.twitter) && (
-                <InfoRow label="Twitter" dataTestId="row-twitter">
-                  <a
-                    href={entry.twitter || (protocol?.twitter ? `https://twitter.com/${protocol.twitter}` : '')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
-                  >
-                    <Twitter className="w-4 h-4" />
-                    <span className="truncate">{entry.twitter || (protocol?.twitter ? `@${protocol.twitter}` : '')}</span>
-                  </a>
-                </InfoRow>
-              )}
+                  {(entry.twitter || protocol?.twitter) && (
+                    <Button
+                      variant="default"
+                      size="default"
+                      asChild
+                      className="font-semibold"
+                      data-testid="button-twitter"
+                    >
+                      <a
+                        href={entry.twitter || (protocol?.twitter ? `https://twitter.com/${protocol.twitter}` : '')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Twitter className="w-4 h-4 mr-2" />
+                        Twitter
+                      </a>
+                    </Button>
+                  )}
 
-              {(entry.github || protocol?.github) && (
-                <InfoRow label="GitHub" dataTestId="row-github">
-                  <a
-                    href={entry.github || protocol?.github || ''}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-2"
-                  >
-                    <Github className="w-4 h-4" />
-                    <span className="truncate">{entry.github || protocol?.github}</span>
-                  </a>
-                </InfoRow>
-              )}
+                  {(entry.github || protocol?.github) && (
+                    <Button
+                      variant="default"
+                      size="default"
+                      asChild
+                      className="font-semibold"
+                      data-testid="button-github"
+                    >
+                      <a
+                        href={entry.github || protocol?.github || ''}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Github className="w-4 h-4 mr-2" />
+                        GitHub
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </InfoRow>
 
               {entry.reason && (
                 <InfoRow label="Blacklist Reason" dataTestId="row-reason">

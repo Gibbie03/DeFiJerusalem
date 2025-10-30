@@ -88,47 +88,51 @@ export default function ProtocolCard({ protocol, onViewDetails, onScan, onBlackl
 
       <div className="space-y-3">
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Protocol Links</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-3">Protocol Links</p>
           <div className="flex gap-2 flex-wrap">
             <Button 
-              size="sm" 
-              variant="outline"
+              size="default" 
+              variant="default"
+              className="font-semibold"
               onClick={(e) => { e.stopPropagation(); window.open(`https://defillama.com/protocol/${protocol.id}`, '_blank'); }}
               data-testid="button-dapps"
             >
-              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+              <ExternalLink className="w-4 h-4 mr-2" />
               DeFiLlama
             </Button>
             {protocol.website && (
               <Button 
-                size="sm" 
-                variant="outline"
+                size="default" 
+                variant="default"
+                className="font-semibold"
                 onClick={(e) => { e.stopPropagation(); window.open(protocol.website!, '_blank'); }}
                 data-testid="button-website"
               >
-                <Globe className="w-3.5 h-3.5 mr-1.5" />
+                <Globe className="w-4 h-4 mr-2" />
                 Website
               </Button>
             )}
             {protocol.twitter && (
               <Button 
-                size="sm" 
-                variant="outline"
+                size="default" 
+                variant="default"
+                className="font-semibold"
                 onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/${protocol.twitter}`, '_blank'); }}
                 data-testid="button-twitter"
               >
-                <Twitter className="w-3.5 h-3.5 mr-1.5" />
+                <Twitter className="w-4 h-4 mr-2" />
                 Twitter
               </Button>
             )}
             {protocol.github && (
               <Button 
-                size="sm" 
-                variant="outline"
+                size="default" 
+                variant="default"
+                className="font-semibold"
                 onClick={(e) => { e.stopPropagation(); window.open(protocol.github!, '_blank'); }}
                 data-testid="button-github"
               >
-                <Github className="w-3.5 h-3.5 mr-1.5" />
+                <Github className="w-4 h-4 mr-2" />
                 GitHub
               </Button>
             )}
