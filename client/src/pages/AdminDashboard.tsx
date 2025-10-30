@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, LogOut, Edit, Save, X, RefreshCw } from 'lucide-react';
+import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import type { Protocol, BlacklistEntry } from '@shared/schema';
+import type { Protocol, BlacklistEntry, TwitterAlert, CertikAudit } from '@shared/schema';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface AdminSession {
@@ -34,6 +34,334 @@ interface EditProtocolData {
   website: string;
   twitter: string;
   github: string;
+}
+
+function TwitterMonitoringPanel({ session }: { session: AdminSession | undefined }) {
+  const { toast } = useToast();
+  
+  const { data: alerts = [], isLoading: alertsLoading } = useQuery<TwitterAlert[]>({
+    queryKey: ['/api/twitter/alerts'],
+    enabled: session?.authenticated,
+  });
+
+  const testConnectionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/twitter/test-detection', {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Connection Successful',
+        description: data.message || 'Twitter API is properly configured',
+      });
+    },
+    onError: (error: any) => {
+      const message = error.message || 'Failed to connect to Twitter API';
+      const needsSetup = message.includes('not configured');
+      toast({
+        title: needsSetup ? 'Setup Required' : 'Connection Failed',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateAlertMutation = useMutation({
+    mutationFn: async ({ id, status, reviewNotes }: { id: string; status: string; reviewNotes?: string }) => {
+      const res = await apiRequest('PATCH', `/api/twitter/alerts/${id}`, { status, reviewNotes });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Alert Updated',
+        description: 'Alert status updated successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/twitter/alerts'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Update Failed',
+        description: error instanceof Error ? error.message : 'Failed to update alert',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Twitter className="w-5 h-5" />
+                Twitter Threat Monitoring
+              </CardTitle>
+              <CardDescription>
+                Real-time monitoring of crypto scams and threats on Twitter
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => testConnectionMutation.mutate()}
+              disabled={testConnectionMutation.isPending}
+              data-testid="button-test-twitter"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {testConnectionMutation.isPending ? 'Testing...' : 'Test Connection'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Configuration Status</h4>
+              <p className="text-sm text-muted-foreground">
+                Click "Test Connection" to verify Twitter API credentials (TWITTER_BEARER_TOKEN).
+                Free tier supports 50,000 tweets/month with 25 filter rules.
+              </p>
+              <div className="mt-2 text-xs text-muted-foreground">
+                <strong>Note:</strong> Real-time monitoring requires a persistent process. 
+                Alerts shown below are stored detections from previous monitoring sessions.
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Detected Alerts ({alerts.length})</CardTitle>
+          <CardDescription>
+            Twitter threats detected by the monitoring system
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {alertsLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading alerts...
+            </div>
+          ) : alerts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No alerts detected yet
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tweet</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Detected</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {alerts.slice(0, 50).map((alert) => (
+                    <TableRow key={alert.id}>
+                      <TableCell className="max-w-xs truncate font-mono text-xs">
+                        {alert.tweetText.substring(0, 80)}...
+                      </TableCell>
+                      <TableCell>@{alert.authorUsername}</TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 rounded text-xs bg-muted">
+                          {alert.category}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          alert.severity === 'CRITICAL' ? 'bg-destructive text-destructive-foreground' :
+                          alert.severity === 'HIGH' ? 'bg-orange-500 text-white' :
+                          alert.severity === 'MEDIUM' ? 'bg-yellow-500 text-black' :
+                          'bg-blue-500 text-white'
+                        }`}>
+                          {alert.severity}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          alert.status === 'flagged' ? 'bg-destructive/20 text-destructive' :
+                          alert.status === 'dismissed' ? 'bg-green-500/20 text-green-700' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {alert.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {new Date(alert.detectedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateAlertMutation.mutate({ id: alert.id, status: 'flagged' })}
+                            disabled={updateAlertMutation.isPending}
+                            data-testid={`button-confirm-${alert.id}`}
+                          >
+                            Flag
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateAlertMutation.mutate({ id: alert.id, status: 'dismissed' })}
+                            disabled={updateAlertMutation.isPending}
+                            data-testid={`button-dismiss-${alert.id}`}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function CertikAuditsPanel({ session }: { session: AdminSession | undefined }) {
+  const { toast } = useToast();
+  
+  const { data: audits = [], isLoading: auditsLoading } = useQuery<CertikAudit[]>({
+    queryKey: ['/api/certik/audits'],
+    enabled: session?.authenticated,
+  });
+
+  const fetchAuditsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/certik/fetch', { limit: 100 });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Audits Fetched',
+        description: data.message || 'CertiK audit data fetched successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/certik/audits'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Fetch Failed',
+        description: error instanceof Error ? error.message : 'Failed to fetch CertiK audits',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                CertiK Security Audits
+              </CardTitle>
+              <CardDescription>
+                Multi-source audit verification from CertiK Skynet and DeFiLlama
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => fetchAuditsMutation.mutate()}
+              disabled={fetchAuditsMutation.isPending}
+              data-testid="button-fetch-certik"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {fetchAuditsMutation.isPending ? 'Fetching...' : 'Fetch Audits'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Data Sources</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• DeFiLlama: Audit links and verification status</li>
+                <li>• CertiK Skynet: Security scores and vulnerability reports (public data)</li>
+                <li>• Generates mock security scores for protocols without live CertiK data</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Audit Database ({audits.length})</CardTitle>
+          <CardDescription>
+            Security audit data for top DeFi protocols
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {auditsLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading audits...
+            </div>
+          ) : audits.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No audit data available. Click "Fetch Audits" to populate.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Protocol</TableHead>
+                    <TableHead>Security Score</TableHead>
+                    <TableHead>Audit Status</TableHead>
+                    <TableHead>Code Security</TableHead>
+                    <TableHead>Market</TableHead>
+                    <TableHead>Governance</TableHead>
+                    <TableHead>Last Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {audits.slice(0, 100).map((audit) => (
+                    <TableRow key={audit.id}>
+                      <TableCell className="font-medium">
+                        {audit.protocolName}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            audit.securityScore && audit.securityScore >= 80 ? 'bg-green-500' :
+                            audit.securityScore && audit.securityScore >= 60 ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }`} />
+                          <span className="font-semibold">{audit.securityScore ?? 'N/A'}/100</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          audit.hasAudit ? 'bg-green-500/20 text-green-700' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {audit.hasAudit ? 'AUDITED' : 'NO AUDIT'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm">{audit.codeSecurityScore}/100</TableCell>
+                      <TableCell className="text-sm">{audit.marketScore}/100</TableCell>
+                      <TableCell className="text-sm">{audit.governanceScore}/100</TableCell>
+                      <TableCell className="text-xs">
+                        {new Date(audit.lastUpdated).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
 }
 
 export default function AdminDashboard() {
@@ -255,6 +583,12 @@ export default function AdminDashboard() {
             <TabsTrigger value="sponsorships" data-testid="tab-sponsorships">
               Sponsorships ({sponsoredProtocols.length})
             </TabsTrigger>
+            <TabsTrigger value="twitter" data-testid="tab-twitter">
+              Twitter Monitoring
+            </TabsTrigger>
+            <TabsTrigger value="certik" data-testid="tab-certik">
+              CertiK Audits
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="protocols" className="space-y-4">
@@ -434,6 +768,14 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="twitter" className="space-y-4">
+            <TwitterMonitoringPanel session={session} />
+          </TabsContent>
+
+          <TabsContent value="certik" className="space-y-4">
+            <CertikAuditsPanel session={session} />
           </TabsContent>
         </Tabs>
       </div>
