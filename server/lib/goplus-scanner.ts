@@ -97,12 +97,11 @@ export async function scanContractWithGoPlus(
   }
 
   try {
-    // Call GoPlus API
-    const url = `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${contractAddress}`;
+    // Call GoPlus API (API key as query parameter)
+    const url = `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${contractAddress}&apikey=${apiKey}`;
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
       },
     });
 
