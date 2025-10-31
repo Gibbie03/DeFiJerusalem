@@ -1,4 +1,5 @@
 import { SiX, SiTelegram } from "react-icons/si";
+import { Mail } from "lucide-react";
 
 export function Footer() {
   return (
@@ -9,7 +10,16 @@ export function Footer() {
             © {new Date().getFullYear()} JERUSALEM DeFi Security Scanner
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <a
+              href="mailto:partnerships@defijerusalem.com"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors hover-elevate px-3 py-1.5 rounded-md"
+              data-testid="link-partnerships-email"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Partnerships</span>
+            </a>
+            
             <a
               href="https://twitter.com/defi_jerusalem"
               target="_blank"

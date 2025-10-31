@@ -718,6 +718,42 @@ export default function HowItWorks() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Contact Section */}
+      <Card className="border-accent/20 bg-accent/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="w-5 h-5 text-accent" />
+            Partner With Us
+          </CardTitle>
+          <CardDescription>
+            Are you a DeFi protocol looking to enhance your security profile or collaborate with us?
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            We work with leading DeFi protocols to provide security verification, featured listings, and partnership opportunities.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <a
+              href="mailto:partnerships@defijerusalem.com"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-accent-foreground rounded-md hover-elevate active-elevate-2 transition-colors text-center justify-center"
+              data-testid="link-partnerships-contact"
+            >
+              <Lock className="w-4 h-4" />
+              <span className="font-semibold">partnerships@defijerusalem.com</span>
+            </a>
+            <a
+              href="/sponsorship"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-md hover-elevate active-elevate-2 transition-colors text-center justify-center"
+              data-testid="link-sponsorship-guide"
+            >
+              <Info className="w-4 h-4" />
+              <span className="font-semibold">View Sponsorship Guide</span>
+            </a>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

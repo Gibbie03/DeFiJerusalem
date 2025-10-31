@@ -78,6 +78,11 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **False Positive Prevention**: Context-aware scam patterns, exclusions for legitimate entities, and TVL-based filtering to prevent false positives for UNVERIFIED_CONTRACT, NO_AUDIT, and ANONYMOUS_TEAM checks.
 - **Context-Aware IMPOSTER Detection**: Intelligent heuristics to distinguish legitimate integrations from scams, with whitelist overrides.
 
+## Business Contact Information
+- **Primary Contact**: partnerships@defijerusalem.com - For protocol collaborations, sponsorships, and business development
+- **Security Reports**: security@defijerusalem.com - Vulnerability disclosures and threat intelligence
+- **General Support**: contact@defijerusalem.com - User inquiries and general questions
+
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.

@@ -256,6 +256,23 @@ export default function SponsorshipGuide() {
           
           <div className="flex flex-wrap justify-center gap-3 pt-4">
             <Button
+              size="default"
+              asChild
+              data-testid="button-partnerships-email"
+              className="bg-accent hover:bg-accent/90"
+            >
+              <a
+                href="mailto:partnerships@defijerusalem.com"
+                className="flex items-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                partnerships@defijerusalem.com
+              </a>
+            </Button>
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-3 pt-3">
+            <Button
               variant="outline"
               size="sm"
               asChild
