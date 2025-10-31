@@ -37,6 +37,27 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Twitter Threat Monitoring System**: Real-time monitoring of crypto threats and scams using Twitter API v2.
 - **CertiK Audit Integration**: Multi-source audit verification combining CertiK Skynet data with DeFiLlama.
 - **GoPlus Contract Scanning**: Real smart contract code analysis detecting honeypots, hidden owners, trading restrictions, excessive taxes, and proxy contracts across 40+ blockchain networks.
+- **AI Learning Security System**: Machine learning-based threat pattern recognition that continuously learns from security scans to automatically identify exploits and update blacklist rules in real-time.
+- **Website Contract Extraction**: Automatic scanning of website URLs to discover embedded contract addresses and perform security analysis.
+
+### AI Learning & Threat Pattern Recognition
+The application includes an advanced AI learning system (`server/lib/threat-pattern-learner.ts`) that:
+- **Continuous Learning**: Analyzes every security scan to build a knowledge base of threat patterns
+- **Pattern Recognition**: Identifies common exploit signatures across thousands of scans
+- **Confidence Scoring**: Builds confidence (0-1.0 scale) through repeated pattern occurrences
+- **Exploit Signatures**: Learns unique signatures of honeypots, hidden owners, excessive taxes, wallet drainers, and phishing attacks
+- **Auto-Blacklisting**: Automatically blacklists protocols when AI detects high-confidence threats (minimum 70% confidence, 3+ occurrences)
+- **AI-Enhanced Detection**: Combines traditional rule-based detection with learned patterns for superior exploit identification
+
+**AI Blacklisting Criteria:**
+- 2+ critical exploits with 80%+ confidence
+- CRITICAL severity with 70%+ AI confidence
+- Score ≥ 100 with 1+ known exploit pattern
+
+**Stats Tracking:**
+- Maintains last 1000 scans in memory
+- Tracks learned patterns with confidence, occurrences, examples
+- Provides insights API endpoint (`/api/ai-learning/stats`) for monitoring
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `contract_scans`, `sponsor_payments`, `protocol_customizations`, `admin_users`, and `discovered_contracts` tables, optimized with indexing and UPSERT-based persistence.

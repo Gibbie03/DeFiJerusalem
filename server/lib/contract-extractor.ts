@@ -128,7 +128,7 @@ const EXPLORER_PATTERNS = [
  * Extract contract address and chain from a URL or text
  */
 export function extractContractFromUrl(url: string): ContractInfo | null {
-  if (!url) return null;
+  if (!url || typeof url !== 'string') return null;
 
   // Try each explorer pattern
   for (const { pattern, chain } of EXPLORER_PATTERNS) {
@@ -152,7 +152,7 @@ export function extractContractFromUrl(url: string): ContractInfo | null {
  * This searches for both blockchain explorer URLs AND raw contract addresses
  */
 export function extractContractsFromText(text: string): ContractInfo[] {
-  if (!text) return [];
+  if (!text || typeof text !== 'string') return [];
 
   const contracts: ContractInfo[] = [];
   const seen = new Set<string>();

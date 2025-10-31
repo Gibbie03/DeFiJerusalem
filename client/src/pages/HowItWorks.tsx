@@ -568,6 +568,110 @@ export default function HowItWorks() {
         </CardContent>
       </Card>
 
+      {/* AI Learning Security System */}
+      <Card className="border-accent/20 bg-gradient-to-br from-accent/5 to-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-accent" />
+            AI Learning Security System
+          </CardTitle>
+          <CardDescription>
+            Our AI continuously learns from every security scan to automatically identify new exploits and protect you from emerging threats
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-3">
+              <h3 className="font-semibold flex items-center gap-2 text-accent">
+                <TrendingUp className="w-4 h-4" />
+                How AI Learning Works
+              </h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="text-accent font-bold">1.</span>
+                  <span><strong>Continuous Learning:</strong> Every security scan feeds data into our AI learning system</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent font-bold">2.</span>
+                  <span><strong>Pattern Recognition:</strong> AI identifies common exploit patterns across thousands of scans</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent font-bold">3.</span>
+                  <span><strong>Threat Signatures:</strong> Learns unique signatures of honeypots, drainers, and scams</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent font-bold">4.</span>
+                  <span><strong>Confidence Scoring:</strong> Builds confidence through repeated pattern occurrences</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent font-bold">5.</span>
+                  <span><strong>Auto-Blacklisting:</strong> High-confidence threats trigger automatic blacklisting</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-semibold flex items-center gap-2 text-accent">
+                <AlertTriangle className="w-4 h-4" />
+                AI-Enhanced Detection
+              </h3>
+              <div className="space-y-3">
+                <div className="bg-background p-4 rounded-lg border border-accent/20">
+                  <h4 className="font-semibold text-sm mb-2">Exploit Pattern Learning</h4>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    <li>• Honeypot signatures (buy/sell restrictions, excessive taxes)</li>
+                    <li>• Hidden owner patterns (ownership takeback, balance manipulation)</li>
+                    <li>• Wallet drainer keywords and function patterns</li>
+                    <li>• Phishing domain structures and TLD patterns</li>
+                  </ul>
+                </div>
+
+                <div className="bg-background p-4 rounded-lg border border-accent/20">
+                  <h4 className="font-semibold text-sm mb-2">Smart Contract Analysis</h4>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    <li>• Learns from GoPlus API contract scan results</li>
+                    <li>• Identifies emerging DaaS (Drainer-as-a-Service) campaigns</li>
+                    <li>• Detects proxy contract vulnerabilities</li>
+                    <li>• Recognizes malicious ownership patterns</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Alert className="border-accent/30 bg-accent/5">
+            <Shield className="h-4 w-4 text-accent" />
+            <AlertTitle>AI-Powered Blacklist Decisions</AlertTitle>
+            <AlertDescription className="space-y-2 mt-2">
+              <p>Protocols are automatically blacklisted when:</p>
+              <ul className="text-sm space-y-1 ml-4">
+                <li>• <strong>2+ critical exploits</strong> detected with <strong>80%+ confidence</strong></li>
+                <li>• <strong>CRITICAL severity</strong> with <strong>70%+ AI confidence</strong></li>
+                <li>• <strong>Score ≥ 100</strong> with <strong>1+ known exploit pattern</strong></li>
+              </ul>
+              <p className="text-xs text-muted-foreground mt-3">
+                The AI requires minimum 3 occurrences and 70% confidence before auto-blacklisting, preventing false positives while catching real threats.
+              </p>
+            </AlertDescription>
+          </Alert>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="bg-background p-4 rounded-lg border">
+              <div className="text-2xl font-bold text-accent mb-1">1000+</div>
+              <div className="text-sm text-muted-foreground">Scans analyzed per session</div>
+            </div>
+            <div className="bg-background p-4 rounded-lg border">
+              <div className="text-2xl font-bold text-accent mb-1">70%+</div>
+              <div className="text-sm text-muted-foreground">Min. confidence for auto-action</div>
+            </div>
+            <div className="bg-background p-4 rounded-lg border">
+              <div className="text-2xl font-bold text-accent mb-1">Real-time</div>
+              <div className="text-sm text-muted-foreground">Pattern updates during scans</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Why It Works */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
@@ -603,6 +707,12 @@ export default function HowItWorks() {
               <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
               <div>
                 <strong>Real-Time:</strong> Scans updated weekly + manual scans on demand
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+              <div>
+                <strong>AI-Powered:</strong> Learns from every scan to identify emerging exploits automatically
               </div>
             </li>
           </ul>

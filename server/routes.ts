@@ -7,6 +7,7 @@ import { DAppDiscovery } from "./lib/dapp-discovery";
 import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { auditLogger } from "./lib/audit-logger";
+import { threatLearner } from "./lib/threat-pattern-learner";
 import { insertProtocolSchema, insertTutorialVideoSchema, type Protocol } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 
@@ -665,9 +666,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               contractScansToStore.push({ ...contractScan, protocolId: id });
             }
 
-            // Collect blacklist entries
-            if (scanResult.severity === 'CRITICAL') {
+            // AI LEARNING: Learn from this scan (includes contract scan data)
+            const scanWithContract = { ...scanResult, contractScan };
+            threatLearner.learnFromScan(scanWithContract, protocol);
+
+            // AI-ENHANCED BLACKLISTING: Get AI recommendation
+            const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);
+            
+            // Collect blacklist entries (CRITICAL severity or AI recommendation)
+            if (scanResult.severity === 'CRITICAL' || aiRecommendation.shouldBlacklist) {
               const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
+              
+              // Add AI learning insights to blacklist entry
+              if (aiRecommendation.shouldBlacklist && scanResult.severity !== 'CRITICAL') {
+                entry.reason = `${entry.reason} | AI Detection: ${aiRecommendation.reason}`;
+              }
+              
               newBlacklistEntries.push(entry);
             }
           }
@@ -971,6 +985,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching blacklist:", error);
       res.status(500).json({ 
         error: "Failed to fetch blacklist",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/ai-learning/stats - Get AI learning statistics (public)
+  app.get("/api/ai-learning/stats", async (req, res) => {
+    try {
+      const stats = threatLearner.getStats();
+      const insights = threatLearner.getInsights();
+      
+      // Convert Map to object for JSON serialization
+      const commonThreatsObj: Record<string, number> = {};
+      insights.commonThreats.forEach((count, threat) => {
+        commonThreatsObj[threat] = count;
+      });
+
+      res.json({
+        stats,
+        insights: {
+          commonThreats: commonThreatsObj,
+          exploitSignatures: insights.exploitSignatures,
+          suspiciousPatterns: insights.suspiciousPatterns,
+          falsePositives: insights.falsePositives,
+        },
+        learnedPatterns: threatLearner.exportPatterns().slice(0, 20), // Top 20 patterns
+      });
+    } catch (error) {
+      console.error("Error fetching AI learning stats:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch AI learning stats",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -2135,9 +2180,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const { id, protocol, scanResult } = result.value;
             scansToStore.push({ protocolId: id, scan: scanResult });
 
-            if (scanResult.severity === 'CRITICAL') {
+            // AI LEARNING: Learn from this scan to identify future exploits
+            threatLearner.learnFromScan(scanResult, protocol);
+
+            // AI-ENHANCED BLACKLISTING: Get AI recommendation
+            const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);
+            
+            // Blacklist if CRITICAL or if AI strongly recommends it
+            if (scanResult.severity === 'CRITICAL' || aiRecommendation.shouldBlacklist) {
               const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
+              
+              // Add AI learning insights to blacklist entry
+              if (aiRecommendation.shouldBlacklist && scanResult.severity !== 'CRITICAL') {
+                entry.reason = `${entry.reason} | AI Detection: ${aiRecommendation.reason}`;
+              }
+              
               blacklistEntries.push(entry);
+              console.log(`[AI-BLACKLIST] ${protocol.name}: ${aiRecommendation.reason}`);
             }
           }
         }
