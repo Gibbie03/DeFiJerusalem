@@ -28,6 +28,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
   - Top 20 highest risk protocols with scores and threat types
   - Auto-refresh every 30 seconds for real-time updates
   - Accessible via `/security-stats` route and sidebar navigation
+  - Cache automatically invalidated when new protocols are added, scans complete, or blacklist changes
 - **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details:
   - Severity badges (CRITICAL/HIGH/MEDIUM/LOW/SAFE) displayed directly in protocol listings
   - Detailed threat cards in protocol detail modal with user-friendly explanations
@@ -39,7 +40,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted.
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
 - **Blacklist Management**: Dedicated page for admin management of blacklisted protocols.
-- **Scanning Mechanism**: Supports manual "Scan All" and automated weekly security scans with parallel execution.
+- **Scanning Mechanism**: Supports manual "Scan All" with parallel execution. Automated background re-scanning triggers when AI learning system detects new high-confidence threat patterns, ensuring protocols are always evaluated against the latest threat intelligence.
 - **Admin Panel**: Secure admin interface with bcrypt authentication and full protocol management capabilities.
 - **Sponsorship & Featured Listings System**: Comprehensive monetization system.
 - **Protocol Customization System**: Allows protocol owners to submit customization requests with payment and admin approval.
@@ -48,7 +49,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Twitter Threat Monitoring System**: Real-time monitoring of crypto threats and scams using Twitter API v2.
 - **CertiK Audit Integration**: Multi-source audit verification combining CertiK Skynet data with DeFiLlama.
 - **GoPlus Contract Scanning**: Real smart contract code analysis for honeypots, hidden owners, trading restrictions, excessive taxes, and proxy contracts across 40+ blockchain networks.
-- **AI Learning Security System**: Machine learning-based threat pattern recognition that continuously learns from security scans to automatically identify exploits and update blacklist rules in real-time. This system tracks named drainer operations, EIP-2612 permit signatures, approval phishing, CREATE2 evasion, Solana-specific attacks, and DaaS infrastructure fingerprints.
+- **AI Learning Security System**: Machine learning-based threat pattern recognition that continuously learns from security scans to automatically identify exploits and update blacklist rules in real-time. This system tracks named drainer operations, EIP-2612 permit signatures, approval phishing, CREATE2 evasion, Solana-specific attacks, and DaaS infrastructure fingerprints. When new high-confidence patterns are detected (every 5 minutes check), the system automatically triggers re-scans of HIGH and MEDIUM severity protocols (up to 50 protocols) and updates security statistics in real-time.
 - **Website Contract Extraction**: Automatic scanning of website URLs to discover embedded contract addresses and perform security analysis.
 - **Intelligent Blacklist Verification System**: Cost-optimized false positive detection that filters blacklisted protocols using legitimacy scoring (0-100) and identifies potential false positives for targeted GoPlus re-scanning, reducing API costs.
 

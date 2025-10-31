@@ -79,6 +79,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   await initBlacklistManager();
 
+  // AI Learning Pattern Monitoring - Automatic Re-scanning
+  let lastPatternCheck = 0;
+  let lastKnownPatternCount = 0;
+  let patternCheckRunning = false; // Concurrency guard
+  
+  const checkForNewPatternsAndRescan = async () => {
+    // Guard against overlapping executions
+    if (patternCheckRunning) {
+      console.log('[AI-LEARNING] Pattern check already running, skipping this cycle');
+      return;
+    }
+    
+    patternCheckRunning = true;
+    
+    try {
+      const stats = threatLearner.getStats();
+      const insights = threatLearner.getInsights();
+      
+      // Check if new high-confidence patterns have been learned
+      const newPatternCount = stats.highConfidencePatterns;
+      
+      if (newPatternCount > lastKnownPatternCount && lastKnownPatternCount > 0) {
+        const newPatterns = newPatternCount - lastKnownPatternCount;
+        console.log(`[AI-LEARNING] Detected ${newPatterns} new high-confidence threat pattern(s)!`);
+        console.log(`[AI-LEARNING] Total patterns: ${newPatternCount}, Exploits: ${stats.knownExploits}`);
+        
+        // Get protocols that should be re-scanned (protocols with existing scans)
+        const allScans = await storage.getAllSecurityScans();
+        const protocolsToRescan: string[] = [];
+        
+        // Identify protocols that might be affected by new patterns
+        for (const scan of allScans) {
+          // Re-scan protocols with HIGH or MEDIUM severity that might have new threats
+          if (scan.severity === 'HIGH' || scan.severity === 'MEDIUM') {
+            protocolsToRescan.push(scan.protocolId);
+          }
+        }
+        
+        if (protocolsToRescan.length > 0) {
+          console.log(`[AI-LEARNING] Triggering automatic re-scan of ${protocolsToRescan.length} protocols based on new patterns`);
+          
+          // Trigger re-scan in background (don't await to avoid blocking)
+          const { scanContractWithGoPlus, mergeContractAndMetadataThreats } = 
+            await import('./lib/goplus-scanner');
+          
+          const protocols = await storage.getProtocols();
+          const limitedRescan = protocolsToRescan.slice(0, 50); // Limit to 50 for performance
+          
+          for (const protocolId of limitedRescan) {
+            const protocol = protocols.find(p => p.id === protocolId);
+            if (!protocol) continue;
+            
+            try {
+              // Re-scan with both metadata and contract analysis
+              const [metadataScanResult, contractScan] = await Promise.all([
+                detector.scanDApp(protocol),
+                protocol.contractAddress && protocol.contractChain
+                  ? scanContractWithGoPlus(protocol.contractAddress, protocol.contractChain)
+                  : Promise.resolve(null)
+              ]);
+              
+              const { threats, totalScore, severity } = mergeContractAndMetadataThreats(
+                metadataScanResult.threats,
+                metadataScanResult.score,
+                contractScan
+              );
+              
+              const combinedScanResult = {
+                isBlacklisted: severity === 'CRITICAL',
+                severity,
+                threats,
+                score: totalScore,
+              };
+              
+              // Store updated scan
+              await storage.addSecurityScan(protocolId, combinedScanResult);
+              
+              // Learn from this re-scan
+              const scanWithContract = { ...combinedScanResult, contractScan };
+              threatLearner.learnFromScan(scanWithContract, protocol);
+              
+            } catch (error) {
+              console.error(`[AI-LEARNING] Error re-scanning ${protocol.name}:`, error);
+            }
+          }
+          
+          // Invalidate caches to update statistics
+          clearCache('scans');
+          clearCache('security-stats');
+          clearCache('protocols');
+          
+          console.log(`[AI-LEARNING] Automatic re-scan completed for ${limitedRescan.length} protocols`);
+        }
+      }
+      
+      lastKnownPatternCount = newPatternCount;
+      lastPatternCheck = Date.now();
+      
+    } catch (error) {
+      console.error('[AI-LEARNING] Error checking for new patterns:', error);
+    } finally {
+      // Always release the lock
+      patternCheckRunning = false;
+    }
+  };
+  
+  // Check for new patterns every 5 minutes
+  setInterval(checkForNewPatternsAndRescan, 5 * 60 * 1000);
+  
+  // Initial check after 30 seconds
+  setTimeout(checkForNewPatternsAndRescan, 30 * 1000);
+
   // AGGRESSIVE NO-CACHE MIDDLEWARE - Fixes mobile browser caching issues
   // Disables ALL caching layers: browser cache, mobile OS cache, CDN cache, ETags
   app.use((req, res, next) => {
@@ -582,8 +694,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const protocol = await storage.addProtocol(manualProtocol);
       
-      // Invalidate protocols cache
+      // Invalidate protocols cache and security stats
       clearCache('protocols');
+      clearCache('security-stats'); // Update security statistics when new protocols are added
       
       res.json(protocol);
     } catch (error) {
@@ -713,6 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       clearCache('scans');
       clearCache('blacklist');
       clearCache('protocols'); // Also clear protocols to refresh security scores
+      clearCache('security-stats'); // Update security statistics immediately
 
       res.json({ 
         scanResults,
@@ -1363,8 +1477,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Clear caches
       clearCache('blacklist');
+      clearCache('security-stats'); // Update security statistics when blacklist changes
       clearCache('protocols');
       clearCache('protocols-full');
+      clearCache('security-stats'); // Update security statistics when blacklist changes
       
       // Reinitialize blacklist manager
       await initBlacklistManager();
@@ -1407,6 +1523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Clear the blacklist cache
       clearCache('blacklist');
+      clearCache('security-stats'); // Update security statistics when blacklist changes
       
       // Reinitialize blacklist manager
       await initBlacklistManager();
@@ -1490,6 +1607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Clear blacklist cache and reinitialize
       clearCache('blacklist');
+      clearCache('security-stats'); // Update security statistics when blacklist changes
       await initBlacklistManager();
 
       auditLogger.log({
@@ -2491,6 +2609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear caches
       clearCache('scans');
       clearCache('blacklist');
+      clearCache('security-stats'); // Update security statistics when blacklist changes
       clearCache('protocols');
       
       console.log(`Weekly security scan completed! Scanned ${scansToStore.length} protocols.`);
