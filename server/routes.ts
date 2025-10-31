@@ -106,14 +106,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[AI-LEARNING] Total patterns: ${newPatternCount}, Exploits: ${stats.knownExploits}`);
         
         // Get protocols that should be re-scanned (protocols with existing scans)
-        const allScans = await storage.getAllSecurityScans();
+        const allScansRecord = await storage.getAllSecurityScans();
         const protocolsToRescan: string[] = [];
         
         // Identify protocols that might be affected by new patterns
-        for (const scan of allScans) {
+        for (const [protocolId, scan] of Object.entries(allScansRecord)) {
           // Re-scan protocols with HIGH or MEDIUM severity that might have new threats
           if (scan.severity === 'HIGH' || scan.severity === 'MEDIUM') {
-            protocolsToRescan.push(scan.protocolId);
+            protocolsToRescan.push(protocolId);
           }
         }
         
@@ -1271,8 +1271,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.send(cached.serialized);
       }
 
-      const securityScansData = await storage.getAllSecurityScans();
+      const securityScansRecord = await storage.getAllSecurityScans();
       const protocolsData = await storage.getProtocols();
+      
+      // Convert security scans from Record to Array
+      const securityScansData = Object.entries(securityScansRecord).map(([protocolId, scan]) => ({
+        protocolId,
+        ...scan
+      }));
       
       // Calculate statistics
       const totalProtocols = protocolsData.length;
