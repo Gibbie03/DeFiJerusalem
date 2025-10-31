@@ -102,6 +102,7 @@ export async function scanContractWithGoPlus(
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
     });
 

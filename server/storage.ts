@@ -107,6 +107,8 @@ export class DatabaseStorage implements IStorage {
       sponsorshipTier: protocols.sponsorshipTier,
       featuredPosition: protocols.featuredPosition,
       sponsoredUntil: protocols.sponsoredUntil,
+      contractAddress: protocols.contractAddress,
+      contractChain: protocols.contractChain,
     }).from(protocols);
     
     if (conditions.length > 0) {
@@ -143,8 +145,8 @@ export class DatabaseStorage implements IStorage {
       defiHasMultisig: null,
       defiHasTimelock: null,
       defiDataFetchedAt: null,
-      contractAddress: null,
-      contractChain: null,
+      contractAddress: p.contractAddress ?? null,
+      contractChain: p.contractChain ?? null,
     }));
   }
 
