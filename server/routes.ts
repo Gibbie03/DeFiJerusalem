@@ -1493,6 +1493,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/threats - Get latest threat detections
+  app.get("/api/threats", apiLimiter, async (req, res) => {
+    try {
+      const { severity, limit = "50" } = req.query;
+      
+      // Check cache first (2 minute TTL)
+      const cacheKey = `threats-${severity || 'all'}-${limit}`;
+      const cached = getCache(cacheKey);
+      if (cached) {
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
+        
+        if (req.headers['if-none-match'] === cached.etag) {
+          return res.status(304).end();
+        }
+        
+        return res.send(cached.serialized);
+      }
+
+      const limitNum = Math.min(parseInt(limit as string, 10) || 50, 100);
+      
+      // Fetch both security scans (protocols) and blacklist entries
+      const [scans, blacklistEntries] = await Promise.all([
+        storage.getAllScans(),
+        storage.getBlacklist()
+      ]);
+
+      // Combine and format threat data
+      const threats = [];
+
+      // Add protocols with security issues
+      for (const scan of scans) {
+        if (scan.threats && scan.threats.length > 0) {
+          threats.push({
+            id: scan.id,
+            name: scan.protocolName || 'Unknown Protocol',
+            type: 'protocol',
+            severity: scan.severity,
+            threats: scan.threats,
+            detectedAt: scan.scannedAt,
+            website: null,
+            status: scan.isBlacklisted ? 'blacklisted' : 'flagged'
+          });
+        }
+      }
+
+      // Add blacklisted DApps
+      for (const entry of blacklistEntries) {
+        if (entry.status === 'ACTIVE') {
+          threats.push({
+            id: entry.id,
+            name: entry.dappName,
+            type: 'blacklisted_dapp',
+            severity: entry.severity,
+            threats: entry.threats,
+            detectedAt: entry.timestamp,
+            website: entry.website,
+            status: 'blacklisted'
+          });
+        }
+      }
+
+      // Sort by detection date (newest first)
+      threats.sort((a, b) => 
+        new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
+      );
+
+      // Filter by severity if specified
+      let filtered = threats;
+      if (severity && typeof severity === 'string') {
+        const severityUpper = severity.toUpperCase();
+        filtered = threats.filter(t => t.severity === severityUpper);
+      }
+
+      // Limit results
+      const results = filtered.slice(0, limitNum);
+
+      const response = {
+        threats: results,
+        total: filtered.length,
+        showing: results.length,
+        filters: {
+          severity: severity || 'all',
+          limit: limitNum
+        }
+      };
+
+      setCache(cacheKey, response, 2 * 60 * 1000); // 2 minutes
+      
+      const cacheEntry = getCache(cacheKey);
+      if (cacheEntry) {
+        res.set('ETag', cacheEntry.etag);
+        res.set('Content-Type', 'application/json');
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=240');
+        return res.send(cacheEntry.serialized);
+      }
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching threats:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch threats",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/security/stats - Get comprehensive security statistics
   app.get("/api/security/stats", apiLimiter, async (req, res) => {
     try {
