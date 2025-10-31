@@ -259,15 +259,15 @@ function generateRecommendations(indicators: PhishingIndicator[], severity: stri
   const recommendations: string[] = [];
 
   if (severity === 'CRITICAL' || severity === 'HIGH') {
-    recommendations.push('🚨 DO NOT connect your wallet to this website');
-    recommendations.push('🚨 DO NOT enter your private key, seed phrase, or any sensitive information');
-    recommendations.push('⚠️ This website shows multiple signs of being a phishing/scam site');
+    recommendations.push('DO NOT connect your wallet to this website');
+    recommendations.push('DO NOT enter your private key, seed phrase, or any sensitive information');
+    recommendations.push('This website shows multiple signs of being a phishing/scam site');
   }
 
   const hasBrandImpersonation = indicators.some(i => i.type === 'brand_impersonation');
   if (hasBrandImpersonation) {
-    recommendations.push('⚠️ Verify the official domain - this appears to be an imposter site');
-    recommendations.push('💡 Always bookmark official websites and access them directly');
+    recommendations.push('Verify the official domain - this appears to be an imposter site');
+    recommendations.push('Always bookmark official websites and access them directly');
   }
 
   const hasCredentialRequest = indicators.some(i => 
@@ -275,20 +275,20 @@ function generateRecommendations(indicators: PhishingIndicator[], severity: stri
     i.description.toLowerCase().includes('private key')
   );
   if (hasCredentialRequest) {
-    recommendations.push('🔐 Legitimate sites NEVER ask for your seed phrase or private keys');
-    recommendations.push('❌ Close this website immediately');
+    recommendations.push('Legitimate sites NEVER ask for your seed phrase or private keys');
+    recommendations.push('Close this website immediately');
   }
 
   if (severity === 'MEDIUM' || severity === 'LOW') {
-    recommendations.push('⚠️ Proceed with caution - some suspicious patterns detected');
-    recommendations.push('✅ Verify this is the official website before connecting wallet');
-    recommendations.push('💡 Double-check the URL for typos or suspicious characters');
+    recommendations.push('Proceed with caution - some suspicious patterns detected');
+    recommendations.push('Verify this is the official website before connecting wallet');
+    recommendations.push('Double-check the URL for typos or suspicious characters');
   }
 
   if (severity === 'SAFE') {
-    recommendations.push('✅ No obvious phishing patterns detected');
-    recommendations.push('💡 Still verify this is the legitimate website before interacting');
-    recommendations.push('🔍 Check for contract addresses and scan them for additional security');
+    recommendations.push('No obvious phishing patterns detected');
+    recommendations.push('Still verify this is the legitimate website before interacting');
+    recommendations.push('Check for contract addresses and scan them for additional security');
   }
 
   return recommendations;
@@ -330,15 +330,15 @@ export async function scanWebsiteForPhishing(
   // Generate summary
   let summary = '';
   if (severity === 'CRITICAL') {
-    summary = '🚨 DANGER: This website shows multiple critical signs of being a scam. DO NOT interact with it.';
+    summary = 'DANGER: This website shows multiple critical signs of being a scam. DO NOT interact with it.';
   } else if (severity === 'HIGH') {
-    summary = '⚠️ HIGH RISK: This website has several suspicious characteristics. Avoid connecting your wallet.';
+    summary = 'HIGH RISK: This website has several suspicious characteristics. Avoid connecting your wallet.';
   } else if (severity === 'MEDIUM') {
-    summary = '⚠️ CAUTION: Some suspicious patterns detected. Verify legitimacy before proceeding.';
+    summary = 'CAUTION: Some suspicious patterns detected. Verify legitimacy before proceeding.';
   } else if (severity === 'LOW') {
-    summary = '💡 Minor concerns detected. Double-check the URL and proceed with caution.';
+    summary = 'Minor concerns detected. Double-check the URL and proceed with caution.';
   } else {
-    summary = '✅ No obvious phishing patterns detected. Website appears safe, but always verify independently.';
+    summary = 'No obvious phishing patterns detected. Website appears safe, but always verify independently.';
   }
 
   const recommendations = generateRecommendations(indicators, severity);

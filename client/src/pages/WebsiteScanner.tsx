@@ -181,6 +181,7 @@ export default function WebsiteScanner() {
             <button
               className="text-primary hover:underline"
               onClick={() => setUrl('audius-review.com')}
+              data-testid="button-example-audius"
             >
               audius-review.com
             </button>
@@ -188,6 +189,7 @@ export default function WebsiteScanner() {
             <button
               className="text-primary hover:underline"
               onClick={() => setUrl('metamask-recovery.xyz')}
+              data-testid="button-example-metamask"
             >
               metamask-recovery.xyz
             </button>
@@ -195,6 +197,7 @@ export default function WebsiteScanner() {
             <button
               className="text-primary hover:underline"
               onClick={() => setUrl('uniswap.org')}
+              data-testid="button-example-uniswap"
             >
               uniswap.org
             </button>
