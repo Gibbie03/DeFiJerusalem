@@ -948,6 +948,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/blacklist/filter-analysis - Analyze blacklist for potential false positives
+  app.post("/api/blacklist/filter-analysis", apiLimiter, async (req, res) => {
+    try {
+      const { minLegitimacyScore = 20, excludeObviousScams = true } = req.body;
+      const { filterBlacklistedProtocols, getFilterStats } = await import('./lib/blacklist-filter');
+      
+      const blacklist = await storage.getBlacklist();
+      const filtered = filterBlacklistedProtocols(blacklist, {
+        minLegitimacyScore,
+        excludeObviousScams,
+      });
+      
+      const stats = getFilterStats(blacklist);
+      
+      res.json({
+        stats,
+        potentialFalsePositives: filtered,
+        message: `Found ${filtered.length} potentially legitimate protocols from ${blacklist.length} blacklisted entries`
+      });
+    } catch (error) {
+      console.error("Error analyzing blacklist:", error);
+      res.status(500).json({ 
+        error: "Failed to analyze blacklist",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/blacklist/verify-filtered - Re-scan filtered blacklist entries to verify false positives
+  app.post("/api/blacklist/verify-filtered", apiLimiter, async (req, res) => {
+    try {
+      const { minLegitimacyScore = 20, maxScans = 50 } = req.body;
+      const { filterBlacklistedProtocols } = await import('./lib/blacklist-filter');
+      const { extractContractsFromText } = await import('./lib/contract-extractor');
+      const { scanContractWithGoPlus } = await import('./lib/goplus-scanner');
+      
+      // Get filtered blacklist
+      const blacklist = await storage.getBlacklist();
+      const filtered = filterBlacklistedProtocols(blacklist, {
+        minLegitimacyScore,
+        excludeObviousScams: true,
+      });
+      
+      console.log(`[VERIFY-FILTERED] Found ${filtered.length} potential false positives to verify`);
+      
+      // Limit scans to prevent API abuse
+      const toScan = filtered.slice(0, maxScans);
+      const results = [];
+      let scansPerformed = 0;
+      let contractsFound = 0;
+      
+      for (const entry of toScan) {
+        try {
+          // Find the full blacklist entry
+          const fullEntry = blacklist.find(b => b.id === entry.id);
+          if (!fullEntry) continue;
+          
+          // Try to extract contract from various sources
+          let contractAddress = null;
+          let contractChain = null;
+          
+          // Check if we have website/description to extract from
+          const textToScan = [
+            fullEntry.website || '',
+            fullEntry.reason || '',
+            entry.name || '',
+          ].join(' ');
+          
+          const contracts = extractContractsFromText(textToScan);
+          if (contracts.length > 0) {
+            contractAddress = contracts[0].address;
+            contractChain = contracts[0].chain;
+            contractsFound++;
+          }
+          
+          // If we have a contract, scan it
+          if (contractAddress && contractChain) {
+            console.log(`[VERIFY-FILTERED] Scanning ${entry.name} - ${contractAddress} on ${contractChain}`);
+            const contractScan = await scanContractWithGoPlus(contractAddress, contractChain);
+            scansPerformed++;
+            
+            if (contractScan) {
+              results.push({
+                protocolName: entry.name,
+                legitimacyScore: entry.legitimacyScore,
+                legitimacyReasons: entry.legitimacyReasons,
+                originalSeverity: entry.severity,
+                originalReason: entry.reason,
+                contractAddress,
+                contractChain,
+                scanResults: {
+                  isHoneypot: contractScan.isHoneypot,
+                  cannotSell: contractScan.cannotSell,
+                  buyTax: contractScan.buyTax,
+                  sellTax: contractScan.sellTax,
+                  hiddenOwner: contractScan.hiddenOwner,
+                  threats: contractScan.threats,
+                  riskScore: contractScan.riskScore,
+                  severity: contractScan.severity,
+                },
+                recommendation: contractScan.severity === 'LOW' || contractScan.severity === 'MEDIUM' 
+                  ? 'REMOVE_FROM_BLACKLIST' 
+                  : 'KEEP_BLACKLISTED'
+              });
+            }
+          } else {
+            // No contract found - might need manual review
+            results.push({
+              protocolName: entry.name,
+              legitimacyScore: entry.legitimacyScore,
+              legitimacyReasons: entry.legitimacyReasons,
+              originalSeverity: entry.severity,
+              originalReason: entry.reason,
+              contractAddress: null,
+              contractChain: null,
+              scanResults: null,
+              recommendation: 'NEEDS_MANUAL_REVIEW'
+            });
+          }
+        } catch (scanError) {
+          console.error(`[VERIFY-FILTERED] Error scanning ${entry.name}:`, scanError);
+          // Continue with next entry
+        }
+      }
+      
+      console.log(`[VERIFY-FILTERED] Complete: ${scansPerformed} GoPlus scans used, ${contractsFound} contracts found`);
+      
+      res.json({
+        success: true,
+        totalFiltered: filtered.length,
+        analyzed: results.length,
+        scansPerformed,
+        contractsFound,
+        results,
+        summary: {
+          removeFromBlacklist: results.filter(r => r.recommendation === 'REMOVE_FROM_BLACKLIST').length,
+          keepBlacklisted: results.filter(r => r.recommendation === 'KEEP_BLACKLISTED').length,
+          needsManualReview: results.filter(r => r.recommendation === 'NEEDS_MANUAL_REVIEW').length,
+        },
+        message: `Analyzed ${results.length} protocols using ${scansPerformed} GoPlus API scans`
+      });
+      
+    } catch (error) {
+      console.error("Error verifying filtered blacklist:", error);
+      res.status(500).json({ 
+        error: "Failed to verify filtered blacklist",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/blacklist - Get all blacklist entries (with rate limiting)
   app.get("/api/blacklist", apiLimiter, async (req, res) => {
     try {

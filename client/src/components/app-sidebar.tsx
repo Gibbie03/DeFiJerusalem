@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Search } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +36,11 @@ const menuItems = [
     title: "Blacklisted",
     url: "/blacklist",
     icon: Shield,
+  },
+  {
+    title: "Verify Blacklist",
+    url: "/blacklist/verify",
+    icon: Search,
   },
   {
     title: "How It Works",
