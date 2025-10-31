@@ -1062,6 +1062,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/scan-website-security - Comprehensive website security scan (phishing + contracts)
+  app.post("/api/scan-website-security", apiLimiter, async (req, res) => {
+    try {
+      const { url } = req.body;
+
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ 
+          error: "URL is required",
+          message: "Please provide a valid website URL (e.g., https://audius-review.com)"
+        });
+      }
+
+      // Normalize URL
+      let websiteUrl = url.trim();
+      if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+        websiteUrl = 'https://' + websiteUrl;
+      }
+
+      console.log(`[SCAN-WEBSITE-SECURITY] Scanning: ${websiteUrl}`);
+
+      let html = '';
+      let fetchError = null;
+
+      // Try to fetch website content
+      try {
+        const response = await fetch(websiteUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; JerusalemDeFiBot/1.0)',
+          },
+          redirect: 'follow',
+          signal: AbortSignal.timeout(15000), // 15 second timeout
+        });
+
+        if (response.ok) {
+          html = await response.text();
+          console.log(`[SCAN-WEBSITE-SECURITY] Fetched ${html.length} bytes`);
+        } else {
+          fetchError = `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (error) {
+        fetchError = error instanceof Error ? error.message : 'Failed to fetch website';
+        console.log(`[SCAN-WEBSITE-SECURITY] Fetch failed: ${fetchError}`);
+      }
+
+      // Perform phishing analysis
+      const { scanWebsiteForPhishing } = await import('./lib/website-scanner');
+      const phishingScan = await scanWebsiteForPhishing(websiteUrl, html || undefined);
+
+      // Extract and scan contracts if content was fetched
+      let contractScanResults = [];
+      if (html) {
+        try {
+          const { extractContractsFromText } = await import('./lib/contract-extractor');
+          const { scanContractWithGoPlus } = await import('./lib/goplus-scanner');
+          
+          const foundContracts = extractContractsFromText(html);
+          console.log(`[SCAN-WEBSITE-SECURITY] Found ${foundContracts.length} contracts`);
+
+          // Scan up to 3 contracts
+          const contractsToScan = foundContracts.slice(0, 3);
+          
+          for (const contractInfo of contractsToScan) {
+            try {
+              const contractScan = await scanContractWithGoPlus(contractInfo.address, contractInfo.chain);
+              
+              if (contractScan) {
+                contractScanResults.push({
+                  address: contractInfo.address,
+                  chain: contractInfo.chain,
+                  explorerUrl: contractInfo.explorerUrl,
+                  isHoneypot: contractScan.isHoneypot,
+                  threats: contractScan.threats,
+                  riskScore: contractScan.riskScore,
+                  severity: contractScan.severity,
+                });
+              }
+            } catch (scanError) {
+              console.error(`[SCAN-WEBSITE-SECURITY] Contract scan error:`, scanError);
+            }
+          }
+        } catch (error) {
+          console.error(`[SCAN-WEBSITE-SECURITY] Contract extraction error:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        url: websiteUrl,
+        phishing: phishingScan,
+        contracts: contractScanResults,
+        fetchError: fetchError || null,
+        scannedAt: new Date().toISOString(),
+      });
+
+    } catch (error) {
+      console.error("[SCAN-WEBSITE-SECURITY] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to scan website",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // POST /api/blacklist/filter-analysis - Analyze blacklist for potential false positives
   app.post("/api/blacklist/filter-analysis", apiLimiter, async (req, res) => {
     try {
