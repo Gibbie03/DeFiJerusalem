@@ -432,16 +432,19 @@ export default function Dashboard() {
 
         <Alert data-testid="alert-scanning-info" className="bg-muted/50">
           <Info className="h-4 w-4" />
-          <AlertTitle>Scanning Information</AlertTitle>
+          <AlertTitle>Advanced Security Scanning System</AlertTitle>
           <AlertDescription className="space-y-2 mt-2">
             <div>
-              <strong>How often do we scan?</strong> Security scans are currently manual-only. Click "Scan All" to run comprehensive threat detection across all protocols. Automated weekly scans are planned for future releases.
+              <strong>Comprehensive Threat Detection:</strong> Our AI-powered system scans for 38+ threat categories including 2025 advanced wallet drainers (Pink Drainer, Angel Drainer, CLINKSINK), EIP-2612 permit exploits, approval phishing, CREATE2 evasion, honeypots, rug pulls, and more.
             </div>
             <div>
-              <strong>Multi-chain coverage:</strong> JERUSALEM scans DeFi protocols across 126+ blockchain chains including Ethereum, BSC, Polygon, Arbitrum, Optimism, Avalanche, Fantom, and more.
+              <strong>Smart Contract Analysis:</strong> Real-time analysis across 126+ blockchain chains using GoPlus Security API for honeypot detection, hidden ownership risks, trading restrictions, and excessive taxes.
             </div>
             <div>
-              <strong>Can we scan contract addresses?</strong> Currently, JERUSALEM scans protocols discovered through DeFiLlama's comprehensive protocol database. Direct contract address scanning (paste any 0x address) is planned for a future release. For now, you can manually add protocols by URL using the "+ DApp" button.
+              <strong>Automatic Updates:</strong> When new threat patterns or drainer operations are detected, the system automatically updates security statistics and triggers re-scans of affected protocols to ensure the latest threat intelligence.
+            </div>
+            <div>
+              <strong>Add Protocols for Scanning:</strong> Use the "+ DApp" button to add protocols by URL. Our system automatically extracts contract addresses from websites and performs comprehensive security analysis including contract verification, GoPlus scans, and threat pattern matching.
             </div>
           </AlertDescription>
         </Alert>
