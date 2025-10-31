@@ -52,6 +52,15 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **AI Learning Security System**: Machine learning-based threat pattern recognition that continuously learns from security scans to automatically identify exploits and update blacklist rules in real-time. This system tracks named drainer operations, EIP-2612 permit signatures, approval phishing, CREATE2 evasion, Solana-specific attacks, and DaaS infrastructure fingerprints. When new high-confidence patterns are detected (every 5 minutes check), the system automatically triggers re-scans of HIGH and MEDIUM severity protocols (up to 50 protocols) and updates security statistics in real-time.
 - **Website Contract Extraction**: Automatic scanning of website URLs to discover embedded contract addresses and perform security analysis.
 - **Intelligent Blacklist Verification System**: Cost-optimized false positive detection that filters blacklisted protocols using legitimacy scoring (0-100) and identifies potential false positives for targeted GoPlus re-scanning, reducing API costs.
+- **Website Phishing Scanner**: Dedicated crypto website security scanner that detects phishing patterns and scams even without embedded contract addresses. Features include:
+  - URL analysis for typosquatting (e.g., "metmask" vs "metamask"), suspicious TLDs (.xyz, .tk, etc.), brand impersonation, IP-based URLs, and missing HTTPS encryption
+  - Risk scoring (0-100) with severity levels (SAFE/LOW/MEDIUM/HIGH/CRITICAL)
+  - User-friendly recommendations and actionable security guidance
+  - Visual risk score visualization with progress bars and color-coded badges
+  - Detection of 30+ phishing patterns including wallet drainer code, fake support sites, credential requests, and celebrity scams
+  - Accessible via `/scan-website` route and sidebar navigation
+  - Example test cases included: audius-review.com, metamask-recovery.xyz, uniswap.org
+  - Future maintenance: Monitor heuristic lists (brands, TLDs, typos) for periodic updates as threat landscape evolves
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM for various tables including `protocols`, `security_scans`, `blacklist_entries`, `contract_scans`, `sponsor_payments`, `protocol_customizations`, `admin_users`, and `discovered_contracts`, optimized with indexing and UPSERT-based persistence.
