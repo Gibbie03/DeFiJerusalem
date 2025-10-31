@@ -1,12 +1,14 @@
-import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, TrendingUp, Ban, Github } from 'lucide-react';
+import { X, ExternalLink, Twitter, Globe, AlertCircle, Shield, Calendar, DollarSign, Scan, Play, Video, TrendingUp, Ban, Github, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useQuery } from '@tanstack/react-query';
 import SecurityBadge from './SecurityBadge';
 import SeverityIndicator from './SeverityIndicator';
+import { getThreatAdvice, getSeverityIcon } from '@/lib/threatAdvice';
 import type { Protocol, TutorialVideo } from '@shared/schema';
 
 interface ScanResult {
@@ -418,117 +420,124 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
           )}
 
           {scanResult && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Security Analysis
-                </CardTitle>
-                <CardDescription>
-                  Automated security checks performed on this protocol
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 pb-4 border-b">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Risk Score</p>
-                    <p className="text-2xl font-bold text-destructive">{scanResult.score}/100</p>
-                    <p className="text-xs text-muted-foreground mt-1">Higher = More Risky</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Severity</p>
-                    <SeverityIndicator severity={scanResult.severity} />
-                  </div>
-                </div>
+            <div className="space-y-4">
+              {/* Critical Warning for CRITICAL severity */}
+              {scanResult.severity === 'CRITICAL' && (
+                <Alert className="border-red-500 bg-red-500/10" data-testid="alert-critical-warning">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <AlertTitle className="text-red-500 font-bold">CRITICAL SECURITY WARNING</AlertTitle>
+                  <AlertDescription className="text-sm">
+                    This protocol has been flagged with CRITICAL severity threats. DO NOT interact with this protocol. 
+                    Your funds are at extreme risk. This protocol may be a scam designed to steal your assets.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Security Checks Performed:</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
-                        scanResult.threats.some(t => t.type === 'NEW_CONTRACT') ? 'bg-red-500' : 'bg-green-500'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="font-medium">Contract Age Check</p>
-                        <p className="text-muted-foreground text-xs">
-                          {scanResult.threats.some(t => t.type === 'NEW_CONTRACT') 
-                            ? '⚠️ Contract is less than 7 days old (+40 risk points)' 
-                            : '✓ Contract age verified'}
-                        </p>
-                      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    Security Scan Results
+                  </CardTitle>
+                  <CardDescription>
+                    Comprehensive threat analysis across 38+ security categories
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 pb-4 border-b">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Risk Score</p>
+                      <p className="text-2xl font-bold text-destructive">{scanResult.score}/100</p>
+                      <p className="text-xs text-muted-foreground mt-1">Higher = More Risky</p>
                     </div>
-                    
-                    <div className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
-                        scanResult.threats.some(t => t.type === 'NO_AUDIT') ? 'bg-red-500' : 'bg-green-500'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="font-medium">Security Audit Check</p>
-                        <p className="text-muted-foreground text-xs">
-                          {scanResult.threats.some(t => t.type === 'NO_AUDIT') 
-                            ? '⚠️ No security audit found (+30 risk points)' 
-                            : '✓ Security audit detected'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
-                        scanResult.threats.some(t => t.type === 'ANONYMOUS_TEAM') ? 'bg-red-500' : 'bg-green-500'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="font-medium">Team Transparency Check</p>
-                        <p className="text-muted-foreground text-xs">
-                          {scanResult.threats.some(t => t.type === 'ANONYMOUS_TEAM') 
-                            ? '⚠️ Team is anonymous - no social presence (+25 risk points)' 
-                            : '✓ Team has public social presence'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
-                        scanResult.threats.some(t => t.type === 'LOW_LIQUIDITY') ? 'bg-orange-500' : 'bg-green-500'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="font-medium">Liquidity Check</p>
-                        <p className="text-muted-foreground text-xs">
-                          {scanResult.threats.some(t => t.type === 'LOW_LIQUIDITY') 
-                            ? '⚠️ Very low liquidity - TVL < $50k (+20 risk points)' 
-                            : '✓ Adequate liquidity detected'}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Severity</p>
+                      <SeverityIndicator severity={scanResult.severity} />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {scanResult.threats.length} threat{scanResult.threats.length !== 1 ? 's' : ''} detected
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                {scanResult.threats.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <h4 className="text-sm font-semibold mb-2 text-destructive">
-                      Threats Detected ({scanResult.threats.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {scanResult.threats.map((threat, idx) => (
-                        <div key={idx} className="p-3 bg-destructive/5 rounded-lg border border-destructive/20">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <span className="font-medium text-sm">{threat.type.replace(/_/g, ' ')}</span>
-                            <SeverityIndicator severity={threat.severity} />
-                          </div>
-                          <p className="text-sm text-muted-foreground">{threat.message}</p>
-                        </div>
-                      ))}
+                  {scanResult.threats.length > 0 ? (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-destructive" />
+                        Detected Threats & User Advice
+                      </h4>
+                      {scanResult.threats.map((threat, idx) => {
+                        const advice = getThreatAdvice(threat.type, threat.severity);
+                        const icon = getSeverityIcon(threat.severity);
+                        
+                        return (
+                          <Card key={idx} className={`border-${threat.severity === 'CRITICAL' ? 'red' : threat.severity === 'HIGH' ? 'orange' : threat.severity === 'MEDIUM' ? 'yellow' : 'blue'}-500/20`}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 flex-1">
+                                  <span className="text-lg mt-0.5">{icon}</span>
+                                  <div>
+                                    <CardTitle className="text-sm font-bold">{advice.title}</CardTitle>
+                                    <Badge 
+                                      className={`mt-1 ${
+                                        threat.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                        threat.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                        threat.severity === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                        'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                      }`}
+                                    >
+                                      {threat.severity}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3 pt-0">
+                              <div>
+                                <p className="text-xs font-semibold text-muted-foreground mb-1">What This Means:</p>
+                                <p className="text-sm">{advice.description}</p>
+                              </div>
+                              
+                              <Alert className={`${
+                                threat.severity === 'CRITICAL' ? 'border-red-500/30 bg-red-500/5' :
+                                threat.severity === 'HIGH' ? 'border-orange-500/30 bg-orange-500/5' :
+                                threat.severity === 'MEDIUM' ? 'border-yellow-500/30 bg-yellow-500/5' :
+                                'border-blue-500/30 bg-blue-500/5'
+                              }`}>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle className="text-xs font-bold">Advice for Users</AlertTitle>
+                                <AlertDescription className="text-xs">
+                                  {advice.userAdvice}
+                                </AlertDescription>
+                              </Alert>
+
+                              <div className="bg-muted/30 p-3 rounded-lg">
+                                <p className="text-xs font-semibold mb-1">Recommended Action:</p>
+                                <p className="text-xs text-muted-foreground">{advice.actionRecommendation}</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <Alert className="border-green-500/30 bg-green-500/5">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <AlertTitle className="text-green-500">No Threats Detected</AlertTitle>
+                      <AlertDescription className="text-sm">
+                        This protocol has passed all security checks. However, always do your own research before investing.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
-                <div className="pt-4 border-t bg-muted/30 p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Blacklist Criteria:</strong> Protocols with a risk score ≥ 80 (CRITICAL severity) are automatically flagged. 
-                    Current score: {scanResult.score}/100 ({scanResult.severity})
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="pt-4 border-t bg-muted/30 p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Auto-Blacklist Policy:</strong> Protocols with risk scores ≥ 80 (CRITICAL severity) are automatically blacklisted. 
+                      This protocol's current score: <strong>{scanResult.score}/100</strong> ({scanResult.severity})
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {relatedTutorials.length > 0 && (

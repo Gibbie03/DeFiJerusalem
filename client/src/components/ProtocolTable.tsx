@@ -110,6 +110,21 @@ const ProtocolRow = memo(({
     return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">{score}</Badge>;
   };
 
+  const getSeverityBadge = (severity: string) => {
+    switch (severity) {
+      case 'CRITICAL':
+        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0">CRITICAL</Badge>;
+      case 'HIGH':
+        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 text-[10px] px-1.5 py-0">HIGH</Badge>;
+      case 'MEDIUM':
+        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">MEDIUM</Badge>;
+      case 'LOW':
+        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0">LOW</Badge>;
+      default:
+        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0">SAFE</Badge>;
+    }
+  };
+
   return (
     <tr 
       className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
@@ -213,11 +228,18 @@ const ProtocolRow = memo(({
           <TooltipTrigger asChild>
             <div className="flex flex-col items-center gap-1">
               {getSecurityBadge(protocol.securityScore)}
+              {scan && getSeverityBadge(scan.severity)}
             </div>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
             <p className="text-xs font-semibold mb-1">Security Score: {protocol.securityScore}/100</p>
-            {scan?.isBlacklisted && <p className="text-xs text-destructive">⚠️ Flagged as High Risk</p>}
+            {scan && (
+              <>
+                <p className="text-xs font-semibold mt-2 mb-1">Severity: {scan.severity}</p>
+                <p className="text-xs text-muted-foreground">{scan.threats.length} threat{scan.threats.length !== 1 ? 's' : ''} detected</p>
+              </>
+            )}
+            {scan?.isBlacklisted && <p className="text-xs text-destructive mt-2">⚠️ Flagged as High Risk</p>}
             {protocol.auditCount > 0 && (
               <p className="text-xs text-green-500 mt-2">✓ {protocol.auditCount} Audit{protocol.auditCount > 1 ? 's' : ''} Completed</p>
             )}
