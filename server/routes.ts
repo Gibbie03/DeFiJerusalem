@@ -1141,6 +1141,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/security/stats - Get comprehensive security statistics
+  app.get("/api/security/stats", apiLimiter, async (req, res) => {
+    try {
+      // Check cache first (30 second TTL for real-time updates)
+      const cached = getCache('security-stats');
+      if (cached) {
+        res.set('ETag', cached.etag);
+        res.set('Content-Type', 'application/json');
+        
+        if (req.headers['if-none-match'] === cached.etag) {
+          return res.status(304).end();
+        }
+        
+        return res.send(cached.serialized);
+      }
+
+      const securityScansData = await storage.getAllSecurityScans();
+      const protocolsData = await storage.getProtocols();
+      
+      // Calculate statistics
+      const totalProtocols = protocolsData.length;
+      const scannedProtocols = securityScansData.length;
+      
+      // Severity breakdown
+      const severityCounts = {
+        CRITICAL: 0,
+        HIGH: 0,
+        MEDIUM: 0,
+        LOW: 0,
+        SAFE: 0,
+      };
+      
+      securityScansData.forEach((scan: any) => {
+        severityCounts[scan.severity as keyof typeof severityCounts]++;
+      });
+      
+      // 2025 Advanced Drainer Detections
+      const drainerDetections = {
+        namedDrainers: 0,
+        permitExploits: 0,
+        approvalPhishing: 0,
+        create2Evasion: 0,
+        solanaDrainers: 0,
+        drainerInfrastructure: 0,
+        dormantApprovals: 0,
+        drainerPricing: 0,
+      };
+      
+      // Count threat types
+      securityScansData.forEach((scan: any) => {
+        scan.threats.forEach((threat: any) => {
+          switch (threat.type) {
+            case 'NAMED_DRAINER_OPERATION':
+              drainerDetections.namedDrainers++;
+              break;
+            case 'PERMIT_SIGNATURE_EXPLOIT':
+              drainerDetections.permitExploits++;
+              break;
+            case 'APPROVAL_PHISHING':
+              drainerDetections.approvalPhishing++;
+              break;
+            case 'CREATE2_EVASION':
+              drainerDetections.create2Evasion++;
+              break;
+            case 'SOLANA_DRAINER':
+              drainerDetections.solanaDrainers++;
+              break;
+            case 'DRAINER_FINGERPRINT':
+              drainerDetections.drainerInfrastructure++;
+              break;
+            case 'DORMANT_APPROVAL_RISK':
+              drainerDetections.dormantApprovals++;
+              break;
+            case 'DRAINER_PRICING_MODEL':
+              drainerDetections.drainerPricing++;
+              break;
+          }
+        });
+      });
+      
+      // Top threats (protocols with highest risk scores)
+      const topThreats = securityScansData
+        .filter((scan: any) => scan.score >= 60)
+        .map((scan: any) => {
+          const protocol = protocolsData.find((p: any) => p.id === scan.protocolId);
+          return {
+            id: scan.protocolId,
+            name: protocol?.name || scan.protocolId,
+            score: scan.score,
+            severity: scan.severity,
+            threatTypes: scan.threats.map((t: any) => t.type),
+            scannedAt: scan.scannedAt,
+          };
+        })
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 20);
+      
+      const stats = {
+        totalProtocols,
+        scannedProtocols,
+        scanCoverage: totalProtocols > 0 ? (scannedProtocols / totalProtocols) * 100 : 0,
+        severityBreakdown: severityCounts,
+        drainerDetections,
+        totalDrainerDetections: Object.values(drainerDetections).reduce((a, b) => a + b, 0),
+        topThreats,
+        lastUpdated: new Date().toISOString(),
+      };
+      
+      setCache('security-stats', stats, 30 * 1000); // 30 seconds
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching security statistics:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch security statistics",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/ai-learning/stats - Get AI learning statistics (public)
   app.get("/api/ai-learning/stats", async (req, res) => {
     try {
