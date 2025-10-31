@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -69,6 +69,11 @@ export interface IStorage {
   getCertikAudits(filters?: { protocolId?: string; limit?: number }): Promise<CertikAudit[]>;
   getCertikAuditByProtocolId(protocolId: string): Promise<CertikAudit | undefined>;
   upsertCertikAudit(audit: InsertCertikAudit): Promise<CertikAudit>;
+  
+  // Contract scan methods
+  addContractScan(contractScan: Omit<ContractScan, 'id' | 'scannedAt'>): Promise<ContractScan>;
+  getContractScanByAddress(contractAddress: string, chain: string): Promise<ContractScan | undefined>;
+  getContractScansByProtocolId(protocolId: string): Promise<ContractScan[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -138,6 +143,8 @@ export class DatabaseStorage implements IStorage {
       defiHasMultisig: null,
       defiHasTimelock: null,
       defiDataFetchedAt: null,
+      contractAddress: null,
+      contractChain: null,
     }));
   }
 
@@ -168,7 +175,7 @@ export class DatabaseStorage implements IStorage {
       audited: result.audited,
       auditCount: result.auditCount,
       auditNote: result.auditNote,
-      auditLinks: result.auditLinks,
+      auditLinks: result.auditLinks as string[] | null,
       securityScore: result.securityScore,
       logo: result.logo,
       website: result.website,
@@ -185,6 +192,8 @@ export class DatabaseStorage implements IStorage {
       defiHasMultisig: result.defiHasMultisig ?? null,
       defiHasTimelock: result.defiHasTimelock ?? null,
       defiDataFetchedAt: result.defiDataFetchedAt?.toISOString() ?? null,
+      contractAddress: result.contractAddress ?? null,
+      contractChain: result.contractChain ?? null,
     };
   }
 
@@ -465,6 +474,8 @@ export class DatabaseStorage implements IStorage {
       defiHasMultisig: null,
       defiHasTimelock: null,
       defiDataFetchedAt: null,
+      contractAddress: null,
+      contractChain: null,
     }));
   }
 
@@ -531,6 +542,8 @@ export class DatabaseStorage implements IStorage {
       defiHasMultisig: null,
       defiHasTimelock: null,
       defiDataFetchedAt: null,
+      contractAddress: null,
+      contractChain: null,
     }));
   }
 
@@ -586,6 +599,8 @@ export class DatabaseStorage implements IStorage {
       defiHasMultisig: null,
       defiHasTimelock: null,
       defiDataFetchedAt: null,
+      contractAddress: null,
+      contractChain: null,
     }));
   }
 
@@ -1152,6 +1167,72 @@ export class DatabaseStorage implements IStorage {
       dataSource: audit.dataSource,
       lastUpdated: audit.lastUpdated.toISOString(),
       fetchedAt: audit.fetchedAt.toISOString(),
+    };
+  }
+
+  // Contract scan methods
+  async addContractScan(contractScan: Omit<ContractScan, 'id' | 'scannedAt'>): Promise<ContractScan> {
+    const id = `cs_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const [result] = await db
+      .insert(contractScans)
+      .values({ ...contractScan, id })
+      .onConflictDoNothing()
+      .returning();
+    
+    return this.mapContractScan(result);
+  }
+
+  async getContractScanByAddress(contractAddress: string, chain: string): Promise<ContractScan | undefined> {
+    const [result] = await db
+      .select()
+      .from(contractScans)
+      .where(
+        and(
+          eq(contractScans.contractAddress, contractAddress.toLowerCase()),
+          eq(contractScans.chain, chain)
+        )
+      )
+      .orderBy(desc(contractScans.scannedAt))
+      .limit(1);
+    
+    return result ? this.mapContractScan(result) : undefined;
+  }
+
+  async getContractScansByProtocolId(protocolId: string): Promise<ContractScan[]> {
+    const results = await db
+      .select()
+      .from(contractScans)
+      .where(eq(contractScans.protocolId, protocolId))
+      .orderBy(desc(contractScans.scannedAt));
+    
+    return results.map(r => this.mapContractScan(r));
+  }
+
+  private mapContractScan(scan: any): ContractScan {
+    return {
+      id: scan.id,
+      protocolId: scan.protocolId,
+      contractAddress: scan.contractAddress,
+      chain: scan.chain,
+      isHoneypot: scan.isHoneypot,
+      cannotBuy: scan.cannotBuy,
+      cannotSell: scan.cannotSell,
+      buyTax: scan.buyTax,
+      sellTax: scan.sellTax,
+      hiddenOwner: scan.hiddenOwner,
+      isProxy: scan.isProxy,
+      isOpenSource: scan.isOpenSource,
+      ownerChangeBalance: scan.ownerChangeBalance,
+      canTakeBackOwnership: scan.canTakeBackOwnership,
+      tradingCooldown: scan.tradingCooldown,
+      transferPausable: scan.transferPausable,
+      holders: scan.holders,
+      totalSupply: scan.totalSupply,
+      threats: scan.threats as any,
+      riskScore: scan.riskScore,
+      severity: scan.severity,
+      rawData: scan.rawData as any,
+      scannedAt: scan.scannedAt.toISOString(),
     };
   }
 }

@@ -21,11 +21,14 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
 - **Contract Verification Tracking**: Automated discovery of newly verified smart contracts across 8 major blockchain explorers.
-- **Security Analysis**: Conducts comprehensive scans for 29 distinct threat categories, including wallet drainers, phishing, and smart contract vulnerabilities, with a verification system to prevent false positives.
+- **Dual-Layer Security Analysis**:
+  - **Metadata-Based Scanning**: Analyzes protocol names, descriptions, and URLs for 29 threat categories including wallet drainers, phishing, and rug pulls
+  - **Smart Contract Code Analysis**: GoPlus Security API integration for real-time contract scanning (honeypot detection, ownership analysis, trading simulation, proxy detection, hidden owner checks, tax analysis)
+  - **Comprehensive Threat Detection**: Merges both metadata and contract-level threats for complete risk assessment
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted.
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
 - **Blacklist Management**: A dedicated page displays and allows admin management of blacklisted protocols.
-- **Scanning Mechanism**: Supports manual "Scan All" and automated weekly security scans.
+- **Scanning Mechanism**: Supports manual "Scan All" and automated weekly security scans with parallel execution.
 - **Admin Panel**: Secure admin interface with bcrypt authentication and full protocol management capabilities.
 - **Sponsorship & Featured Listings System**: Comprehensive monetization system with multiple pricing tiers.
 - **Protocol Customization System**: Allows protocol owners to submit customization requests with payment and admin approval workflow.
@@ -33,9 +36,10 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Whitelist System**: Prevents legitimate protocols from being falsely flagged.
 - **Twitter Threat Monitoring System**: Real-time monitoring of crypto threats and scams using Twitter API v2.
 - **CertiK Audit Integration**: Multi-source audit verification combining CertiK Skynet data with DeFiLlama.
+- **GoPlus Contract Scanning**: Real smart contract code analysis detecting honeypots, hidden owners, trading restrictions, excessive taxes, and proxy contracts across 40+ blockchain networks.
 
 ### System Design Choices
-- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `sponsor_payments`, `protocol_customizations`, `admin_users`, and `discovered_contracts` tables, optimized with indexing and UPSERT-based persistence.
+- **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `contract_scans`, `sponsor_payments`, `protocol_customizations`, `admin_users`, and `discovered_contracts` tables, optimized with indexing and UPSERT-based persistence.
 - **Timestamp Management**: All timestamp fields use database-generated `.defaultNow()`.
 - **API Routes**: RESTful API for managing application data, including secure admin authentication and paginated protocol endpoints.
 - **Multi-Layer Security**: Implements rate limiting, secure admin initialization, audit logging, input validation/sanitization, security headers (Helmet), and secure session management.
@@ -47,6 +51,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.
+- **GoPlus Security API**: Real-time smart contract code analysis for honeypot detection, ownership risks, trading restrictions, and vulnerability scanning across 40+ blockchains.
 - **Twitter API v2 Filtered Stream**: Real-time monitoring of crypto threats, scams, and announcements.
 - **CertiK Skynet**: Public security score scraping and audit verification.
 - **Neon PostgreSQL**: Cloud-hosted PostgreSQL database.

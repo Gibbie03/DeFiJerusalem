@@ -603,10 +603,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "protocolIds must be an array" });
       }
 
+      const { scanContractWithGoPlus, mergeContractAndMetadataThreats } = 
+        await import('./lib/goplus-scanner');
+
       const protocols = await storage.getProtocols();
       const scanResults: Record<string, any> = {};
       const newBlacklistEntries: any[] = [];
       const scansToStore: Array<{ protocolId: string; scan: any }> = [];
+      const contractScansToStore: any[] = [];
 
       // Parallel scan with controlled concurrency (20 at a time for speed)
       const batchSize = 20;
@@ -621,17 +625,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const protocol = protocols.find(p => p.id === id);
             if (!protocol) return null;
 
-            const scanResult = await detector.scanDApp(protocol);
-            return { id, protocol, scanResult };
+            // Perform BOTH metadata scan AND contract scan in parallel
+            const [metadataScanResult, contractScan] = await Promise.all([
+              detector.scanDApp(protocol),
+              // Only scan contract if address is available
+              protocol.contractAddress && protocol.contractChain
+                ? scanContractWithGoPlus(protocol.contractAddress, protocol.contractChain)
+                : Promise.resolve(null)
+            ]);
+
+            // Merge contract-level threats with metadata threats
+            const { threats, totalScore, severity } = mergeContractAndMetadataThreats(
+              metadataScanResult.threats,
+              metadataScanResult.score,
+              contractScan
+            );
+
+            // Create combined scan result
+            const combinedScanResult = {
+              isBlacklisted: severity === 'CRITICAL',
+              severity,
+              threats,
+              score: totalScore,
+            };
+
+            return { id, protocol, scanResult: combinedScanResult, contractScan };
           })
         );
 
         // Process successful scans
         for (const result of results) {
           if (result.status === 'fulfilled' && result.value) {
-            const { id, protocol, scanResult } = result.value;
+            const { id, protocol, scanResult, contractScan } = result.value;
             scanResults[id] = scanResult;
             scansToStore.push({ protocolId: id, scan: scanResult });
+
+            // Store contract scan if available
+            if (contractScan) {
+              contractScansToStore.push({ ...contractScan, protocolId: id });
+            }
 
             // Collect blacklist entries
             if (scanResult.severity === 'CRITICAL') {
@@ -653,6 +685,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Promise.all(scansToStore.map(({ protocolId, scan }) => 
           storage.addSecurityScan(protocolId, scan)
         )),
+        // Batch store all contract scans
+        Promise.all(contractScansToStore.map(contractScan => 
+          storage.addContractScan(contractScan)
+        )),
         // Batch store all blacklist entries
         newBlacklistEntries.length > 0 
           ? Promise.all(newBlacklistEntries.map(entry => storage.addToBlacklist(entry)))
@@ -667,7 +703,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         scanResults,
         newBlacklistEntries,
-        scannedCount: Object.keys(scanResults).length
+        scannedCount: Object.keys(scanResults).length,
+        contractScansCount: contractScansToStore.length
       });
     } catch (error) {
       console.error("Error scanning protocols:", error);
@@ -693,6 +730,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching scan result:", error);
       res.status(500).json({ 
         error: "Failed to fetch scan result",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/contract-scan/:protocolId - Get contract scan results for a protocol
+  app.get("/api/contract-scan/:protocolId", async (req, res) => {
+    try {
+      const { protocolId } = req.params;
+      const contractScans = await storage.getContractScansByProtocolId(protocolId);
+      
+      res.json({ contractScans });
+    } catch (error) {
+      console.error("Error fetching contract scans:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch contract scans",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
