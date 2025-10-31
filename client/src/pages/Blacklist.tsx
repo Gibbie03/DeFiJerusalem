@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, ExternalLink, Eye } from 'lucide-react';
+import { Shield, AlertTriangle, Search, Clock, TrendingUp, Zap, AlertOctagon, ExternalLink, Eye, Loader2, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLocation } from 'wouter';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
@@ -11,26 +11,141 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import type { BlacklistEntry } from '@shared/schema';
+
+interface AdminSession {
+  authenticated: boolean;
+  admin?: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
+}
+
+interface AnalysisResults {
+  stats: {
+    total: number;
+    obviousScams: number;
+    potentialFalsePositives: number;
+    needsReview: number;
+    estimatedScans: number;
+  };
+  message: string;
+}
+
+interface VerificationResults {
+  success: boolean;
+  totalFiltered: number;
+  analyzed: number;
+  scansPerformed: number;
+  contractsFound: number;
+  summary: {
+    removeFromBlacklist: number;
+    keepBlacklisted: number;
+    needsManualReview: number;
+  };
+  message: string;
+}
 
 export default function Blacklist() {
   const [searchValue, setSearchValue] = useState('');
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+  const [verificationResults, setVerificationResults] = useState<VerificationResults | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  const { data: session } = useQuery<AdminSession>({
+    queryKey: ['/api/admin/session'],
+  });
 
   const { data: blacklist = [], isLoading } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
   });
 
+  // Analyze mutation
+  const analyzeMutation = useMutation<AnalysisResults, Error, void>({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/blacklist/filter-analysis', { 
+        minLegitimacyScore: 20, 
+        excludeObviousScams: true 
+      });
+      return await res.json() as AnalysisResults;
+    },
+    onSuccess: (data) => {
+      setAnalysisResults(data);
+      toast({
+        title: 'Analysis Complete',
+        description: `Found ${data.stats.potentialFalsePositives} potential false positives from ${data.stats.total} entries`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Analysis Failed',
+        description: error.message || 'Failed to analyze blacklist',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Verify mutation
+  const verifyMutation = useMutation<VerificationResults, Error, number>({
+    mutationFn: async (maxScans: number) => {
+      const res = await apiRequest('POST', '/api/blacklist/verify-filtered', { 
+        minLegitimacyScore: 20, 
+        maxScans 
+      });
+      return await res.json() as VerificationResults;
+    },
+    onSuccess: (data) => {
+      setVerificationResults(data);
+      toast({
+        title: 'Verification Complete',
+        description: `Analyzed ${data.analyzed} protocols. Recommend removing ${data.summary.removeFromBlacklist} from blacklist.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Verification Failed',
+        description: error.message || 'Failed to verify blacklist',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const filteredBlacklist = useMemo(() => {
-    return blacklist.filter(entry =>
-      entry.dappId.toLowerCase().includes(searchValue.toLowerCase()) ||
-      entry.dappName?.toLowerCase().includes(searchValue.toLowerCase()) ||
-      (entry.reason?.toLowerCase().includes(searchValue.toLowerCase()))
-    );
-  }, [blacklist, searchValue]);
+    const now = Date.now();
+    const getTimeFilterMs = () => {
+      switch (timeFilter) {
+        case '24h': return 24 * 60 * 60 * 1000;
+        case '7d': return 7 * 24 * 60 * 60 * 1000;
+        case '30d': return 30 * 24 * 60 * 60 * 1000;
+        case '90d': return 90 * 24 * 60 * 60 * 1000;
+        default: return Infinity;
+      }
+    };
+
+    const timeMs = getTimeFilterMs();
+
+    return blacklist.filter(entry => {
+      const matchesSearch = entry.dappId.toLowerCase().includes(searchValue.toLowerCase()) ||
+        entry.dappName?.toLowerCase().includes(searchValue.toLowerCase()) ||
+        (entry.reason?.toLowerCase().includes(searchValue.toLowerCase()));
+
+      const matchesTime = timeMs === Infinity || 
+        (now - new Date(entry.timestamp).getTime() < timeMs);
+
+      return matchesSearch && matchesTime;
+    });
+  }, [blacklist, searchValue, timeFilter]);
 
   // Calculate detailed stats
   const stats = useMemo(() => {
@@ -207,8 +322,134 @@ export default function Blacklist() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <SearchBar value={searchValue} onChange={setSearchValue} />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <SearchBar value={searchValue} onChange={setSearchValue} />
+            </div>
+            <Select value={timeFilter} onValueChange={setTimeFilter}>
+              <SelectTrigger className="w-full sm:w-48" data-testid="select-time-filter">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Time Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="24h">Last 24 Hours</SelectItem>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="30d">Last 30 Days</SelectItem>
+                <SelectItem value="90d">Last 90 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        {/* Admin Verification Section */}
+        {session?.authenticated && (
+          <Collapsible
+            open={isVerificationOpen}
+            onOpenChange={setIsVerificationOpen}
+          >
+            <Card className="border-accent/30">
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between p-0 hover:no-underline"
+                    data-testid="button-toggle-verification"
+                  >
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-accent" />
+                      Admin: Blacklist Verification
+                    </CardTitle>
+                    {isVerificationOpen ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CardDescription>
+                  Analyze blacklisted protocols and identify potential false positives
+                </CardDescription>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                      onClick={() => {
+                        setAnalysisResults(null);
+                        setVerificationResults(null);
+                        analyzeMutation.mutate();
+                      }}
+                      disabled={analyzeMutation.isPending}
+                      data-testid="button-analyze"
+                    >
+                      {analyzeMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {analyzeMutation.isPending ? 'Analyzing...' : 'Step 1: Analyze'}
+                    </Button>
+
+                    {analysisResults && analysisResults.stats.potentialFalsePositives > 0 && (
+                      <Button
+                        onClick={() => {
+                          setVerificationResults(null);
+                          verifyMutation.mutate(12);
+                        }}
+                        disabled={verifyMutation.isPending}
+                        variant="default"
+                        data-testid="button-verify"
+                      >
+                        {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {verifyMutation.isPending 
+                          ? `Scanning (${analysisResults.stats.estimatedScans} contracts)...` 
+                          : `Step 2: Verify (${analysisResults.stats.estimatedScans} scans)`}
+                      </Button>
+                    )}
+                  </div>
+
+                  {analysisResults && (
+                    <Alert className="border-accent/30 bg-accent/5">
+                      <TrendingUp className="h-4 w-4 text-accent" />
+                      <AlertTitle>Analysis Results</AlertTitle>
+                      <AlertDescription>
+                        Found <strong>{analysisResults.stats.potentialFalsePositives}</strong> potential false positives 
+                        from <strong>{analysisResults.stats.total}</strong> blacklisted entries.
+                        Estimated <strong>{analysisResults.stats.estimatedScans}</strong> GoPlus scans needed (99.6% reduction).
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {verificationResults && (
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Card className="border-green-500/20 bg-green-500/5">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-green-500">
+                            {verificationResults.summary.removeFromBlacklist}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Remove from Blacklist</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="border-destructive/20 bg-destructive/5">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-destructive">
+                            {verificationResults.summary.keepBlacklisted}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Keep Blacklisted</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="border-yellow-500/20 bg-yellow-500/5">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-yellow-500">
+                            {verificationResults.summary.needsManualReview}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Manual Review</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         {filteredBlacklist.length === 0 ? (
           <div className="text-center py-12">
