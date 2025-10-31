@@ -34,6 +34,8 @@ export const protocols = pgTable('protocols', {
   defiHasMultisig: boolean('defi_has_multisig'),
   defiHasTimelock: boolean('defi_has_timelock'),
   defiDataFetchedAt: timestamp('defi_data_fetched_at'),
+  contractAddress: text('contract_address'),
+  contractChain: text('contract_chain'),
 }, (table) => ({
   tvlIdx: index('protocols_tvl_idx').on(table.tvl),
   volume24hIdx: index('protocols_volume24h_idx').on(table.volume24h),
@@ -219,6 +221,37 @@ export const protocolWhitelist = pgTable('protocol_whitelist', {
   protocolIdIdx: index('protocol_whitelist_protocol_id_idx').on(table.protocolId),
 }));
 
+export const contractScans = pgTable('contract_scans', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').references(() => protocols.id),
+  contractAddress: text('contract_address').notNull(),
+  chain: text('chain').notNull(),
+  isHoneypot: boolean('is_honeypot'),
+  cannotBuy: boolean('cannot_buy'),
+  cannotSell: boolean('cannot_sell'),
+  buyTax: real('buy_tax'),
+  sellTax: real('sell_tax'),
+  hiddenOwner: boolean('hidden_owner'),
+  isProxy: boolean('is_proxy'),
+  isOpenSource: boolean('is_open_source'),
+  ownerChangeBalance: boolean('owner_change_balance'),
+  canTakeBackOwnership: boolean('can_take_back_ownership'),
+  tradingCooldown: boolean('trading_cooldown'),
+  transferPausable: boolean('transfer_pausable'),
+  holders: integer('holders'),
+  totalSupply: text('total_supply'),
+  threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
+  riskScore: real('risk_score').notNull(),
+  severity: text('severity').notNull(),
+  rawData: json('raw_data').$type<any>(),
+  scannedAt: timestamp('scanned_at').notNull().defaultNow(),
+}, (table) => ({
+  protocolIdIdx: index('contract_scans_protocol_id_idx').on(table.protocolId),
+  contractAddressIdx: index('contract_scans_address_idx').on(table.contractAddress),
+  chainIdx: index('contract_scans_chain_idx').on(table.chain),
+  scannedAtIdx: index('contract_scans_scanned_at_idx').on(table.scannedAt),
+}));
+
 export const twitterAlerts = pgTable('twitter_alerts', {
   id: text('id').primaryKey(),
   tweetId: text('tweet_id').notNull().unique(),
@@ -317,6 +350,8 @@ export type Protocol = {
   defiHasMultisig: boolean | null;
   defiHasTimelock: boolean | null;
   defiDataFetchedAt: string | null;
+  contractAddress: string | null;
+  contractChain: string | null;
 };
 
 export type SecurityScan = {
@@ -530,6 +565,32 @@ export type Threat = {
   type: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   message: string;
+};
+
+export type ContractScan = {
+  id: string;
+  protocolId: string | null;
+  contractAddress: string;
+  chain: string;
+  isHoneypot: boolean | null;
+  cannotBuy: boolean | null;
+  cannotSell: boolean | null;
+  buyTax: number | null;
+  sellTax: number | null;
+  hiddenOwner: boolean | null;
+  isProxy: boolean | null;
+  isOpenSource: boolean | null;
+  ownerChangeBalance: boolean | null;
+  canTakeBackOwnership: boolean | null;
+  tradingCooldown: boolean | null;
+  transferPausable: boolean | null;
+  holders: number | null;
+  totalSupply: string | null;
+  threats: Threat[];
+  riskScore: number;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  rawData: any | null;
+  scannedAt: string;
 };
 
 // Zod Insert Schemas from Drizzle
