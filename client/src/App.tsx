@@ -15,6 +15,7 @@ import Blacklist from "@/pages/Blacklist";
 import BlacklistDetails from "@/pages/BlacklistDetails";
 import SecurityStats from "@/pages/SecurityStats";
 import WebsiteScanner from "@/pages/WebsiteScanner";
+import SubmitProtocol from "@/pages/SubmitProtocol";
 import Tutorials from "@/pages/Tutorials";
 import SponsorshipGuide from "@/pages/SponsorshipGuide";
 import HowItWorks from "@/pages/HowItWorks";
@@ -80,6 +81,7 @@ function Router() {
                 <Route path="/blacklist" component={Blacklist} />
                 <Route path="/security-stats" component={SecurityStats} />
                 <Route path="/scan-website" component={WebsiteScanner} />
+                <Route path="/submit-protocol" component={SubmitProtocol} />
                 <Route path="/how-it-works" component={HowItWorks} />
                 <Route path="/tutorials" component={Tutorials} />
                 <Route path="/sponsorship" component={SponsorshipGuide} />
