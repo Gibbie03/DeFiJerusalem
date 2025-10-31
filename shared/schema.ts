@@ -36,6 +36,20 @@ export const protocols = pgTable('protocols', {
   defiDataFetchedAt: timestamp('defi_data_fetched_at'),
   contractAddress: text('contract_address'),
   contractChain: text('contract_chain'),
+  
+  // Activity Metrics (DApp Repository Features)
+  dailyActiveWallets: integer('daily_active_wallets').default(0),
+  weeklyActiveWallets: integer('weekly_active_wallets').default(0),
+  monthlyActiveWallets: integer('monthly_active_wallets').default(0),
+  transactions24h: integer('transactions_24h').default(0),
+  transactions7d: integer('transactions_7d').default(0),
+  contractCalls24h: integer('contract_calls_24h').default(0),
+  activityHistory: json('activity_history').$type<Array<{ date: string; wallets: number; transactions: number }>>(),
+  
+  // Rankings
+  rankByActivity: integer('rank_by_activity'),
+  rankByTvl: integer('rank_by_tvl'),
+  rankByVolume: integer('rank_by_volume'),
 }, (table) => ({
   tvlIdx: index('protocols_tvl_idx').on(table.tvl),
   volume24hIdx: index('protocols_volume24h_idx').on(table.volume24h),
@@ -44,6 +58,8 @@ export const protocols = pgTable('protocols', {
   discoveredAtIdx: index('protocols_discovered_at_idx').on(table.discoveredAt),
   sponsoredUntilIdx: index('protocols_sponsored_until_idx').on(table.sponsoredUntil),
   sponsorshipTierIdx: index('protocols_sponsorship_tier_idx').on(table.sponsorshipTier),
+  dailyActiveWalletsIdx: index('protocols_daily_active_wallets_idx').on(table.dailyActiveWallets),
+  rankByActivityIdx: index('protocols_rank_by_activity_idx').on(table.rankByActivity),
 }));
 
 export const securityScans = pgTable('security_scans', {
@@ -204,6 +220,34 @@ export const protocolCustomizations = pgTable('protocol_customizations', {
   paymentStatusIdx: index('protocol_customizations_payment_status_idx').on(table.paymentStatus),
 }));
 
+export const protocolSubmissions = pgTable('protocol_submissions', {
+  id: text('id').primaryKey(),
+  submitterEmail: text('submitter_email').notNull(),
+  submitterName: text('submitter_name'),
+  protocolName: text('protocol_name').notNull(),
+  website: text('website').notNull(),
+  chains: json('chains').$type<string[]>().notNull(),
+  category: text('category').notNull(),
+  contractAddresses: json('contract_addresses').$type<Record<string, string>>(),
+  description: text('description').notNull(),
+  logo: text('logo'),
+  twitter: text('twitter'),
+  github: text('github'),
+  telegram: text('telegram'),
+  discord: text('discord'),
+  auditLinks: json('audit_links').$type<string[]>(),
+  status: text('status').notNull().default('pending'),
+  adminNotes: text('admin_notes'),
+  securityScanResult: json('security_scan_result').$type<any>(),
+  submittedAt: timestamp('submitted_at').notNull().defaultNow(),
+  reviewedAt: timestamp('reviewed_at'),
+  reviewedBy: text('reviewed_by'),
+}, (table) => ({
+  submitterEmailIdx: index('protocol_submissions_submitter_email_idx').on(table.submitterEmail),
+  statusIdx: index('protocol_submissions_status_idx').on(table.status),
+  submittedAtIdx: index('protocol_submissions_submitted_at_idx').on(table.submittedAt),
+}));
+
 export const protocolWhitelist = pgTable('protocol_whitelist', {
   id: text('id').primaryKey(),
   protocolId: text('protocol_id').notNull().unique(),
@@ -352,6 +396,20 @@ export type Protocol = {
   defiDataFetchedAt: string | null;
   contractAddress: string | null;
   contractChain: string | null;
+  
+  // Activity Metrics
+  dailyActiveWallets: number;
+  weeklyActiveWallets: number;
+  monthlyActiveWallets: number;
+  transactions24h: number;
+  transactions7d: number;
+  contractCalls24h: number;
+  activityHistory: Array<{ date: string; wallets: number; transactions: number }> | null;
+  
+  // Rankings
+  rankByActivity: number | null;
+  rankByTvl: number | null;
+  rankByVolume: number | null;
 };
 
 export type SecurityScan = {
@@ -458,6 +516,30 @@ export type ProtocolCustomization = {
   createdAt: string;
   approvedAt: string | null;
   appliedAt: string | null;
+};
+
+export type ProtocolSubmission = {
+  id: string;
+  submitterEmail: string;
+  submitterName: string | null;
+  protocolName: string;
+  website: string;
+  chains: string[];
+  category: string;
+  contractAddresses: Record<string, string> | null;
+  description: string;
+  logo: string | null;
+  twitter: string | null;
+  github: string | null;
+  telegram: string | null;
+  discord: string | null;
+  auditLinks: string[] | null;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNotes: string | null;
+  securityScanResult: any | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
 };
 
 export type DiscoveredContract = {
@@ -622,6 +704,16 @@ export const insertProtocolCustomizationSchema = createInsertSchema(protocolCust
   appliedAt: true
 });
 
+export const insertProtocolSubmissionSchema = createInsertSchema(protocolSubmissions).omit({ 
+  id: true, 
+  submittedAt: true,
+  reviewedAt: true,
+  reviewedBy: true,
+  adminNotes: true,
+  securityScanResult: true,
+  status: true
+});
+
 export const insertDiscoveredContractSchema = createInsertSchema(discoveredContracts).omit({ 
   id: true, 
   discoveredAt: true,
@@ -652,6 +744,7 @@ export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
 export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
 export type InsertDiscoveredContract = z.infer<typeof insertDiscoveredContractSchema>;
 export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
+export type InsertProtocolSubmission = z.infer<typeof insertProtocolSubmissionSchema>;
 export type InsertProtocolWhitelist = z.infer<typeof insertProtocolWhitelistSchema>;
 export type InsertTwitterAlert = z.infer<typeof insertTwitterAlertSchema>;
 export type InsertCertikAudit = z.infer<typeof insertCertikAuditSchema>;
