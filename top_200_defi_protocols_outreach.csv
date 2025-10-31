@@ -1,0 +1,201 @@
+name,website,twitter,github,category,tvl_usd
+Binance CEX,https://www.binance.com,binance,,DeFi,190361000000.00
+Aave V3,https://aave.com,aave,,Lending,37786000000.00
+Lido,https://lido.fi/,LidoFinance,"{""lidofinance""}",DeFi,33023500000.00
+OKX,https://www.okx.com,okx,,DeFi,26363800000.00
+Bitfinex,https://www.bitfinex.com,bitfinex,,DeFi,25546900000.00
+Bybit,https://www.bybit.com,Bybit_Official,,DeFi,23008000000.00
+Robinhood,https://robinhood.com,RobinhoodApp,"{""robinhood""}",DeFi,20642500000.00
+EigenLayer,https://www.eigenlayer.xyz/,eigenlayer,"{""Layr-Labs""}",DeFi,16090800000.00
+WBTC,https://wbtc.network/,WrappedBTC,"{""WrappedBTC""}",Bridge,13793900000.00
+Binance staked ETH,https://www.binance.com/en/wbeth,binance,,DeFi,13581600000.00
+Aave,https://aave.com,AaveAave,aave/aave-v3-core,Lending,10000000000.00
+ether.fi Stake,https://app.ether.fi/eeth,ether_fi,,DeFi,9512500000.00
+Ethena USDe,https://www.app.ethena.fi/join/3y20d,ethena_labs,,DeFi,9390470000.00
+Gemini,https://www.gemini.com,Gemini,,DeFi,9262580000.00
+Morpho V1,https://app.morpho.org,MorphoLabs,,Lending,8430430000.00
+Bitget,https://www.bitget.com,bitgetglobal,,DeFi,8233520000.00
+Coinbase Bridge,https://www.coinbase.com/,coinbase,,Bridge,7800760000.00
+Gate,https://www.gate.com,Gate,,DeFi,7717520000.00
+Binance Bitcoin,https://www.binance.com/en/collateral-btokens,binance,,Bridge,7487690000.00
+Pendle,https://pendle.finance/,pendle_fi,"{""pendle-finance""}",Yield,6928070000.00
+Sky Lending,https://sky.money/,SkyEcosystem,,DeFi,6803490000.00
+HTX,https://www.htx.com/,HuobiGlobal,,DeFi,6487680000.00
+Babylon Protocol,https://babylonlabs.io,babylonlabs_io,,DeFi,6247920000.00
+SparkLend,https://app.spark.fi/points/KNQ5HD,sparkdotfi,,Lending,5663130000.00
+Arbitrum Bridge,https://bridge.arbitrum.io,arbitrum,,Bridge,5522390000.00
+USDT0,https://usdt0.to,USDT0_to,,Bridge,5457780000.00
+Bitmex,https://www.bitmex.com,BitMEX,,DeFi,5422010000.00
+MEXC,https://www.mexc.com,MEXC_Official,,DeFi,5036340000.00
+Deribit,https://www.deribit.com,DeribitExchange,,DeFi,5017440000.00
+Uniswap,https://uniswap.org,Uniswap,Uniswap/uniswap-v3-core,DEX,5000000000.00
+Hyperliquid Bridge,https://hyperliquid.xyz,HyperliquidX,,Bridge,4735210000.00
+KuCoin,https://www.kucoin.com,kucoincom,,DeFi,4711140000.00
+JustLend,https://justlend.just.network,DeFi_JUST,"{""justlend""}",Lending,4459920000.00
+Base Bridge,https://bridge.base.org/deposit,BuildOnBase,,Bridge,4192240000.00
+JustCryptos,https://just.network/token,DeFi_JUST,,Bridge,4021540000.00
+Crypto-com,https://crypto.com,cryptocom,,DeFi,3542040000.00
+Veda,https://veda.tech,veda_labs,"{""Veda-Labs""}",DeFi,3175170000.00
+Maple,https://www.maple.finance,maplefinance,,Lending,3096820000.00
+Spark Liquidity Layer,https://app.spark.fi/points/KNQ5HD,sparkdotfi,,DeFi,3076490000.00
+Kamino Lend,https://kamino.finance/,KaminoFinance,,Lending,2950240000.00
+BlackRock BUIDL,https://securitize.io/,BlackRock,,DeFi,2865220000.00
+Uniswap V3,https://uniswap.org/,Uniswap,,DEX,2787990000.00
+Jito Liquid Staking,https://jito.network,jito_sol,,DeFi,2649800000.00
+Rocket Pool,https://rocketpool.net,Rocket_Pool,"{""rocket-pool""}",DeFi,2436180000.00
+Gauntlet,https://www.gauntlet.xyz,gauntlet_xyz,,DeFi,2353730000.00
+Portal,https://portalbridge.com,portalbridge_,"{""wormhole-foundation""}",Bridge,2266390000.00
+Curve DEX,https://curve.finance,CurveFinance,,DEX,2264720000.00
+Bitstamp,https://www.bitstamp.net,Bitstamp,,DeFi,2242630000.00
+Polygon Bridge & Staking,https://polygon.technology/,0xPolygon,,DeFi,2207270000.00
+Fluid Lending,https://fluid.instadapp.io,0xfluid,,Lending,2158910000.00
+PancakeSwap AMM,https://pancakeswap.finance/,PancakeSwap,,DEX,2119600000.00
+Tether Gold,https://gold.tether.to/,tethergold,,DeFi,2096160000.00
+Compound V3,https://v3-app.compound.finance/,compoundfinance,,Lending,2084800000.00
+Raydium AMM,https://raydium.io,RaydiumProtocol,,DEX,2072370000.00
+Venus Core Pool,https://app.venus.io/#/core-pool,VenusProtocol,,Lending,2032530000.00
+Falcon Finance,https://falcon.finance/,falconstable,,DeFi,2010880000.00
+Sanctum Validator LSTs,https://www.sanctum.so,sanctumso,,DeFi,1945790000.00
+Ethena USDtb,https://usdtb.money,ethena_labs,,DeFi,1831940000.00
+Jupiter Perpetual Exchange,https://jup.ag/perps,JupiterExchange,,DeFi,1822840000.00
+HashKey Exchange,https://www.hashkey.com,HashKeyExchange,,DeFi,1796130000.00
+Jupiter Staked SOL,https://jup.ag/swap/SOL-JupSOL,JupiterExchange,,DeFi,1741090000.00
+Uniswap V2,https://uniswap.org/,Uniswap,,DEX,1733800000.00
+SwissBorg,https://swissborg.com,swissborg,,DeFi,1692340000.00
+Binance Staked SOL,https://www.binance.com/en/solana-staking,binance,,DeFi,1657810000.00
+Euler V2,https://www.euler.finance,eulerfinance,,Lending,1634490000.00
+Kinetiq kHYPE,https://kinetiq.xyz/stake,kinetiq_xyz,,DeFi,1601210000.00
+Steakhouse Financial,https://www.steakhouse.financial/,SteakhouseFi,,DeFi,1549590000.00
+Kelp,https://kelpdao.xyz/restake,KelpDAO,,DeFi,1474620000.00
+MEV Capital,https://mevcapital.com,MEVCapital,,DeFi,1470610000.00
+Spark Savings,https://data.spark.fi/savings/,sparkdotfi,,Yield,1465360000.00
+Ondo Yield Assets,https://ondo.finance,OndoFinance,,DeFi,1460230000.00
+Linea Bridge,https://bridge.linea.build,LineaBuild,,Bridge,1438070000.00
+Lista Liquid Staking,https://www.synclub.io/,LISTA_DAO,,DeFi,1410210000.00
+Liquid Collective,https://liquidcollective.io,liquid_col,,DeFi,1403650000.00
+Lombard,https://www.lombard.finance,Lombard_Finance,,DeFi,1374820000.00
+Centrifuge Protocol,https://centrifuge.io,centrifuge,,DeFi,1374700000.00
+DeSyn Liquid Strategy,https://www.desyn.io,DesynLab,,Yield,1344990000.00
+StakeWise V2,https://stakewise.io/,stakewise_io,,DeFi,1339370000.00
+Paxos Gold,https://paxos.com/paxgold/,Paxos,,DeFi,1338700000.00
+Function FBTC,https://www.fxn.xyz,FunctionBTC,"{""fbtc-xyz""}",Bridge,1313280000.00
+Renzo,https://app.renzoprotocol.com/restake,RenzoProtocol,"{""Renzo-Protocol""}",DeFi,1276740000.00
+Lighter Bridge,https://app.lighter.xyz/trade/ETH?referral=FHT1N8AYKHP4,Lighter_xyz,,Bridge,1152470000.00
+SolvBTC,https://app.solv.finance/solvbtc,SolvProtocol,,Bridge,1104780000.00
+Bitkub,https://www.bitkub.com/,BitkubOfficial,,DeFi,1071020000.00
+Korbit,https://korbit.co.kr,Korbit_exchange,,DeFi,1070940000.00
+Symbiotic,https://symbiotic.fi,symbioticfi,"{""symbioticfi""}",DeFi,1054860000.00
+Lista Lending,https://lista.org/lending,LISTA_DAO,,Lending,1051920000.00
+ether.fi Liquid,https://app.ether.fi/liquid,ether_fi,,DeFi,994049000.00
+Convex Finance,https://www.convexfinance.com/,ConvexFinance,"{""convex-eth""}",Yield,985204000.00
+Drift Trade,https://app.drift.trade/ref/defillama,DriftProtocol,,DeFi,965721000.00
+mETH Protocol,https://www.methprotocol.xyz/,mETHProtocol,,DeFi,956022000.00
+Lista CDP,https://lista.org/,LISTA_DAO,,DeFi,955882000.00
+Circle USYC,https://www.circle.com/usyc,circle,,DeFi,948234000.00
+Concrete,https://app.concrete.xyz,ConcreteXYZ,,DeFi,947760000.00
+Midas RWA,https://midas.app,MidasRWA,,DeFi,897761000.00
+Aster Bridge,https://www.asterdex.com/en/referral/c6eF10,Aster_DEX,,Bridge,891453000.00
+Jupiter Lend,https://jup.ag/lend,JupiterExchange,,Lending,877446000.00
+Optimism Bridge,https://app.optimism.io/bridge/deposit,optimismFND,,Bridge,861730000.00
+Unit,https://hyperunit.xyz/deposit,hyperunit,,Bridge,858650000.00
+Uniswap V4,https://uniswap.org/,Uniswap,,DEX,847953000.00
+Marinade Native,https://marinade.finance/app/,MarinadeFinance,,DeFi,844368000.00
+M0,https://www.m0.org/,m0foundation,,DeFi,833847000.00
+K3 Capital,https://k3.capital,k3_capital,,DeFi,808567000.00
+BingX,https://bingx.com,BingXOfficial,,DeFi,800365000.00
+Avalanche Core Bridge,https://core.app/bridge/,coreapp,,Bridge,794704000.00
+Marinade Liquid Staking,https://marinade.finance,MarinadeFinance,,DeFi,788696000.00
+Mantle Bridge,https://bridge.mantle.xyz,Mantle_Official,,Bridge,750505000.00
+Re7 Labs,https://www.re7labs.xyz,Re7Labs,,DeFi,748252000.00
+Indodax,https://indodax.com/,indodax,,DeFi,725908000.00
+Stader,https://staderlabs.com,staderlabs,"{""stader-labs""}",DeFi,724970000.00
+Merlins Seal,https://merlinchain.io/bridge/staking,MerlinLayer2,,Bridge,707076000.00
+Starknet Bridge,https://starkgate.starknet.io,Starknet,,Bridge,706734000.00
+Stables Labs USDX,https://usdx.money/,StablesLabs,,DeFi,679948000.00
+Axelar Cross Chain,https://axelar.network,axelar,,Bridge,679948000.00
+tBTC,https://threshold.network/,TheTNetwork,,DeFi,660882000.00
+Plasma Saving Vaults,https://app.plasma.to/,Plasma,,DeFi,657411000.00
+Lorenzo enzoBTC,https://www.lorenzo-protocol.xyz,LorenzoProtocol,,Bridge,644317000.00
+Meteora DLMM,https://app.meteora.ag/,MeteoraAG,,DEX,634960000.00
+World Chain,https://world.org/,worldcoin,,Bridge,632319000.00
+WisdomTree,https://www.wisdomtreeconnect.com/,,,DeFi,626518000.00
+Bedrock uniBTC,https://app.bedrock.technology/,Bedrock_DeFi,,DeFi,614649000.00
+Euler DAO,https://app.euler.finance,eulerfinance,,DeFi,611959000.00
+Avalon USDa,https://www.avalonfinance.xyz,avalonfinance_,,DeFi,598033000.00
+Hyperliquid HLP,https://hyperliquid.xyz,HyperliquidX,,DeFi,589313000.00
+USD AI,https://usd.ai/,USDai_Official,,Lending,584928000.00
+CIAN Yield Layer,https://cian.app,CIAN_protocol,,Yield,577673000.00
+Zircuit Staking,https://stake.zircuit.com/,ZircuitL2,,DeFi,570449000.00
+PancakeSwap AMM V3,https://pancakeswap.finance/swap,PancakeSwap,,DEX,557258000.00
+Free Protocol,https://free.tech/,FreeLayer2,,Bridge,551174000.00
+HyperLend Pooled,https://app.hyperlend.finance/?ref=DEFILLAMA,hyperlendx,,Lending,536885000.00
+Coinbase Wrapped Staked ETH,https://www.coinbase.com/price/coinbase-wrapped-staked-eth,coinbase,"{""coinbase""}",DeFi,534516000.00
+Core Bitcoin Bridge,https://core.app/bridge,@avax,,Bridge,522644000.00
+Superstate USTB,https://superstate.co,superstatefunds,,DeFi,522101000.00
+Yearn Finance,https://yearn.finance/,yearnfi,,Yield,513281000.00
+Phemex,https://phemex.com,Phemex_official,,DeFi,508648000.00
+River Omni-CDP,https://app.river.inc/,RiverdotInc,,DeFi,504490000.00
+Spiko,https://www.spiko.xyz/,Spiko_finance,"{""spiko-tech""}",DeFi,498019000.00
+Suilend,https://www.suilend.fi,suilendprotocol,,Lending,489602000.00
+Quickswap Dex,https://quickswap.exchange/,QuickswapDEX,,DEX,487932000.00
+Compound V2,https://compound.finance,compoundfinance,,Lending,483388000.00
+Stacks sBTC,https://docs.stacks.co/concepts/sbtc/clarity-contracts/sbtc-deposit,Stacks,,Bridge,481810000.00
+GMX V2 Perps,https://gmxsol.io/,GMX_IO,,DeFi,466156000.00
+Nexus BTC,https://www.matrixport.com/nexusbtc,Matrixport_EN,,Bridge,464542000.00
+SuiBridge,https://bridge.sui.io,SuiNetwork,,Bridge,449995000.00
+Lightning Network,https://lightning.network/,,,DeFi,446594000.00
+Polygon zkEVM Bridge,https://wallet.polygon.technology/?redirectOnConnect=%2FzkEVM-Bridge%2Fbridge,0xPolygonLabs,,Bridge,440890000.00
+Orca DEX,https://www.orca.so,orca_so,,DEX,439678000.00
+Balancer V2,https://balancer.finance/,Balancer,,DEX,438479000.00
+Nexo,https://nexo.io,Nexo,,DeFi,434660000.00
+Reserve Protocol,https://reserve.org,reserveprotocol,"{""reserve-protocol""}",DEX,434654000.00
+edgeX Bridge,https://pro.edgex.exchange/referral/196451583,edgeX_exchange,,Bridge,433922000.00
+B2 Buzz,https://www.bsquared.network,BSquaredNetwork,"{""b2network""}",Bridge,433793000.00
+Benqi Staked Avax,https://staking.benqi.fi,BenqiFinance,,DeFi,431204000.00
+UniRouter,https://www.unirouter.io,UniRouterBTC,"{""UniRouter""}",Bridge,416844000.00
+Treehouse Protocol,https://www.treehouse.finance/,TreehouseFi,,DeFi,416718000.00
+Mantle Restaking,https://meth.mantle.xyz/restake,Mantle_Official,,DeFi,415453000.00
+Aster asBNB,https://www.asterdex.com/en/earn,Aster_DEX,,Yield,408244000.00
+Hyperbeat Earn,https://app.hyperbeat.org/earn?referral=5C37264D,0xhyperbeat,,Yield,405645000.00
+Buzz Farming,https://buzz.bsquared.network/farming,BSquaredNetwork,,DeFi,404005000.00
+NAVI Lending,https://www.naviprotocol.io/,navi_protocol,,Lending,403143000.00
+UltraYield by Edge,https://ultrayield.app/,ultrayieldapp,,DeFi,401524000.00
+Superstate USCC,https://superstate.co,superstatefunds,,DeFi,397735000.00
+Kinetiq Earn,https://xtrade.gg/,kinetiq_xyz,,Yield,397589000.00
+Aura,https://aura.finance,aurafinance,"{""aurafinance""}",Yield,396959000.00
+Connext,https://connext.network/,ConnextNetwork,,Bridge,392397000.00
+Defi Saver,https://defisaver.com/,DefiSaver,"{""defisaver""}",DeFi,390459000.00
+Pell Network,https://pell.network/,Pell_Network,,DeFi,382085000.00
+Resolv,https://resolv.xyz/,ResolvLabs,"{""resolv-im""}",DeFi,381305000.00
+xDAI Stake Bridge,https://www.gnosischain.com/,gnosischain,,Bridge,380641000.00
+BitFi Basis,https://www.bitfi.one,Bitfi_Org,,DeFi,378794000.00
+Sanctum Infinity,https://www.sanctum.so,sanctumso,,DEX,367286000.00
+Infrared Finance,https://infrared.finance,InfraredFinance,"{""infrared-dao""}",DeFi,367195000.00
+Solv Strategies,https://solv.finance,SolvProtocol,,DeFi,358069000.00
+Bitrue,https://www.bitrue.com,BitrueOfficial,,DeFi,356338000.00
+Felix Vaults,https://www.usefelix.xyz?ref=4BF702FF,felixprotocol,,DeFi,355845000.00
+Lagoon,https://lagoon.finance,lagoon_finance,"{""hopperlabsxyz""}",DeFi,346045000.00
+Frax Ether,https://app.frax.finance/frxeth/mint,fraxfinance,,DeFi,342661000.00
+Mellow LRT,https://mellow.finance/,mellowprotocol,,DeFi,341357000.00
+Bybit Staked SOL,https://www.bybit.com/en/web3/staking/BybitSOL,Bybit_Web3,,DeFi,338448000.00
+cap,https://cap.app/,capmoney_,"{""cap-labs-dev""}",Lending,332409000.00
+b14g,https://www.b14g.xyz/,b14g_network,"{""b14glabs""}",DeFi,331265000.00
+exSat Staking BTC,https://esbtc.exsat.network/,exSatNetwork,,Bridge,325599000.00
+Balancer V3,https://balancer.finance/,Balancer,,DEX,323990000.00
+Drift Staked SOL,https://app.drift.trade/ref/defillama,DriftProtocol,,DeFi,320816000.00
+Solv Basis Trading,https://solv.finance/,SolvProtocol,,DeFi,319215000.00
+Ondo Global Markets,https://ondo.finance,OndoFinance,,DeFi,317886000.00
+Telos Consilium,https://telosc.com/,TelosConsilium,,DeFi,310500000.00
+Liquity V1,https://www.liquity.org/,LiquityProtocol,,DeFi,308613000.00
+Kamino Liquidity,https://kamino.finance/,KaminoFinance,,DeFi,300514000.00
+The Vault Liquid Staking,https://thevault.finance,thevaultfinance,,DeFi,300448000.00
+Anemoy Capital,https://www.anemoy.io,anemoycapital,,DeFi,295539000.00
+Beefy,https://beefy.com,beefyfinance,"{""beefyfinance""}",Yield,294220000.00
+Upshift,https://app.upshift.finance/r/8feeeF621Ee3,upshift_fi,,DeFi,293847000.00
+SolvBTC LSTs,https://solv.finance,SolvProtocol,,DeFi,293371000.00
+Momentum,https://app.mmt.finance/trade,MMTFinance,,DEX,291640000.00
+Reservoir Protocol,https://www.reservoir.xyz,reservoir_xyz,,DeFi,287646000.00
+PayCash,https://paycashswap.com,PayCashTweet,,DEX,284848000.00
+VALR,https://valr.com/,VALRdotcom,,DeFi,276474000.00
+PumpSwap,https://swap.pump.fun,pumpdotfun,,DEX,275823000.00
+Block Analitica,https://blockanalitica.substack.com,BlockAnalitica,,DeFi,274930000.00
