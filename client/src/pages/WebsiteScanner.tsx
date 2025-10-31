@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, ExternalLink, Loader2, Search, Info } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, ExternalLink, Loader2, Search, Info, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +51,8 @@ interface ScanResponse {
 
 export default function WebsiteScanner() {
   const [url, setUrl] = useState('');
+  const [htmlContent, setHtmlContent] = useState('');
+  const [showManualScan, setShowManualScan] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const { toast } = useToast();
 
@@ -62,13 +66,13 @@ export default function WebsiteScanner() {
       
       if (data.phishing.severity === 'CRITICAL' || data.phishing.severity === 'HIGH') {
         toast({
-          title: '⚠️ Warning: Dangerous Website Detected',
+          title: 'Warning: Dangerous Website Detected',
           description: 'This website shows signs of being a scam. Do not connect your wallet!',
           variant: 'destructive',
         });
       } else if (data.phishing.severity === 'SAFE') {
         toast({
-          title: '✅ Website Appears Safe',
+          title: 'Website Appears Safe',
           description: 'No obvious phishing patterns detected.',
         });
       }
@@ -77,6 +81,41 @@ export default function WebsiteScanner() {
       toast({
         title: 'Scan Failed',
         description: error instanceof Error ? error.message : 'Failed to scan website',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const manualScanMutation = useMutation({
+    mutationFn: async ({ url: websiteUrl, html }: { url: string; html: string }) => {
+      const res = await apiRequest('POST', '/api/scan-html-content', { url: websiteUrl, html });
+      return await res.json();
+    },
+    onSuccess: (data: ScanResponse) => {
+      setScanResult(data);
+      
+      if (data.phishing.severity === 'CRITICAL' || data.phishing.severity === 'HIGH') {
+        toast({
+          title: 'Warning: Dangerous Website Detected',
+          description: 'This website shows signs of being a scam. Do not connect your wallet!',
+          variant: 'destructive',
+        });
+      } else if (data.phishing.severity === 'SAFE') {
+        toast({
+          title: 'Website Appears Safe',
+          description: 'No obvious phishing patterns detected.',
+        });
+      } else {
+        toast({
+          title: 'Manual Scan Complete',
+          description: `Risk level: ${data.phishing.severity}`,
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: 'Manual Scan Failed',
+        description: error instanceof Error ? error.message : 'Failed to analyze HTML content',
         variant: 'destructive',
       });
     },
@@ -92,6 +131,26 @@ export default function WebsiteScanner() {
       return;
     }
     scanMutation.mutate(url);
+  };
+
+  const handleManualScan = () => {
+    if (!url.trim()) {
+      toast({
+        title: 'URL Required',
+        description: 'Please enter the website URL',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!htmlContent.trim()) {
+      toast({
+        title: 'HTML Required',
+        description: 'Please paste the HTML content from the website',
+        variant: 'destructive',
+      });
+      return;
+    }
+    manualScanMutation.mutate({ url, html: htmlContent });
   };
 
   const getSeverityColor = (severity: string) => {
@@ -204,6 +263,88 @@ export default function WebsiteScanner() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Manual HTML Scan - For Protected Websites */}
+      <Collapsible open={showManualScan} onOpenChange={setShowManualScan}>
+        <Card>
+          <CardHeader>
+            <CollapsibleTrigger className="w-full" data-testid="button-toggle-manual-scan">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <div className="text-left">
+                    <CardTitle>Manual Content Analysis</CardTitle>
+                    <CardDescription className="mt-1">
+                      For websites with anti-bot protection (like Cloudflare)
+                    </CardDescription>
+                  </div>
+                </div>
+                {showManualScan ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </div>
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              {/* Guide */}
+              <Alert>
+                <Info className="w-4 h-4" />
+                <AlertTitle>How to extract HTML from protected websites</AlertTitle>
+                <AlertDescription className="mt-2">
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Visit the suspicious website in your browser</li>
+                    <li>Right-click anywhere on the page and select "View Page Source" (or press Ctrl+U / Cmd+U)</li>
+                    <li>Copy all the HTML code (Ctrl+A / Cmd+A, then Ctrl+C / Cmd+C)</li>
+                    <li>Paste the HTML into the textarea below</li>
+                    <li>Click "Analyze Content" to scan for phishing patterns</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+
+              {/* HTML Input */}
+              <div className="space-y-2">
+                <label htmlFor="html-content" className="text-sm font-medium">
+                  Paste HTML Content
+                </label>
+                <Textarea
+                  id="html-content"
+                  placeholder="Paste the complete HTML source code here..."
+                  value={htmlContent}
+                  onChange={(e) => setHtmlContent(e.target.value)}
+                  className="min-h-[200px] font-mono text-xs"
+                  data-testid="textarea-html-content"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {htmlContent.length > 0 ? `${htmlContent.length.toLocaleString()} characters` : 'No content pasted yet'}
+                </p>
+              </div>
+
+              {/* Analyze Button */}
+              <Button
+                onClick={handleManualScan}
+                disabled={manualScanMutation.isPending}
+                className="w-full"
+                data-testid="button-analyze-html"
+              >
+                {manualScanMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing Content...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4 mr-2" />
+                    Analyze Content
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Scan Results */}
       {scanResult && (

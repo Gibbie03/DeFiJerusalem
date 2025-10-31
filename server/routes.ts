@@ -1205,6 +1205,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/scan-html-content - Scan manually provided HTML content for phishing and contracts
+  app.post("/api/scan-html-content", apiLimiter, async (req, res) => {
+    try {
+      const { url, html } = req.body;
+
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ 
+          error: "URL is required",
+          message: "Please provide the website URL"
+        });
+      }
+
+      if (!html || typeof html !== 'string') {
+        return res.status(400).json({ 
+          error: "HTML content is required",
+          message: "Please paste the HTML content from the website"
+        });
+      }
+
+      // Normalize URL
+      let websiteUrl = url.trim();
+      if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+        websiteUrl = 'https://' + websiteUrl;
+      }
+
+      console.log(`[SCAN-HTML-CONTENT] Analyzing ${websiteUrl} with ${html.length} bytes of HTML`);
+
+      // Perform phishing analysis with provided HTML
+      const { scanWebsiteForPhishing } = await import('./lib/website-scanner');
+      const phishingScan = await scanWebsiteForPhishing(websiteUrl, html);
+
+      // Extract and scan contracts from HTML
+      let contractScanResults = [];
+      try {
+        const { extractContractsFromText } = await import('./lib/contract-extractor');
+        const { scanContractWithGoPlus } = await import('./lib/goplus-scanner');
+        
+        const foundContracts = extractContractsFromText(html);
+        console.log(`[SCAN-HTML-CONTENT] Found ${foundContracts.length} contracts`);
+
+        // Scan up to 3 contracts
+        const contractsToScan = foundContracts.slice(0, 3);
+        
+        for (const contractInfo of contractsToScan) {
+          try {
+            const contractScan = await scanContractWithGoPlus(contractInfo.address, contractInfo.chain);
+            
+            if (contractScan) {
+              contractScanResults.push({
+                address: contractInfo.address,
+                chain: contractInfo.chain,
+                explorerUrl: contractInfo.explorerUrl,
+                isHoneypot: contractScan.isHoneypot,
+                threats: contractScan.threats,
+                riskScore: contractScan.riskScore,
+                severity: contractScan.severity,
+              });
+            }
+          } catch (scanError) {
+            console.error(`[SCAN-HTML-CONTENT] Contract scan error:`, scanError);
+          }
+        }
+      } catch (error) {
+        console.error(`[SCAN-HTML-CONTENT] Contract extraction error:`, error);
+      }
+
+      res.json({
+        success: true,
+        url: websiteUrl,
+        phishing: phishingScan,
+        contracts: contractScanResults,
+        fetchError: null,
+        manualScan: true,
+        scannedAt: new Date().toISOString(),
+      });
+
+    } catch (error) {
+      console.error("[SCAN-HTML-CONTENT] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to analyze HTML content",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // POST /api/blacklist/filter-analysis - Analyze blacklist for potential false positives
   app.post("/api/blacklist/filter-analysis", apiLimiter, async (req, res) => {
     try {
