@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Clock, TrendingUp, Filter } from 'lucide-react';
+import { Clock, TrendingUp } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import StatsCard from '@/components/StatsCard';
@@ -10,13 +10,11 @@ import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Protocol, SecurityScan, BlacklistEntry} from '@shared/schema';
+import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 export default function NewDApps() {
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [searchValue, setSearchValue] = useState('');
-  const [timeFilter, setTimeFilter] = useState('all');
   const { toast } = useToast();
 
   const { data: protocols = [], isLoading } = useQuery<Protocol[]>({
@@ -81,30 +79,14 @@ export default function NewDApps() {
   }, [blacklistMutation]);
 
   const filteredProtocols = useMemo(() => {
-    const now = Date.now();
-    const getTimeFilterMs = () => {
-      switch (timeFilter) {
-        case '24h': return 24 * 60 * 60 * 1000;
-        case '7d': return 7 * 24 * 60 * 60 * 1000;
-        case '30d': return 30 * 24 * 60 * 60 * 1000;
-        case '90d': return 90 * 24 * 60 * 60 * 1000;
-        default: return Infinity;
-      }
-    };
-
-    const timeMs = getTimeFilterMs();
-
-    return protocols.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchValue.toLowerCase());
-
-      // Filter by discovery time (createdAt timestamp)
-      const matchesTime = timeMs === Infinity || 
-        (p.createdAt && (now - new Date(p.createdAt).getTime() < timeMs));
-
-      return matchesSearch && matchesTime;
-    });
-  }, [protocols, searchValue, timeFilter]);
+    // Note: Time filtering on new protocols is not available since the Protocol type
+    // doesn't include timestamp fields. The /api/protocols/new endpoint already
+    // returns only recently discovered protocols.
+    return protocols.filter(p =>
+      p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchValue.toLowerCase())
+    );
+  }, [protocols, searchValue]);
 
   const stats = {
     total: protocols.length,
@@ -155,24 +137,7 @@ export default function NewDApps() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <SearchBar value={searchValue} onChange={setSearchValue} />
-            </div>
-            <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger className="w-full sm:w-48" data-testid="select-time-filter">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Time Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="24h">Last 24 Hours</SelectItem>
-                <SelectItem value="7d">Last 7 Days</SelectItem>
-                <SelectItem value="30d">Last 30 Days</SelectItem>
-                <SelectItem value="90d">Last 90 Days</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <SearchBar value={searchValue} onChange={setSearchValue} />
         </div>
 
         {filteredProtocols.length === 0 ? (
