@@ -152,6 +152,7 @@ export class ThreatPatternLearner {
    */
   private categorizeThreat(type: string): string {
     const categories: Record<string, string> = {
+      // Traditional wallet drainer threats
       WALLET_DRAINER: 'Wallet Drainer',
       PHISHING: 'Phishing Attack',
       RUG_PULL: 'Rug Pull Risk',
@@ -163,6 +164,17 @@ export class ThreatPatternLearner {
       ANONYMOUS_TEAM: 'Team Transparency',
       HIDDEN_OWNER: 'Ownership Risk',
       EXCESSIVE_TAXES: 'Tokenomics Risk',
+
+      // 2025 Advanced Wallet Drainer Threats ($494M+ stolen in 2024)
+      NAMED_DRAINER_OPERATION: 'Named Drainer Operation',
+      PERMIT_SIGNATURE_EXPLOIT: 'EIP-2612 Permit Signature Attack',
+      APPROVAL_PHISHING: 'Approval Phishing ($1B+ stolen)',
+      CREATE2_EVASION: 'CREATE2 Address Evasion',
+      DRAINER_FINGERPRINT: 'Drainer Infrastructure',
+      SOLANA_DRAINER: 'Solana Wallet Drainer',
+      DORMANT_APPROVAL_RISK: 'Dormant Approval Attack',
+      DRAINER_PRICING_MODEL: 'Drainer-as-a-Service',
+      APPROVAL_AGE_EXPLOIT: 'Approval Age Exploitation',
     };
 
     return categories[type] || 'General Security';

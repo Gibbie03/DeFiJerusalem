@@ -1,7 +1,14 @@
 # JERUSALEM DeFi Security Scanner
 
 ## Overview
-JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols, perform real-time security threat analysis, and detect major wallet and protocol threats across over 126 blockchain chains. It scans for 29 distinct threat categories, including wallet drainers, phishing, rug pulls, and smart contract vulnerabilities. The project aims to provide a comprehensive DeFi security tool to protect users against crypto scams, featuring a cybersecurity-themed UI and persistent PostgreSQL storage. It includes monetization features like ad spaces and sponsored listings.
+JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols, perform real-time security threat analysis, and detect major wallet and protocol threats across over 126 blockchain chains including Solana. It scans for **38+ distinct threat categories**, including advanced 2025 wallet drainer operations (Pink Drainer, Angel Drainer, CLINKSINK), EIP-2612 permit signature exploits, approval phishing attacks, CREATE2 evasion techniques, Solana-specific drains, and traditional threats like phishing, rug pulls, and smart contract vulnerabilities. The project aims to provide a comprehensive DeFi security tool to protect users against crypto scams, featuring a cybersecurity-themed UI and persistent PostgreSQL storage. It includes monetization features like ad spaces and sponsored listings.
+
+**2024-2025 Threat Landscape Covered:**
+- **$494 million** stolen from 332,000+ victims in 2024 (67% increase from 2023)
+- **56.7% of attacks** use EIP-2612 permit signatures
+- **$1+ billion** stolen since May 2021 from approval phishing
+- **Solana drainers**: $4.17M from 3,947 victims (CLINKSINK, SPL delegation exploits)
+- **Drainer-as-a-Service (DaaS)**: $100-$40K operations with 20-30% commission models
 
 ## User Preferences
 - **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)
@@ -21,10 +28,11 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
 - **Contract Verification Tracking**: Automated discovery of newly verified smart contracts across 8 major blockchain explorers.
-- **Dual-Layer Security Analysis**:
-  - **Metadata-Based Scanning**: Analyzes protocol names, descriptions, and URLs for 29 threat categories including wallet drainers, phishing, and rug pulls
+- **Triple-Layer Security Analysis**:
+  - **Metadata-Based Scanning**: Analyzes protocol names, descriptions, and URLs for 38+ threat categories including advanced 2025 wallet drainers, phishing, and rug pulls
   - **Smart Contract Code Analysis**: GoPlus Security API integration for real-time contract scanning (honeypot detection, ownership analysis, trading simulation, proxy detection, hidden owner checks, tax analysis)
-  - **Comprehensive Threat Detection**: Merges both metadata and contract-level threats for complete risk assessment
+  - **2025 Advanced Drainer Detection**: Specialized detection for named drainer operations, EIP-2612 permit exploits, approval phishing, CREATE2 evasion, Solana drainers, and DaaS infrastructure
+  - **Comprehensive Threat Detection**: Merges metadata, contract-level, and advanced drainer threats for complete risk assessment
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted.
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
 - **Blacklist Management**: A dedicated page displays and allows admin management of blacklisted protocols.
@@ -46,9 +54,10 @@ The application includes an advanced AI learning system (`server/lib/threat-patt
 - **Continuous Learning**: Analyzes every security scan to build a knowledge base of threat patterns
 - **Pattern Recognition**: Identifies common exploit signatures across thousands of scans
 - **Confidence Scoring**: Builds confidence (0-1.0 scale) through repeated pattern occurrences
-- **Exploit Signatures**: Learns unique signatures of honeypots, hidden owners, excessive taxes, wallet drainers, and phishing attacks
+- **Exploit Signatures**: Learns unique signatures of honeypots, hidden owners, excessive taxes, wallet drainers, phishing attacks, and 2025 advanced drainer operations
 - **Auto-Blacklisting**: Automatically blacklists protocols when AI detects high-confidence threats (minimum 70% confidence, 3+ occurrences)
 - **AI-Enhanced Detection**: Combines traditional rule-based detection with learned patterns for superior exploit identification
+- **2025 Drainer Pattern Learning**: Tracks named drainer operations (Pink/Angel/Inferno/Venom/CLINKSINK), EIP-2612 permit signatures, approval phishing, CREATE2 evasion, Solana-specific attacks, and DaaS infrastructure fingerprints
 
 **AI Blacklisting Criteria:**
 - 2+ critical exploits with 80%+ confidence
@@ -59,6 +68,67 @@ The application includes an advanced AI learning system (`server/lib/threat-patt
 - Maintains last 1000 scans in memory
 - Tracks learned patterns with confidence, occurrences, examples
 - Provides insights API endpoint (`/api/ai-learning/stats`) for monitoring
+
+### 2025 Advanced Wallet Drainer Detection
+Based on comprehensive security research documenting $494M stolen in 2024, the system implements specialized detection for modern wallet draining techniques:
+
+**Named Drainer Operations:**
+- **Pink Drainer**: $85M stolen from 9,000 accounts (retired May 2024) - converts to sDAI earning 10% interest
+- **Angel Drainer**: Uses CREATE2 opcode for fresh contract addresses, evading wallet blocklists ($5K-10K + 20% commission)
+- **Inferno Drainer**: Single-use disposable contracts for signature-based attacks
+- **CLINKSINK (Solana)**: $900K+ confirmed, 80/20 affiliate split, targets Phantom wallet specifically
+- **Venom & Pussy Drainers**: Active operations tracked by security firms
+
+**EIP-2612 Permit Signature Exploits (56.7% of 2024 attacks):**
+- Gasless approval attacks using off-chain signatures
+- EIP-712 structured data manipulation
+- `permit()` function exploitation
+- Domain separator and nonce signature attacks
+- Deadline signature manipulation
+
+**Approval Phishing Detection ($1B+ stolen since May 2021):**
+- Unlimited approval requests (`type(uint256).max`)
+- `setApprovalForAll` NFT exploits
+- Blanket and perpetual permission patterns
+- Infinite allowance monitoring
+
+**CREATE2 Address Evasion (Angel Drainer technique):**
+- Deterministic address generation detection
+- Fresh contract per signature patterns
+- Contract rotation and disposable address tactics
+- Blocklist evasion techniques
+
+**Drainer Infrastructure Fingerprinting:**
+- Wallet balance enumeration scripts
+- Asset valuation and prioritization systems
+- Simulation bypass capabilities (anti-Wallet Guard, anti-Blockaid)
+- Bit-flip attacks (Aqua and Vanish drainers)
+- Russian drainer community indicators
+
+**Solana-Specific Drainer Detection ($4.17M from 3,947 victims):**
+- SPL token delegation exploits
+- Program Derived Address (PDA) manipulation
+- Blind signing vulnerabilities (Ledger requirement)
+- TOCTOU attacks (time-of-check-time-of-use with 400ms block times)
+- Base64 transaction obfuscation
+- `invoke_signed()` PDA exploit patterns
+
+**Dormant Approval Attack Patterns:**
+- Longest documented case: 458 days dormant, $908,551 stolen
+- Wallet deposit monitoring
+- Historical approval exploitation
+- Forgotten permission tracking
+
+**Drainer-as-a-Service (DaaS) Detection:**
+- Pricing model identification ($100-$40K upfront + 20-30% commission)
+- Affiliate network patterns (80/20 revenue splits)
+- Telegram community indicators (6,000+ member groups)
+- Monthly subscription drainer kits
+
+**Approval Age Exploitation:**
+- Old approval monitoring patterns
+- Stale allowance checks
+- Historical permission auditing
 
 ### Intelligent Blacklist Verification
 The application includes a cost-optimized blacklist verification system (`server/lib/blacklist-filter.ts`) that:

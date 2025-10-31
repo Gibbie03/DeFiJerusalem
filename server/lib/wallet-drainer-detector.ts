@@ -485,6 +485,123 @@ const SCAM_PATTERNS = {
     /cannot.*undo/i,
     /permanent.*loss/i,
     /non.*custodial.*risk/i // Used to justify not helping victims
+  ],
+
+  // ===== 2025 ADVANCED WALLET DRAINER DETECTION =====
+  
+  // Named drainer operations ($494M stolen in 2024 from 332K+ victims)
+  namedDrainerOperations: [
+    /pink.*drainer/i, // $85M stolen from 9,000 accounts, retired May 2024
+    /angel.*drainer/i, // Uses CREATE2 opcode, $5K-10K upfront + 20% commission
+    /inferno.*drainer/i, // Single-use disposable contracts
+    /venom.*drainer/i, // Major operation tracked by security firms
+    /pussy.*drainer/i, // Active drainer operation
+    /clinksink/i, // Solana-specific, $900K+ confirmed, 80/20 affiliate split
+    /wallet.*drainer.*kit/i, // Generic drainer kit references
+    /drainer.*as.*a.*service/i, // DaaS model ($100-$40K + 20-30% commission)
+    /daas.*drainer/i, // Drainer-as-a-Service acronym
+  ],
+
+  // EIP-2612 Permit signature exploitation (56.7% of 2024 attacks)
+  // IMPORTANT: Requires scam context, not just technical documentation
+  permitSignaturePatterns: [
+    /urgent.*permit.*signature/i, // Urgency + permit = scam
+    /claim.*permit.*now/i, // Claim urgency + permit
+    /sign.*permit.*free/i, // Free offer + permit signing
+    /gasless.*claim.*permit/i, // Gasless claim + permit = likely scam
+    /permit.*drain/i, // Direct drainer reference
+    /malicious.*permit/i, // Explicit malicious intent
+    /fake.*permit.*request/i, // Fake permit
+    /signature.*phishing/i, // Signature phishing
+  ],
+
+  // Approval phishing patterns ($1B+ stolen since May 2021)
+  // IMPORTANT: Requires scam context - asking user to approve, not just documenting
+  approvalPhishingPatterns: [
+    /click.*unlimited.*approval/i, // User action + unlimited = scam
+    /approve.*unlimited.*now/i, // Urgency + unlimited
+    /claim.*approve.*all/i, // Claim + approve all
+    /urgent.*approval.*required/i, // Urgent approval request
+    /approve.*all.*tokens.*now/i, // Approve all with urgency
+    /grant.*unlimited.*access/i, // Grant unlimited access
+    /unlimited.*permission.*required/i, // Required unlimited permission
+    /permanent.*approval.*needed/i, // Permanent approval request
+  ],
+
+  // CREATE2 address generation evasion (Angel Drainer technique)
+  // IMPORTANT: Specific to evasion tactics, not legitimate contract factories
+  create2EvasionPatterns: [
+    /evade.*blocklist/i, // Explicit evasion
+    /bypass.*wallet.*protection/i, // Bypassing security
+    /rotate.*contract.*evade/i, // Rotation for evasion
+    /disposable.*contract.*signature/i, // Disposable for signatures
+    /fresh.*address.*evade/i, // Fresh address for evasion
+    /create2.*drainer/i, // CREATE2 + drainer
+  ],
+
+  // Drainer infrastructure fingerprinting
+  drainerInfrastructureFingerprintPatterns: [
+    /wallet.*balance.*enumeration/i,
+    /asset.*valuation.*script/i,
+    /token.*balance.*checker/i,
+    /enumerate.*holdings/i,
+    /prioritize.*high.*value/i,
+    /simulation.*bypass/i,
+    /anti.*simulation/i,
+    /bit.*flip.*attack/i, // Aqua and Vanish drainers
+    /bypass.*wallet.*guard/i,
+    /bypass.*blockaid/i,
+    /evade.*detection/i,
+    /russian.*drainer.*community/i, // Geographic concentration
+  ],
+
+  // Solana-specific wallet draining threats
+  solanaDrainerPatterns: [
+    /spl.*token.*delegation/i,
+    /solana.*delegate/i,
+    /program.*derived.*address/i,
+    /pda.*manipulation/i,
+    /blind.*signing.*solana/i,
+    /phantom.*wallet.*drainer/i,
+    /base64.*transaction/i,
+    /toctou.*attack/i, // Time-of-check-time-of-use
+    /simulation.*vs.*execution/i,
+    /solana.*400ms.*exploit/i, // Block time exploitation
+    /invoke_signed/i, // PDA signing function
+    /spl.*single.*delegate/i,
+    /ledger.*blind.*sign/i,
+  ],
+
+  // Dormant approval attack patterns (458-day case: $908K stolen)
+  dormantApprovalPatterns: [
+    /monitor.*wallet.*deposits/i,
+    /wait.*for.*funds/i,
+    /dormant.*approval/i,
+    /old.*permission/i,
+    /forgotten.*approval/i,
+    /stale.*allowance/i,
+    /historical.*approval.*risk/i,
+  ],
+
+  // Drainer commission/pricing model patterns
+  // IMPORTANT: Requires explicit drainer/scam context
+  drainerPricingPatterns: [
+    /drainer.*20%.*commission/i, // Drainer + commission
+    /drainer.*30%.*commission/i,
+    /drainer.*80\/20.*split/i, // Explicit drainer split
+    /wallet.*drainer.*kit/i, // Wallet drainer kit
+    /drainer.*subscription/i, // Drainer subscription
+    /drainer.*\$[0-9]+k/i, // Drainer pricing
+    /scam.*kit.*\$/i, // Scam kit pricing
+  ],
+
+  // Token approval age exploitation
+  approvalAgeExploitPatterns: [
+    /check.*old.*approvals/i,
+    /revoke.*old.*approvals/i,
+    /approval.*checker/i,
+    /allowance.*audit/i,
+    /spending.*permission.*review/i,
   ]
 };
 
@@ -1183,6 +1300,127 @@ export class WalletDrainerDetector {
             message: 'Visual clone detected - May be impersonating legitimate platform design',
           });
           results.score += 50;
+          break;
+        }
+      }
+
+      // ===== 2025 ADVANCED WALLET DRAINER DETECTION =====
+
+      // CRITICAL: Named drainer operations ($494M stolen in 2024)
+      for (const pattern of SCAM_PATTERNS.namedDrainerOperations) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'NAMED_DRAINER_OPERATION',
+            severity: 'CRITICAL',
+            message: 'DANGER: Known drainer operation detected (Pink/Angel/Inferno/Venom/CLINKSINK) - $494M stolen in 2024',
+          });
+          results.score += 100; // Instant blacklist
+          break;
+        }
+      }
+
+      // CRITICAL: EIP-2612 Permit signature exploitation (56.7% of 2024 attacks)
+      for (const pattern of SCAM_PATTERNS.permitSignaturePatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'PERMIT_SIGNATURE_EXPLOIT',
+            severity: 'CRITICAL',
+            message: 'DANGER: EIP-2612 permit signature attack - 56.7% of 2024 wallet draining attacks use this method',
+          });
+          results.score += 95;
+          break;
+        }
+      }
+
+      // CRITICAL: Approval phishing patterns ($1B+ stolen since May 2021)
+      for (const pattern of SCAM_PATTERNS.approvalPhishingPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'APPROVAL_PHISHING',
+            severity: 'CRITICAL',
+            message: 'DANGER: Unlimited approval phishing - Over $1 billion stolen since May 2021 from this attack',
+          });
+          results.score += 95;
+          break;
+        }
+      }
+
+      // CRITICAL: CREATE2 address evasion (Angel Drainer technique)
+      for (const pattern of SCAM_PATTERNS.create2EvasionPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'CREATE2_EVASION',
+            severity: 'CRITICAL',
+            message: 'DANGER: CREATE2 address generation evasion - Used by Angel Drainer to evade blocklists',
+          });
+          results.score += 90;
+          break;
+        }
+      }
+
+      // CRITICAL: Drainer infrastructure fingerprinting
+      for (const pattern of SCAM_PATTERNS.drainerInfrastructureFingerprintPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'DRAINER_FINGERPRINT',
+            severity: 'CRITICAL',
+            message: 'DANGER: Drainer infrastructure detected - Balance enumeration, simulation bypass, or detection evasion',
+          });
+          results.score += 100; // Instant blacklist
+          break;
+        }
+      }
+
+      // CRITICAL: Solana-specific drainer patterns ($4.17M stolen from 3,947 victims)
+      if (dapp.chains.some(chain => /solana/i.test(chain)) || /solana|phantom|spl/i.test(nameAndDesc)) {
+        for (const pattern of SCAM_PATTERNS.solanaDrainerPatterns) {
+          if (pattern.test(nameAndDesc) || pattern.test(website)) {
+            results.threats.push({
+              type: 'SOLANA_DRAINER',
+              severity: 'CRITICAL',
+              message: 'DANGER: Solana wallet drainer detected - SPL delegation, PDA manipulation, or blind signing exploit',
+            });
+            results.score += 95;
+            break;
+          }
+        }
+      }
+
+      // HIGH: Dormant approval attack patterns (458-day case: $908K stolen)
+      for (const pattern of SCAM_PATTERNS.dormantApprovalPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'DORMANT_APPROVAL_RISK',
+            severity: 'HIGH',
+            message: 'WARNING: Dormant approval monitoring detected - Attackers wait for wallet refills (longest: 458 days, $908K stolen)',
+          });
+          results.score += 75;
+          break;
+        }
+      }
+
+      // HIGH: Drainer pricing/commission model patterns
+      for (const pattern of SCAM_PATTERNS.drainerPricingPatterns) {
+        if (pattern.test(nameAndDesc)) {
+          results.threats.push({
+            type: 'DRAINER_PRICING_MODEL',
+            severity: 'HIGH',
+            message: 'WARNING: Drainer-as-a-Service pricing model detected - $100-$40K + 20-30% commission structure',
+          });
+          results.score += 80;
+          break;
+        }
+      }
+
+      // MEDIUM: Approval age exploitation patterns
+      for (const pattern of SCAM_PATTERNS.approvalAgeExploitPatterns) {
+        if (pattern.test(nameAndDesc) || pattern.test(website)) {
+          results.threats.push({
+            type: 'APPROVAL_AGE_EXPLOIT',
+            severity: 'MEDIUM',
+            message: 'Advisory: Token approval age monitoring - May be checking for old forgotten approvals to exploit',
+          });
+          results.score += 40;
           break;
         }
       }
