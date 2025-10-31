@@ -1516,19 +1516,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limitNum = Math.min(parseInt(limit as string, 10) || 50, 100);
       
       // Fetch both security scans (protocols) and blacklist entries
-      const [scans, blacklistEntries] = await Promise.all([
-        storage.getAllScans(),
+      const [scansRecord, blacklistEntries] = await Promise.all([
+        storage.getAllSecurityScans(),
         storage.getBlacklist()
       ]);
 
       // Combine and format threat data
       const threats = [];
 
-      // Add protocols with security issues
+      // Add protocols with security issues from scans
+      const scans = Object.values(scansRecord);
       for (const scan of scans) {
         if (scan.threats && scan.threats.length > 0) {
           threats.push({
-            id: scan.id,
+            id: scan.protocolId,
             name: scan.protocolName || 'Unknown Protocol',
             type: 'protocol',
             severity: scan.severity,

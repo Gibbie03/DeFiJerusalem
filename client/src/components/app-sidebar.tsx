@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload, AlertTriangle } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +51,11 @@ const menuItems = [
     title: "Security Stats",
     url: "/security-stats",
     icon: BarChart3,
+  },
+  {
+    title: "Live Threats",
+    url: "/threats",
+    icon: AlertTriangle,
   },
   {
     title: "How It Works",

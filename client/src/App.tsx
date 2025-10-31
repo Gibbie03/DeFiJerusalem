@@ -14,6 +14,7 @@ import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import BlacklistDetails from "@/pages/BlacklistDetails";
 import SecurityStats from "@/pages/SecurityStats";
+import ThreatsPage from "@/pages/ThreatsPage";
 import WebsiteScanner from "@/pages/WebsiteScanner";
 import SubmitProtocol from "@/pages/SubmitProtocol";
 import ProtocolDetail from "@/pages/ProtocolDetail";
@@ -82,6 +83,7 @@ function Router() {
                 <Route path="/blacklist/:id" component={BlacklistDetails} />
                 <Route path="/blacklist" component={Blacklist} />
                 <Route path="/security-stats" component={SecurityStats} />
+                <Route path="/threats" component={ThreatsPage} />
                 <Route path="/scan-website" component={WebsiteScanner} />
                 <Route path="/submit-protocol" component={SubmitProtocol} />
                 <Route path="/how-it-works" component={HowItWorks} />
