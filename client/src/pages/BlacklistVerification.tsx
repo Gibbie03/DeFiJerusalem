@@ -75,13 +75,13 @@ export default function BlacklistVerification() {
   const [verificationResults, setVerificationResults] = useState<VerificationResults | null>(null);
 
   // Analyze mutation
-  const analyzeMutation = useMutation({
+  const analyzeMutation = useMutation<AnalysisResults, Error, void>({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/blacklist/filter-analysis', { 
         minLegitimacyScore: 20, 
         excludeObviousScams: true 
       });
-      return await res.json();
+      return await res.json() as AnalysisResults;
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
@@ -89,13 +89,13 @@ export default function BlacklistVerification() {
   });
 
   // Verify mutation
-  const verifyMutation = useMutation({
+  const verifyMutation = useMutation<VerificationResults, Error, number>({
     mutationFn: async (maxScans: number) => {
       const res = await apiRequest('POST', '/api/blacklist/verify-filtered', { 
         minLegitimacyScore: 20, 
         maxScans 
       });
-      return await res.json();
+      return await res.json() as VerificationResults;
     },
     onSuccess: (data) => {
       setVerificationResults(data);
@@ -220,7 +220,7 @@ export default function BlacklistVerification() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {analysisResults.potentialFalsePositives.slice(0, 10).map((p: any, i: number) => (
+                        {analysisResults.potentialFalsePositives.slice(0, 10).map((p: FilteredProtocol, i: number) => (
                           <TableRow key={i}>
                             <TableCell className="font-medium">{p.name}</TableCell>
                             <TableCell>
@@ -332,7 +332,7 @@ export default function BlacklistVerification() {
                 <div className="space-y-2">
                   <h3 className="font-semibold">Detailed Results</h3>
                   <div className="space-y-3">
-                    {verificationResults.results.map((result: any, i: number) => (
+                    {verificationResults.results.map((result: VerificationResult, i: number) => (
                       <Card key={i} className={
                         result.recommendation === 'REMOVE_FROM_BLACKLIST' ? 'border-green-500/20' :
                         result.recommendation === 'KEEP_BLACKLISTED' ? 'border-destructive/20' :
@@ -376,7 +376,7 @@ export default function BlacklistVerification() {
                           {result.scanResults && result.scanResults.threats && result.scanResults.threats.length > 0 && (
                             <div className="text-sm">
                               <span className="text-muted-foreground">Threats: </span>
-                              {result.scanResults.threats.slice(0, 2).map((t: any) => t.type).join(', ')}
+                              {result.scanResults.threats.slice(0, 2).map((t) => t.type).join(', ')}
                             </div>
                           )}
                           

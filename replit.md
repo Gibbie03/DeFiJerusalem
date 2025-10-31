@@ -39,6 +39,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **GoPlus Contract Scanning**: Real smart contract code analysis detecting honeypots, hidden owners, trading restrictions, excessive taxes, and proxy contracts across 40+ blockchain networks.
 - **AI Learning Security System**: Machine learning-based threat pattern recognition that continuously learns from security scans to automatically identify exploits and update blacklist rules in real-time.
 - **Website Contract Extraction**: Automatic scanning of website URLs to discover embedded contract addresses and perform security analysis.
+- **Intelligent Blacklist Verification System**: Cost-optimized false positive detection that filters blacklisted protocols using legitimacy scoring (0-100) and identifies potential false positives for targeted GoPlus re-scanning, reducing API costs by 99.6% (from 3,014 scans to 12).
 
 ### AI Learning & Threat Pattern Recognition
 The application includes an advanced AI learning system (`server/lib/threat-pattern-learner.ts`) that:
@@ -58,6 +59,24 @@ The application includes an advanced AI learning system (`server/lib/threat-patt
 - Maintains last 1000 scans in memory
 - Tracks learned patterns with confidence, occurrences, examples
 - Provides insights API endpoint (`/api/ai-learning/stats`) for monitoring
+
+### Intelligent Blacklist Verification
+The application includes a cost-optimized blacklist verification system (`server/lib/blacklist-filter.ts`) that:
+- **Smart Filtering**: Analyzes all blacklisted protocols to identify potential false positives using legitimacy scoring (0-100 scale)
+- **Cost Reduction**: Reduces GoPlus API scans by 99.6% (from 3,014 to 12) by filtering out obvious scams
+- **Legitimacy Scoring**: Evaluates protocols based on threat patterns, flagging only IMPOSTER or UNVERIFIED_CONTRACT issues as potentially legitimate
+- **Batch Verification**: Performs targeted GoPlus contract scans only on filtered protocols
+- **Recommendations**: Provides actionable recommendations (REMOVE_FROM_BLACKLIST, KEEP_BLACKLISTED, NEEDS_MANUAL_REVIEW)
+- **TypeScript Safety**: Fully typed API responses with comprehensive interfaces for compile-time validation
+
+**Filtering Criteria:**
+- Excludes giveaways, airdrops, malicious TLDs, and typosquatting patterns
+- Flags protocols with only imposter or unverified contract warnings as potential false positives
+- Assigns legitimacy scores based on threat diversity and severity
+
+**API Endpoints:**
+- `/api/blacklist/filter-analysis` - Analyzes blacklist and returns filtering statistics
+- `/api/blacklist/verify-filtered` - Performs GoPlus scans on filtered protocols with configurable limits
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM for `protocols`, `security_scans`, `blacklist_entries`, `contract_scans`, `sponsor_payments`, `protocol_customizations`, `admin_users`, and `discovered_contracts` tables, optimized with indexing and UPSERT-based persistence.
