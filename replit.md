@@ -13,7 +13,7 @@ JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed 
 ## System Architecture
 
 ### UI/UX Decisions
-The application features a cybersecurity-themed dark mode with Shield iconography. Protocols are displayed in a CoinMarketCap-style table with rank, formatted TVL, color-coded 24h changes, 7-day TVL sparkline charts, logos, and category badges. Navigation uses an expandable/collapsible shadcn sidebar that starts collapsed by default and overlays on top of content. Ad spaces are integrated, and the protocol table implements pagination with "Load More" functionality. Security ratings have a color-coded legend and informational tooltips. Dashboard stats display actual blockchain count, total protocols, and audited protocols count.
+The application features a cybersecurity-themed dark mode with Shield iconography. Protocols are displayed in a CoinMarketCap-style table with rank, formatted TVL, color-coded 24h changes, 7-day TVL sparkline charts, logos, and category badges. **Security flagging system**: Each protocol displays both a security score badge and a severity badge (CRITICAL/HIGH/MEDIUM/LOW/SAFE) in the table view, with tooltip details showing threat counts. Navigation uses an expandable/collapsible shadcn sidebar that starts collapsed by default and overlays on top of content. Ad spaces are integrated, and the protocol table implements pagination with "Load More" functionality. Security ratings have a color-coded legend and informational tooltips. Dashboard stats display actual blockchain count, total protocols, and audited protocols count.
 
 ### Technical Implementations
 The frontend uses React, Wouter for routing, TanStack Query for data fetching, Shadcn UI for components, and Tailwind CSS for styling. The backend uses Express.js, Drizzle ORM, and Neon PostgreSQL. Validation is handled by Zod, drizzle-zod, and react-hook-form. Performance is optimized through client-side techniques and server-side parallel scan execution, batch DB writes, gzip compression, and intelligent pagination with Set-based deduplication. An automated testing suite is implemented using Vitest.
@@ -28,6 +28,13 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
   - Top 20 highest risk protocols with scores and threat types
   - Auto-refresh every 30 seconds for real-time updates
   - Accessible via `/security-stats` route and sidebar navigation
+- **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details:
+  - Severity badges (CRITICAL/HIGH/MEDIUM/LOW/SAFE) displayed directly in protocol listings
+  - Detailed threat cards in protocol detail modal with user-friendly explanations
+  - Per-threat user advice with "What This Means", "Advice for Users", and "Recommended Action" sections
+  - CRITICAL severity alerts with prominent warnings for dangerous protocols
+  - Coverage of all 38+ threat types with specific guidance for 2025 drainer attacks
+  - Color-coded threat severity indicators throughout the interface
 - **Triple-Layer Security Analysis**: Includes metadata-based scanning (38+ threat categories), GoPlus Security API for smart contract code analysis, and advanced 2025 drainer detection (Pink, Angel, CLINKSINK, EIP-2612, approval phishing, CREATE2 evasion, Solana-specific drains, DaaS infrastructure).
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted.
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
