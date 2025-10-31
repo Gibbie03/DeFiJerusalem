@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, AlertTriangle, Filter, Clock, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,7 +78,49 @@ function formatDate(dateString: string): string {
 export default function ThreatsPage() {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
-  const { data, isLoading } = useQuery<ThreatsResponse>({
+  // SEO meta tags
+  useEffect(() => {
+    document.title = 'Live Threat Feed - Real-Time DeFi Security Alerts | JERUSALEM';
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Real-time security threat feed detecting scams, rug pulls, and exploits across 126+ blockchain networks. Monitor critical threats in DeFi protocols and DApps as they happen.');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
+      meta.content = 'Real-time security threat feed detecting scams, rug pulls, and exploits across 126+ blockchain networks. Monitor critical threats in DeFi protocols and DApps as they happen.';
+      document.head.appendChild(meta);
+    }
+
+    // Open Graph tags
+    const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
+    ogTitle.setAttribute('property', 'og:title');
+    ogTitle.setAttribute('content', 'Live Threat Feed - Real-Time DeFi Security Alerts');
+    if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
+
+    const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
+    ogDescription.setAttribute('property', 'og:description');
+    ogDescription.setAttribute('content', 'Monitor real-time security threats across DeFi. Get instant alerts about scams, rug pulls, drainer attacks, and vulnerabilities.');
+    if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
+
+    const ogType = document.querySelector('meta[property="og:type"]') || document.createElement('meta');
+    ogType.setAttribute('property', 'og:type');
+    ogType.setAttribute('content', 'website');
+    if (!ogType.parentElement) document.head.appendChild(ogType);
+
+    // Twitter Card tags
+    const twitterCard = document.querySelector('meta[name="twitter:card"]') || document.createElement('meta');
+    twitterCard.setAttribute('name', 'twitter:card');
+    twitterCard.setAttribute('content', 'summary_large_image');
+    if (!twitterCard.parentElement) document.head.appendChild(twitterCard);
+
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]') || document.createElement('meta');
+    twitterTitle.setAttribute('name', 'twitter:title');
+    twitterTitle.setAttribute('content', 'Live Threat Feed - DeFi Security Alerts');
+    if (!twitterTitle.parentElement) document.head.appendChild(twitterTitle);
+  }, []);
+
+  const { data, isLoading, error } = useQuery<ThreatsResponse>({
     queryKey: ['/api/threats', severityFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -88,10 +130,14 @@ export default function ThreatsPage() {
       params.set('limit', '100');
       
       const response = await fetch(`/api/threats?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch threats');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to fetch threats');
+      }
       return response.json();
     },
     refetchInterval: 120000, // Refresh every 2 minutes
+    retry: 3, // Retry failed requests up to 3 times
   });
 
   const threats = data?.threats || [];
@@ -208,7 +254,24 @@ export default function ThreatsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {error ? (
+            <div className="text-center py-12">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+              <p className="text-red-600 dark:text-red-400 font-medium mb-2">
+                Failed to load threat data
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {error instanceof Error ? error.message : 'An unexpected error occurred'}
+              </p>
+              <Button 
+                onClick={() => window.location.reload()}
+                variant="outline"
+                data-testid="button-reload"
+              >
+                Reload Page
+              </Button>
+            </div>
+          ) : isLoading ? (
             <div className="text-center py-12 text-muted-foreground">
               <Shield className="w-12 h-12 mx-auto mb-4 animate-pulse" />
               <p>Scanning for threats...</p>

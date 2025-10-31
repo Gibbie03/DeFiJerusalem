@@ -193,8 +193,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setTimeout(checkForNewPatternsAndRescan, 30 * 1000);
 
   // AGGRESSIVE NO-CACHE MIDDLEWARE - Fixes mobile browser caching issues
-  // Disables ALL caching layers: browser cache, mobile OS cache, CDN cache, ETags
+  // Disables ALL caching layers except for specific cacheable API endpoints
   app.use((req, res, next) => {
+    // Allow caching for specific API endpoints that implement their own cache strategy
+    const cacheableEndpoints = ['/api/threats', '/api/blacklist', '/api/protocols', '/api/scans', '/api/security/stats'];
+    const isCacheable = cacheableEndpoints.some(endpoint => req.path.startsWith(endpoint));
+    
+    if (isCacheable) {
+      // Skip no-cache middleware for cacheable endpoints - let them set their own headers
+      return next();
+    }
+    
     // Intercept res.set() to prevent routes from overriding cache headers
     const originalSet = res.set.bind(res);
     res.set = function(field: any, value?: any) {
