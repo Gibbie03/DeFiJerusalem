@@ -55,7 +55,7 @@ export const securityScans = pgTable('security_scans', {
   score: real('score').notNull(),
   scannedAt: timestamp('scanned_at').notNull().defaultNow(),
 }, (table) => ({
-  protocolIdIdx: index('security_scans_protocol_id_idx').on(table.protocolId),
+  protocolIdIdx: uniqueIndex('security_scans_protocol_id_unique_idx').on(table.protocolId),
   scannedAtIdx: index('security_scans_scanned_at_idx').on(table.scannedAt),
 }));
 
