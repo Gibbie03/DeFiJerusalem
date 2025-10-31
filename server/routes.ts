@@ -1224,6 +1224,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Limit HTML content size to 5MB
+      const MAX_HTML_SIZE = 5 * 1024 * 1024; // 5MB
+      if (html.length > MAX_HTML_SIZE) {
+        return res.status(400).json({ 
+          error: "HTML content too large",
+          message: `HTML content exceeds maximum size of ${MAX_HTML_SIZE / (1024 * 1024)}MB`
+        });
+      }
+
       // Normalize URL
       let websiteUrl = url.trim();
       if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {

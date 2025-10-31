@@ -317,9 +317,17 @@ export default function WebsiteScanner() {
                   className="min-h-[200px] font-mono text-xs"
                   data-testid="textarea-html-content"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {htmlContent.length > 0 ? `${htmlContent.length.toLocaleString()} characters` : 'No content pasted yet'}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {htmlContent.length > 0 ? `${htmlContent.length.toLocaleString()} characters` : 'No content pasted yet'}
+                  </p>
+                  {htmlContent.length > 1000000 && (
+                    <Badge variant="outline" className="text-xs">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Large content
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {/* Analyze Button */}
