@@ -1,5 +1,6 @@
 import type { Protocol } from '@shared/schema';
 import { apiCache } from './api-cache';
+import { extractContractFromProtocolLinks, normalizeChainName } from './contract-extractor';
 
 // DAppDiscovery - Fetches from DeFiLlama (126+ chains)
 export class DAppDiscovery {
@@ -144,26 +145,55 @@ export class DAppDiscovery {
         const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
         const category = this.classifyCategory(p);
         
-        // Extract contract address - DeFiLlama returns either a string, object, or null
+        // Extract contract address and chain - DeFiLlama returns either a string, object, or null
         // Most protocols return an object like { ethereum: '0x...', bsc: '0x...' }
         let contractAddress: string | null = null;
+        let contractChain: string | null = null;
+        
         if (p.address) {
           if (typeof p.address === 'string') {
             // Simple string address (usually Ethereum mainnet)
             contractAddress = p.address.toLowerCase();
+            // If only one chain is listed, use that; otherwise default to Ethereum
+            contractChain = chains.length === 1 ? normalizeChainName(chains[0]) : 'Ethereum';
           } else if (typeof p.address === 'object' && p.address !== null) {
             // Address is an object with chain names as keys
-            // Prefer Ethereum address for De.Fi API compatibility
+            // Prefer Ethereum address for GoPlus API compatibility
             const addressObj = p.address as Record<string, string>;
             if (addressObj.ethereum || addressObj.Ethereum) {
               contractAddress = (addressObj.ethereum || addressObj.Ethereum).toLowerCase();
+              contractChain = 'Ethereum';
+            } else if (addressObj.bsc || addressObj.BSC) {
+              contractAddress = (addressObj.bsc || addressObj.BSC).toLowerCase();
+              contractChain = 'Binance';
+            } else if (addressObj.polygon || addressObj.Polygon) {
+              contractAddress = (addressObj.polygon || addressObj.Polygon).toLowerCase();
+              contractChain = 'Polygon';
             } else {
-              // Fallback: take first available address from any chain
-              const firstAddress = Object.values(addressObj)[0];
+              // Fallback: take first available address and chain
+              const firstChain = Object.keys(addressObj)[0];
+              const firstAddress = addressObj[firstChain];
               if (firstAddress && typeof firstAddress === 'string') {
                 contractAddress = firstAddress.toLowerCase();
+                // Normalize chain name using mapping
+                contractChain = normalizeChainName(firstChain);
               }
             }
+          }
+        }
+        
+        // Fallback: If no address from DeFiLlama, try extracting from protocol links
+        if (!contractAddress) {
+          const extractedContract = extractContractFromProtocolLinks({
+            website: p.url,
+            github: p.github,
+            twitter: p.twitter,
+            description: p.description,
+          });
+          
+          if (extractedContract) {
+            contractAddress = extractedContract.address.toLowerCase();
+            contractChain = extractedContract.chain;
           }
         }
         
@@ -215,6 +245,7 @@ export class DAppDiscovery {
           defiHasTimelock: null,
           defiDataFetchedAt: null,
           contractAddress: contractAddress,
+          contractChain: contractChain,
         } as any;
       });
 

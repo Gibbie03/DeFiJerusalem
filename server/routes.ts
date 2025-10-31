@@ -751,6 +751,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/scan-url - Extract and scan contract from URL
+  app.post("/api/scan-url", apiLimiter, async (req, res) => {
+    try {
+      const { url } = req.body;
+
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ 
+          error: "URL is required",
+          message: "Please provide a valid blockchain explorer URL"
+        });
+      }
+
+      const { extractContractFromUrl } = await import('./lib/contract-extractor');
+      const { scanContractWithGoPlus } = await import('./lib/goplus-scanner');
+
+      // Extract contract address and chain from URL
+      const contractInfo = extractContractFromUrl(url);
+      
+      if (!contractInfo) {
+        return res.status(400).json({ 
+          error: "No contract address found",
+          message: "Could not extract a valid contract address from the provided URL. Please provide a blockchain explorer URL (e.g., Etherscan, BSCScan, etc.)"
+        });
+      }
+
+      // Scan the contract with GoPlus
+      console.log(`[SCAN-URL] Scanning contract ${contractInfo.address} on ${contractInfo.chain}`);
+      const contractScan = await scanContractWithGoPlus(contractInfo.address, contractInfo.chain);
+
+      if (!contractScan) {
+        return res.status(404).json({ 
+          error: "Contract scan failed",
+          message: "Could not scan the contract. The chain may not be supported by GoPlus API or the contract address may be invalid."
+        });
+      }
+
+      // Return the scan results
+      res.json({
+        success: true,
+        contractInfo: {
+          address: contractInfo.address,
+          chain: contractInfo.chain,
+          explorerUrl: contractInfo.explorerUrl,
+        },
+        scanResults: {
+          isHoneypot: contractScan.isHoneypot,
+          cannotBuy: contractScan.cannotBuy,
+          cannotSell: contractScan.cannotSell,
+          buyTax: contractScan.buyTax,
+          sellTax: contractScan.sellTax,
+          hiddenOwner: contractScan.hiddenOwner,
+          isProxy: contractScan.isProxy,
+          isOpenSource: contractScan.isOpenSource,
+          ownerChangeBalance: contractScan.ownerChangeBalance,
+          canTakeBackOwnership: contractScan.canTakeBackOwnership,
+          tradingCooldown: contractScan.tradingCooldown,
+          transferPausable: contractScan.transferPausable,
+          holders: contractScan.holders,
+          threats: contractScan.threats,
+          riskScore: contractScan.riskScore,
+          severity: contractScan.severity,
+        }
+      });
+    } catch (error) {
+      console.error("Error scanning URL:", error);
+      res.status(500).json({ 
+        error: "Failed to scan URL",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/blacklist - Get all blacklist entries (with rate limiting)
   app.get("/api/blacklist", apiLimiter, async (req, res) => {
     try {
