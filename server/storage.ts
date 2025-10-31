@@ -83,6 +83,51 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private mapProtocol(row: any): Protocol {
+    return {
+      id: row.id,
+      name: row.name,
+      chains: row.chains as string[],
+      category: row.category,
+      tvl: row.tvl,
+      volume24h: row.volume24h,
+      change24h: row.change24h,
+      age: row.age ?? null,
+      audited: row.audited,
+      auditCount: row.auditCount,
+      auditNote: row.auditNote ?? null,
+      auditLinks: row.auditLinks as string[] | null,
+      securityScore: row.securityScore,
+      logo: row.logo ?? null,
+      website: row.website ?? null,
+      twitter: row.twitter ?? null,
+      github: row.github ?? null,
+      description: row.description ?? '',
+      autoDiscovered: row.autoDiscovered ?? false,
+      manuallyAdded: row.manuallyAdded ?? false,
+      sponsoredUntil: row.sponsoredUntil?.toISOString?.() ?? null,
+      sponsorshipTier: (row.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
+      featuredPosition: row.featuredPosition ?? null,
+      defiSecurityScore: row.defiSecurityScore ?? null,
+      defiAuditReports: row.defiAuditReports as any ?? null,
+      defiHasMultisig: row.defiHasMultisig ?? null,
+      defiHasTimelock: row.defiHasTimelock ?? null,
+      defiDataFetchedAt: row.defiDataFetchedAt?.toISOString?.() ?? null,
+      contractAddress: row.contractAddress ?? null,
+      contractChain: row.contractChain ?? null,
+      dailyActiveWallets: row.dailyActiveWallets ?? 0,
+      weeklyActiveWallets: row.weeklyActiveWallets ?? 0,
+      monthlyActiveWallets: row.monthlyActiveWallets ?? 0,
+      transactions24h: row.transactions24h ?? 0,
+      transactions7d: row.transactions7d ?? 0,
+      contractCalls24h: row.contractCalls24h ?? 0,
+      activityHistory: (row.activityHistory as Array<{ date: string; wallets: number; transactions: number }> | null) ?? null,
+      rankByActivity: row.rankByActivity ?? null,
+      rankByTvl: row.rankByTvl ?? null,
+      rankByVolume: row.rankByVolume ?? null,
+    };
+  }
+
   async getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]> {
     const conditions = [];
     
@@ -98,62 +143,14 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${protocols.chains}::jsonb @> ${JSON.stringify([filters.chain])}::jsonb`);
     }
     
-    let query = db.select({
-      id: protocols.id,
-      name: protocols.name,
-      category: protocols.category,
-      chains: protocols.chains,
-      tvl: protocols.tvl,
-      volume24h: protocols.volume24h,
-      change24h: protocols.change24h,
-      logo: protocols.logo,
-      securityScore: protocols.securityScore,
-      audited: protocols.audited,
-      auditCount: protocols.auditCount,
-      sponsorshipTier: protocols.sponsorshipTier,
-      featuredPosition: protocols.featuredPosition,
-      sponsoredUntil: protocols.sponsoredUntil,
-      contractAddress: protocols.contractAddress,
-      contractChain: protocols.contractChain,
-    }).from(protocols);
+    let query = db.select().from(protocols);
     
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
     
     const result = await query.orderBy(desc(protocols.tvl));
-    return result.map(p => ({
-      id: p.id,
-      name: p.name,
-      chains: p.chains as string[],
-      category: p.category,
-      tvl: p.tvl,
-      volume24h: p.volume24h,
-      change24h: p.change24h,
-      age: null,
-      audited: p.audited,
-      auditCount: p.auditCount,
-      auditNote: null,
-      auditLinks: null,
-      securityScore: p.securityScore,
-      logo: p.logo,
-      website: null,
-      twitter: null,
-      github: null,
-      description: '',
-      autoDiscovered: false,
-      manuallyAdded: false,
-      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
-      featuredPosition: p.featuredPosition,
-      defiSecurityScore: null,
-      defiAuditReports: null,
-      defiHasMultisig: null,
-      defiHasTimelock: null,
-      defiDataFetchedAt: null,
-      contractAddress: p.contractAddress ?? null,
-      contractChain: p.contractChain ?? null,
-    }));
+    return result.map(p => this.mapProtocol(p));
   }
 
   async addProtocol(protocol: InsertProtocol): Promise<Protocol> {
@@ -171,38 +168,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     
-    return {
-      id: result.id,
-      name: result.name,
-      chains: result.chains as string[],
-      category: result.category,
-      tvl: result.tvl,
-      volume24h: result.volume24h,
-      change24h: result.change24h,
-      age: result.age,
-      audited: result.audited,
-      auditCount: result.auditCount,
-      auditNote: result.auditNote,
-      auditLinks: result.auditLinks as string[] | null,
-      securityScore: result.securityScore,
-      logo: result.logo,
-      website: result.website,
-      twitter: result.twitter,
-      github: result.github,
-      description: result.description,
-      autoDiscovered: result.autoDiscovered,
-      manuallyAdded: result.manuallyAdded,
-      sponsoredUntil: result.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (result.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
-      featuredPosition: result.featuredPosition,
-      defiSecurityScore: result.defiSecurityScore ?? null,
-      defiAuditReports: result.defiAuditReports as any ?? null,
-      defiHasMultisig: result.defiHasMultisig ?? null,
-      defiHasTimelock: result.defiHasTimelock ?? null,
-      defiDataFetchedAt: result.defiDataFetchedAt?.toISOString() ?? null,
-      contractAddress: result.contractAddress ?? null,
-      contractChain: result.contractChain ?? null,
-    };
+    return this.mapProtocol(result);
   }
 
   async bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void> {
@@ -436,79 +402,18 @@ export class DatabaseStorage implements IStorage {
 
   async getProtocolsByDiscoveryDate(limit: number = 50): Promise<Protocol[]> {
     const result = await db
-      .select({
-        id: protocols.id,
-        name: protocols.name,
-        category: protocols.category,
-        chains: protocols.chains,
-        tvl: protocols.tvl,
-        volume24h: protocols.volume24h,
-        change24h: protocols.change24h,
-        logo: protocols.logo,
-        securityScore: protocols.securityScore,
-        audited: protocols.audited,
-        auditCount: protocols.auditCount,
-        sponsorshipTier: protocols.sponsorshipTier,
-        featuredPosition: protocols.featuredPosition,
-        sponsoredUntil: protocols.sponsoredUntil,
-      })
+      .select()
       .from(protocols)
       .orderBy(desc(protocols.discoveredAt))
       .limit(limit);
     
-    return result.map(p => ({
-      id: p.id,
-      name: p.name,
-      chains: p.chains as string[],
-      category: p.category,
-      tvl: p.tvl,
-      volume24h: p.volume24h,
-      change24h: p.change24h,
-      age: null,
-      audited: p.audited,
-      auditCount: p.auditCount,
-      auditNote: null,
-      auditLinks: null,
-      securityScore: p.securityScore,
-      logo: p.logo,
-      website: null,
-      twitter: null,
-      github: null,
-      description: '',
-      autoDiscovered: false,
-      manuallyAdded: false,
-      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
-      featuredPosition: p.featuredPosition,
-      defiSecurityScore: null,
-      defiAuditReports: null,
-      defiHasMultisig: null,
-      defiHasTimelock: null,
-      defiDataFetchedAt: null,
-      contractAddress: null,
-      contractChain: null,
-    }));
+    return result.map(p => this.mapProtocol(p));
   }
 
   async getProtocolsByTvlGrowth(limit: number = 50): Promise<Protocol[]> {
     // Use NOT EXISTS subquery to avoid duplicate rows from multiple security scans per protocol
     const result = await db
-      .select({
-        id: protocols.id,
-        name: protocols.name,
-        category: protocols.category,
-        chains: protocols.chains,
-        tvl: protocols.tvl,
-        volume24h: protocols.volume24h,
-        change24h: protocols.change24h,
-        logo: protocols.logo,
-        securityScore: protocols.securityScore,
-        audited: protocols.audited,
-        auditCount: protocols.auditCount,
-        sponsorshipTier: protocols.sponsorshipTier,
-        featuredPosition: protocols.featuredPosition,
-        sponsoredUntil: protocols.sponsoredUntil,
-      })
+      .select()
       .from(protocols)
       .where(and(
         gt(protocols.change24h, 0), // Positive growth
@@ -524,95 +429,18 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(protocols.change24h)) // Sort by percentage growth
       .limit(limit);
     
-    return result.map(p => ({
-      id: p.id,
-      name: p.name,
-      chains: p.chains as string[],
-      category: p.category,
-      tvl: p.tvl,
-      volume24h: p.volume24h,
-      change24h: p.change24h,
-      age: null,
-      audited: p.audited,
-      auditCount: p.auditCount,
-      auditNote: null,
-      auditLinks: null,
-      securityScore: p.securityScore,
-      logo: p.logo,
-      website: null,
-      twitter: null,
-      github: null,
-      description: '',
-      autoDiscovered: false,
-      manuallyAdded: false,
-      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
-      featuredPosition: p.featuredPosition,
-      defiSecurityScore: null,
-      defiAuditReports: null,
-      defiHasMultisig: null,
-      defiHasTimelock: null,
-      defiDataFetchedAt: null,
-      contractAddress: null,
-      contractChain: null,
-    }));
+    return result.map(p => this.mapProtocol(p));
   }
 
   async getSponsoredProtocols(): Promise<Protocol[]> {
     const now = new Date();
     const result = await db
-      .select({
-        id: protocols.id,
-        name: protocols.name,
-        category: protocols.category,
-        chains: protocols.chains,
-        tvl: protocols.tvl,
-        volume24h: protocols.volume24h,
-        change24h: protocols.change24h,
-        logo: protocols.logo,
-        securityScore: protocols.securityScore,
-        audited: protocols.audited,
-        auditCount: protocols.auditCount,
-        sponsorshipTier: protocols.sponsorshipTier,
-        featuredPosition: protocols.featuredPosition,
-        sponsoredUntil: protocols.sponsoredUntil,
-      })
+      .select()
       .from(protocols)
       .where(gt(protocols.sponsoredUntil, now))
       .orderBy(protocols.featuredPosition);
     
-    return result.map(p => ({
-      id: p.id,
-      name: p.name,
-      chains: p.chains as string[],
-      category: p.category,
-      tvl: p.tvl,
-      volume24h: p.volume24h,
-      change24h: p.change24h,
-      age: null,
-      audited: p.audited,
-      auditCount: p.auditCount,
-      auditNote: null,
-      auditLinks: null,
-      securityScore: p.securityScore,
-      logo: p.logo,
-      website: null,
-      twitter: null,
-      github: null,
-      description: '',
-      autoDiscovered: false,
-      manuallyAdded: false,
-      sponsoredUntil: p.sponsoredUntil?.toISOString() ?? null,
-      sponsorshipTier: (p.sponsorshipTier || 'free') as 'free' | 'featured' | 'sponsored',
-      featuredPosition: p.featuredPosition,
-      defiSecurityScore: null,
-      defiAuditReports: null,
-      defiHasMultisig: null,
-      defiHasTimelock: null,
-      defiDataFetchedAt: null,
-      contractAddress: null,
-      contractChain: null,
-    }));
+    return result.map(p => this.mapProtocol(p));
   }
 
   async updateProtocolSponsorship(

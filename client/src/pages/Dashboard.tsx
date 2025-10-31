@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import ProtocolTable from '@/components/ProtocolTable';
-import ProtocolDetailModal from '@/components/ProtocolDetailModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AddDAppByUrlDialog from '@/components/AddDAppByUrlDialog';
 import TrendingTicker from '@/components/TrendingTicker';
@@ -33,7 +32,6 @@ interface PaginatedResponse {
 }
 
 export default function Dashboard() {
-  const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [searchValue, setSearchValue] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -329,14 +327,6 @@ export default function Dashboard() {
     });
   }, [isOnline, refetch, toast]);
 
-  const handleViewDetails = useCallback((protocol: Protocol) => {
-    // Show brief loading state for better UX feedback
-    setIsProcessing(true);
-    setTimeout(() => {
-      setSelectedProtocol(protocol);
-      setIsProcessing(false);
-    }, 50); // Minimal delay to show visual feedback
-  }, []);
 
   const handleScan = useCallback(async (protocol: Protocol) => {
     scanMutation.mutate([protocol.id]);
@@ -375,7 +365,7 @@ export default function Dashboard() {
     <div className="bg-background min-h-screen">
       <AdSpace position="top" />
       
-      <TrendingTicker onProtocolClick={handleViewDetails} />
+      <TrendingTicker />
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
@@ -552,7 +542,6 @@ export default function Dashboard() {
                   key={`${selectedChain}-${selectedCategory}-${sortBy}-${activeTab}-${debouncedSearch}`}
                   protocols={displayProtocols}
                   securityScans={securityScans}
-                  onViewDetails={handleViewDetails}
                   onBlacklist={handleBlacklist}
                 />
                 
@@ -593,16 +582,6 @@ export default function Dashboard() {
       </main>
 
       <AdSpace position="bottom" />
-
-      <ProtocolDetailModal
-        protocol={selectedProtocol}
-        scanResult={selectedProtocol ? securityScans[selectedProtocol.id] : undefined}
-        isOpen={!!selectedProtocol}
-        onClose={() => setSelectedProtocol(null)}
-        onScan={handleScanProtocol}
-        onBlacklist={handleBlacklist}
-        isScanning={scanMutation.isPending}
-      />
     </div>
   );
 }

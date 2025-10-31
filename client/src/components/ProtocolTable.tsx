@@ -1,5 +1,6 @@
 import { useState, useMemo, memo, useCallback } from 'react';
 import { Star, Shield, Ban } from 'lucide-react';
+import { Link } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,7 +21,6 @@ interface AdminSession {
 interface ProtocolTableProps {
   protocols: Protocol[];
   securityScans: Record<string, SecurityScan>;
-  onViewDetails: (protocol: Protocol) => void;
   onBlacklist?: (protocol: Protocol) => void;
 }
 
@@ -55,7 +55,6 @@ const ProtocolRow = memo(({
   scan, 
   isWatchlisted, 
   onToggleWatchlist, 
-  onViewDetails,
   onBlacklist,
   isAdmin
 }: { 
@@ -64,7 +63,6 @@ const ProtocolRow = memo(({
   scan: SecurityScan | undefined; 
   isWatchlisted: boolean;
   onToggleWatchlist: (id: string) => void;
-  onViewDetails: (protocol: Protocol) => void;
   onBlacklist?: (protocol: Protocol) => void;
   isAdmin: boolean;
 }) => {
@@ -127,8 +125,7 @@ const ProtocolRow = memo(({
 
   return (
     <tr 
-      className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
-      onClick={() => onViewDetails(protocol)}
+      className="border-b border-border hover:bg-muted/50 transition-colors"
       data-testid={`protocol-row-${protocol.id}`}
     >
       {/* Watchlist Star */}
@@ -151,26 +148,28 @@ const ProtocolRow = memo(({
       
       {/* Name & Logo */}
       <td className="px-3 py-4">
-        <div className="flex items-center gap-3">
-          {protocol.logo ? (
-            <img 
-              src={protocol.logo} 
-              alt={protocol.name}
-              className="w-6 h-6 rounded-full"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-              <Shield className="w-3 h-3 text-primary" />
+        <Link href={`/protocol/${protocol.id}`}>
+          <div className="flex items-center gap-3 cursor-pointer hover-elevate">
+            {protocol.logo ? (
+              <img 
+                src={protocol.logo} 
+                alt={protocol.name}
+                className="w-6 h-6 rounded-full"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Shield className="w-3 h-3 text-primary" />
+              </div>
+            )}
+            <div>
+              <div className="font-semibold text-sm">{protocol.name}</div>
+              <div className="text-xs text-muted-foreground">{protocol.category}</div>
             </div>
-          )}
-          <div>
-            <div className="font-semibold text-sm">{protocol.name}</div>
-            <div className="text-xs text-muted-foreground">{protocol.category}</div>
           </div>
-        </div>
+        </Link>
       </td>
       
       {/* Price (TVL) */}
@@ -274,7 +273,6 @@ ProtocolRow.displayName = 'ProtocolRow';
 const ProtocolTable = memo(function ProtocolTable({ 
   protocols, 
   securityScans, 
-  onViewDetails,
   onBlacklist
 }: ProtocolTableProps) {
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
@@ -327,7 +325,6 @@ const ProtocolTable = memo(function ProtocolTable({
                   scan={securityScans[protocol.id]}
                   isWatchlisted={watchlist.has(protocol.id)}
                   onToggleWatchlist={toggleWatchlist}
-                  onViewDetails={onViewDetails}
                   onBlacklist={onBlacklist}
                   isAdmin={isAdmin}
                 />

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download } from 'lucide-react';
+import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import type { Protocol, BlacklistEntry, TwitterAlert, CertikAudit } from '@shared/schema';
+import type { Protocol, BlacklistEntry, TwitterAlert, CertikAudit, ProtocolSubmission } from '@shared/schema';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface AdminSession {
@@ -369,6 +370,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [editingProtocol, setEditingProtocol] = useState<Protocol | null>(null);
   const [editFormData, setEditFormData] = useState<EditProtocolData | null>(null);
+  const [viewingSubmission, setViewingSubmission] = useState<ProtocolSubmission | null>(null);
 
   const { data: session, isLoading: sessionLoading } = useQuery<AdminSession>({
     queryKey: ['/api/admin/session'],
@@ -387,6 +389,11 @@ export default function AdminDashboard() {
 
   const { data: blacklist = [], isLoading: blacklistLoading } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
+    enabled: session?.authenticated,
+  });
+
+  const { data: submissions = [], isLoading: submissionsLoading } = useQuery<ProtocolSubmission[]>({
+    queryKey: ['/api/protocol-submissions'],
     enabled: session?.authenticated,
   });
 
@@ -467,6 +474,50 @@ export default function AdminDashboard() {
       toast({
         title: 'Update Failed',
         description: error instanceof Error ? error.message : 'Failed to update protocol',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const approveSubmissionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('PATCH', `/api/protocol-submissions/${id}/approve`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/protocol-submissions'] });
+      toast({
+        title: 'Submission Approved',
+        description: 'Protocol submission has been approved successfully',
+      });
+      setViewingSubmission(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Approval Failed',
+        description: error instanceof Error ? error.message : 'Failed to approve submission',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const rejectSubmissionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('PATCH', `/api/protocol-submissions/${id}/reject`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/protocol-submissions'] });
+      toast({
+        title: 'Submission Rejected',
+        description: 'Protocol submission has been rejected',
+      });
+      setViewingSubmission(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Rejection Failed',
+        description: error instanceof Error ? error.message : 'Failed to reject submission',
         variant: 'destructive',
       });
     },
@@ -582,6 +633,9 @@ export default function AdminDashboard() {
             </TabsTrigger>
             <TabsTrigger value="sponsorships" data-testid="tab-sponsorships">
               Sponsorships ({sponsoredProtocols.length})
+            </TabsTrigger>
+            <TabsTrigger value="submissions" data-testid="tab-submissions">
+              Submissions
             </TabsTrigger>
             <TabsTrigger value="twitter" data-testid="tab-twitter">
               Twitter Monitoring
@@ -770,6 +824,145 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="submissions" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Protocol Submissions</CardTitle>
+                <CardDescription>
+                  Review and manage community-submitted protocols
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {submissionsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading submissions...
+                  </div>
+                ) : submissions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No protocol submissions yet
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Submitter</TableHead>
+                          <TableHead>Protocol Name</TableHead>
+                          <TableHead>Website</TableHead>
+                          <TableHead>Chains</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Submitted</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {submissions.map((submission) => (
+                          <TableRow key={submission.id} data-testid={`row-submission-${submission.id}`}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">
+                                  {submission.submitterName || 'Anonymous'}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {submission.submitterEmail}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {submission.protocolName}
+                            </TableCell>
+                            <TableCell>
+                              <a 
+                                href={submission.website} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline text-sm"
+                              >
+                                {new URL(submission.website).hostname}
+                              </a>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {submission.chains.slice(0, 2).map((chain) => (
+                                  <Badge key={chain} variant="outline" className="text-xs">
+                                    {chain}
+                                  </Badge>
+                                ))}
+                                {submission.chains.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{submission.chains.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{submission.category}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                data-testid={`badge-status-${submission.id}`}
+                                className={
+                                  submission.status === 'approved'
+                                    ? 'bg-green-500/20 text-green-700 border-green-500/30'
+                                    : submission.status === 'rejected'
+                                    ? 'bg-red-500/20 text-red-700 border-red-500/30'
+                                    : 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+                                }
+                              >
+                                {submission.status.toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {new Date(submission.submittedAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setViewingSubmission(submission)}
+                                  data-testid={`button-view-${submission.id}`}
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  View
+                                </Button>
+                                {submission.status === 'pending' && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => approveSubmissionMutation.mutate(submission.id)}
+                                      disabled={approveSubmissionMutation.isPending || rejectSubmissionMutation.isPending}
+                                      data-testid={`button-approve-${submission.id}`}
+                                    >
+                                      <Check className="w-3 h-3 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => rejectSubmissionMutation.mutate(submission.id)}
+                                      disabled={approveSubmissionMutation.isPending || rejectSubmissionMutation.isPending}
+                                      data-testid={`button-reject-${submission.id}`}
+                                    >
+                                      <XCircle className="w-3 h-3 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="twitter" className="space-y-4">
             <TwitterMonitoringPanel session={session} />
           </TabsContent>
@@ -888,6 +1081,237 @@ export default function AdminDashboard() {
                   {updateProtocolMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingSubmission} onOpenChange={(open) => !open && setViewingSubmission(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submission Details</DialogTitle>
+            <DialogDescription>
+              Review protocol submission information
+            </DialogDescription>
+          </DialogHeader>
+          {viewingSubmission && (
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Submitter Information</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Name</Label>
+                      <p className="text-sm">{viewingSubmission.submitterName || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <p className="text-sm">{viewingSubmission.submitterEmail}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Protocol Information</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Protocol Name</Label>
+                      <p className="text-sm font-medium">{viewingSubmission.protocolName}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Website</Label>
+                      <a 
+                        href={viewingSubmission.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        {viewingSubmission.website}
+                      </a>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Category</Label>
+                      <p className="text-sm">{viewingSubmission.category}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Chains</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {viewingSubmission.chains.map((chain) => (
+                          <Badge key={chain} variant="outline" className="text-xs">
+                            {chain}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Description</Label>
+                      <p className="text-sm mt-1">{viewingSubmission.description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {viewingSubmission.contractAddresses && Object.keys(viewingSubmission.contractAddresses).length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2">Contract Addresses</h3>
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                      {Object.entries(viewingSubmission.contractAddresses).map(([chain, address]) => (
+                        <div key={chain}>
+                          <Label className="text-xs text-muted-foreground">{chain}</Label>
+                          <p className="text-xs font-mono break-all">{address}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Social Links</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    {viewingSubmission.twitter && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Twitter</Label>
+                        <a 
+                          href={viewingSubmission.twitter} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline block"
+                        >
+                          {viewingSubmission.twitter}
+                        </a>
+                      </div>
+                    )}
+                    {viewingSubmission.github && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">GitHub</Label>
+                        <a 
+                          href={viewingSubmission.github} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline block"
+                        >
+                          {viewingSubmission.github}
+                        </a>
+                      </div>
+                    )}
+                    {viewingSubmission.telegram && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Telegram</Label>
+                        <a 
+                          href={viewingSubmission.telegram} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline block"
+                        >
+                          {viewingSubmission.telegram}
+                        </a>
+                      </div>
+                    )}
+                    {viewingSubmission.discord && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Discord</Label>
+                        <a 
+                          href={viewingSubmission.discord} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline block"
+                        >
+                          {viewingSubmission.discord}
+                        </a>
+                      </div>
+                    )}
+                    {!viewingSubmission.twitter && !viewingSubmission.github && !viewingSubmission.telegram && !viewingSubmission.discord && (
+                      <p className="text-sm text-muted-foreground">No social links provided</p>
+                    )}
+                  </div>
+                </div>
+
+                {viewingSubmission.auditLinks && viewingSubmission.auditLinks.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2">Audit Links</h3>
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-1">
+                      {viewingSubmission.auditLinks.map((link, index) => (
+                        <a 
+                          key={index}
+                          href={link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline block"
+                        >
+                          {link}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Submission Status</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <div className="mt-1">
+                        <Badge
+                          className={
+                            viewingSubmission.status === 'approved'
+                              ? 'bg-green-500/20 text-green-700 border-green-500/30'
+                              : viewingSubmission.status === 'rejected'
+                              ? 'bg-red-500/20 text-red-700 border-red-500/30'
+                              : 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+                          }
+                        >
+                          {viewingSubmission.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Submitted At</Label>
+                      <p className="text-sm">{new Date(viewingSubmission.submittedAt).toLocaleString()}</p>
+                    </div>
+                    {viewingSubmission.reviewedAt && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Reviewed At</Label>
+                        <p className="text-sm">{new Date(viewingSubmission.reviewedAt).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {viewingSubmission.adminNotes && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Admin Notes</Label>
+                        <p className="text-sm">{viewingSubmission.adminNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {viewingSubmission.status === 'pending' && (
+                <div className="flex gap-2 justify-end pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setViewingSubmission(null)}
+                    data-testid="button-close-submission"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => rejectSubmissionMutation.mutate(viewingSubmission.id)}
+                    disabled={approveSubmissionMutation.isPending || rejectSubmissionMutation.isPending}
+                    data-testid="button-reject-submission"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    {rejectSubmissionMutation.isPending ? 'Rejecting...' : 'Reject'}
+                  </Button>
+                  <Button
+                    onClick={() => approveSubmissionMutation.mutate(viewingSubmission.id)}
+                    disabled={approveSubmissionMutation.isPending || rejectSubmissionMutation.isPending}
+                    data-testid="button-approve-submission"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    {approveSubmissionMutation.isPending ? 'Approving...' : 'Approve'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

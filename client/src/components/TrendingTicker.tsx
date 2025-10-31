@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
 import type { Protocol } from '@shared/schema';
 import { TrendingUp } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -17,11 +18,7 @@ const formatTVL = (tvl: number): string => {
   return `$${tvl.toFixed(2)}`;
 };
 
-interface TrendingTickerProps {
-  onProtocolClick?: (protocol: Protocol) => void;
-}
-
-export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps) {
+export default function TrendingTicker() {
   const { data: protocols = [] } = useQuery<Protocol[]>({
     queryKey: ['/api/protocols/trending'],
     refetchInterval: 60000, // Refresh every minute
@@ -72,9 +69,9 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
   const renderProtocol = (protocol: Protocol, index: number, totalLength: number) => {
     const rank = (index % totalLength) + 1;
     return (
-      <button
+      <Link
         key={`${protocol.id}-${index}`}
-        onClick={() => onProtocolClick?.(protocol)}
+        href={`/protocol/${protocol.id}`}
         className="inline-flex items-center gap-1.5 sm:gap-2 hover-elevate active-elevate-2 px-1.5 sm:px-2 py-1 rounded transition-colors text-xs sm:text-sm"
         data-testid={`trending-protocol-${protocol.id}`}
       >
@@ -86,7 +83,7 @@ export default function TrendingTicker({ onProtocolClick }: TrendingTickerProps)
         <span className="text-muted-foreground font-medium hidden xs:inline">
           {formatTVL(protocol.tvl)}
         </span>
-      </button>
+      </Link>
     );
   };
 
