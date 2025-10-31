@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, ExternalLink, Loader2, Search, Info, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, ExternalLink, Loader2, Search, Info, FileText, ChevronDown, ChevronUp, Monitor, Smartphone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -289,18 +290,66 @@ export default function WebsiteScanner() {
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-4">
-              {/* Guide */}
+              {/* Guide - Desktop and Mobile */}
               <Alert>
                 <Info className="w-4 h-4" />
                 <AlertTitle>How to extract HTML from protected websites</AlertTitle>
-                <AlertDescription className="mt-2">
-                  <ol className="list-decimal list-inside space-y-1 text-sm">
-                    <li>Visit the suspicious website in your browser</li>
-                    <li>Right-click anywhere on the page and select "View Page Source" (or press Ctrl+U / Cmd+U)</li>
-                    <li>Copy all the HTML code (Ctrl+A / Cmd+A, then Ctrl+C / Cmd+C)</li>
-                    <li>Paste the HTML into the textarea below</li>
-                    <li>Click "Analyze Content" to scan for phishing patterns</li>
-                  </ol>
+                <AlertDescription className="mt-3">
+                  <Tabs defaultValue="desktop" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="desktop" className="text-xs" data-testid="tab-desktop-guide">
+                        <Monitor className="w-3 h-3 mr-1" />
+                        Desktop
+                      </TabsTrigger>
+                      <TabsTrigger value="mobile" className="text-xs" data-testid="tab-mobile-guide">
+                        <Smartphone className="w-3 h-3 mr-1" />
+                        Mobile
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="desktop" className="mt-3">
+                      <ol className="list-decimal list-inside space-y-1.5 text-sm">
+                        <li>Visit the suspicious website in your browser</li>
+                        <li>Right-click anywhere on the page and select "View Page Source" (or press Ctrl+U / Cmd+U)</li>
+                        <li>Copy all the HTML code (Ctrl+A / Cmd+A, then Ctrl+C / Cmd+C)</li>
+                        <li>Paste the HTML into the textarea below</li>
+                        <li>Click "Analyze Content" to scan for phishing patterns</li>
+                      </ol>
+                    </TabsContent>
+                    
+                    <TabsContent value="mobile" className="mt-3">
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium">For iPhone/iPad (Safari):</p>
+                          <ol className="list-decimal list-inside space-y-1 text-sm pl-2">
+                            <li>Visit the website in Safari</li>
+                            <li>Add "view-source:" before the URL (e.g., view-source:https://example.com)</li>
+                            <li>Press and hold anywhere on the code, tap "Select All"</li>
+                            <li>Tap "Copy", then paste here</li>
+                          </ol>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium">For Android (Chrome):</p>
+                          <ol className="list-decimal list-inside space-y-1 text-sm pl-2">
+                            <li>Visit the website in Chrome</li>
+                            <li>Type "view-source:" before the URL in the address bar</li>
+                            <li>Long-press on the code and select "Select All"</li>
+                            <li>Tap "Copy", then paste here</li>
+                          </ol>
+                        </div>
+                        
+                        <Alert className="mt-3">
+                          <Info className="w-3 h-3" />
+                          <AlertDescription className="text-xs">
+                            Tip: Some mobile browsers may not support view-source. Try using desktop mode or a browser like Kiwi Browser or Firefox.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </AlertDescription>
               </Alert>
 

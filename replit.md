@@ -58,6 +58,12 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
   - User-friendly recommendations and actionable security guidance
   - Visual risk score visualization with progress bars and color-coded badges
   - Detection of 30+ phishing patterns including wallet drainer code, fake support sites, credential requests, and celebrity scams
+  - **Manual HTML Content Analysis**: For websites with anti-bot protection (Cloudflare), users can manually paste HTML content for analysis. Includes comprehensive guides:
+    - Desktop guide: Right-click → View Page Source (Ctrl+U / Cmd+U)
+    - Mobile guide: Platform-specific instructions for iPhone/iPad (Safari) and Android (Chrome) using "view-source:" URL prefix
+    - Tab-based interface for easy platform selection
+    - Server-side validation with 5MB content limit and UI warnings for large content (>1MB)
+    - POST /api/scan-html-content endpoint for processing manually submitted content
   - Accessible via `/scan-website` route and sidebar navigation
   - Example test cases included: audius-review.com, metamask-recovery.xyz, uniswap.org
   - Future maintenance: Monitor heuristic lists (brands, TLDs, typos) for periodic updates as threat landscape evolves
