@@ -21,6 +21,13 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
 - **Contract Verification Tracking**: Automated discovery of newly verified smart contracts across 8 major blockchain explorers.
+- **Security Statistics Dashboard**: Comprehensive real-time statistics page displaying:
+  - Total protocols and scan coverage percentage
+  - Severity breakdown with visual progress bars (CRITICAL, HIGH, MEDIUM, LOW, SAFE)
+  - 2025 Advanced Drainer Detection counts (8 categories)
+  - Top 20 highest risk protocols with scores and threat types
+  - Auto-refresh every 30 seconds for real-time updates
+  - Accessible via `/security-stats` route and sidebar navigation
 - **Triple-Layer Security Analysis**: Includes metadata-based scanning (38+ threat categories), GoPlus Security API for smart contract code analysis, and advanced 2025 drainer detection (Pink, Angel, CLINKSINK, EIP-2612, approval phishing, CREATE2 evasion, Solana-specific drains, DaaS infrastructure).
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores (≥80 points) are automatically blacklisted.
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
