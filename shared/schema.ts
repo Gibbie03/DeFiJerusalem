@@ -359,6 +359,7 @@ export type SecurityScan = {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   threats: Threat[];
   score: number;
+  scannedAt: string;
 };
 
 export type SecurityMetrics = {

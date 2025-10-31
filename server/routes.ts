@@ -3018,6 +3018,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/reports/top-300-security-pdf - Generate PDF report of top 300 protocols by security ranking
+  app.get("/api/reports/top-300-security-pdf", async (req: Request, res: Response) => {
+    try {
+      console.log('[PDF-REPORT] Generating top 300 protocols security report...');
+
+      // Query top 300 protocols by security ranking
+      const protocols = await storage.getProtocols();
+      const scans = await storage.getAllSecurityScans();
+
+      // Combine protocol and scan data
+      interface ProtocolWithScan {
+        id: string;
+        name: string;
+        tvl: number;
+        category: string;
+        chains: string[];
+        website: string;
+        twitter?: string | null;
+        github?: string | null;
+        score: number;
+        severity: string;
+        threats: any[];
+        scanned_at: Date;
+        is_blacklisted: boolean;
+      }
+
+      const protocolsWithScans: ProtocolWithScan[] = protocols
+        .filter(p => scans[p.id])
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          tvl: p.tvl || 0,
+          category: p.category || 'Unknown',
+          chains: Array.isArray(p.chains) ? p.chains : [],
+          website: p.website || '',
+          twitter: p.twitter || undefined,
+          github: p.github || undefined,
+          score: scans[p.id].score,
+          severity: scans[p.id].severity,
+          threats: scans[p.id].threats || [],
+          scanned_at: new Date(scans[p.id].scannedAt),
+          is_blacklisted: scans[p.id].isBlacklisted,
+        }));
+
+      // Sort by security ranking
+      const severityOrder: Record<string, number> = {
+        'SAFE': 1,
+        'LOW': 2,
+        'MEDIUM': 3,
+        'HIGH': 4,
+        'CRITICAL': 5,
+      };
+
+      protocolsWithScans.sort((a, b) => {
+        const severityDiff = (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99);
+        if (severityDiff !== 0) return severityDiff;
+        
+        const scoreDiff = a.score - b.score;
+        if (scoreDiff !== 0) return scoreDiff;
+        
+        return (b.tvl || 0) - (a.tvl || 0);
+      });
+
+      // Get top 300
+      const top300 = protocolsWithScans.slice(0, 300);
+
+      console.log(`[PDF-REPORT] Found ${top300.length} protocols for report`);
+
+      // Generate PDF
+      const { PDFReportGenerator } = await import('./lib/pdf-report-generator');
+      const generator = new PDFReportGenerator();
+
+      // Set response headers
+      const filename = `JERUSALEM_DeFi_Top_300_Security_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      // Generate and stream PDF
+      await generator.generateReport(top300, res);
+
+      console.log('[PDF-REPORT] Report generated successfully');
+    } catch (error: any) {
+      console.error('[PDF-REPORT] Error generating report:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Failed to generate PDF report' });
+      }
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

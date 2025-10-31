@@ -349,6 +349,7 @@ export class DatabaseStorage implements IStorage {
         message: t.message,
       })),
       score: result.score,
+      scannedAt: result.scannedAt.toISOString(),
     };
   }
 
@@ -360,7 +361,8 @@ export class DatabaseStorage implements IStorage {
         is_blacklisted, 
         severity, 
         threats, 
-        score
+        score,
+        scanned_at
       FROM security_scans
       ORDER BY protocol_id, scanned_at DESC
     `);
@@ -373,6 +375,7 @@ export class DatabaseStorage implements IStorage {
         severity: row.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
         threats: row.threats as any[],
         score: row.score as number,
+        scannedAt: row.scanned_at as string,
       };
     }
     
