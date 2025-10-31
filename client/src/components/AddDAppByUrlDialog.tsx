@@ -11,8 +11,10 @@ import { insertProtocolSchema } from '@shared/schema';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { Link as LinkIcon, Loader2 } from 'lucide-react';
+import { Link as LinkIcon, Loader2, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 const addDAppSchema = insertProtocolSchema.pick({
   name: true,
@@ -21,13 +23,35 @@ const addDAppSchema = insertProtocolSchema.pick({
   chains: true,
   description: true,
 }).extend({
-  url: z.string().url('Please enter a valid URL'),
+  url: z.string().min(1, 'Please enter a website URL or domain'),
 });
 
 type AddDAppFormData = z.infer<typeof addDAppSchema>;
 
+interface ScanResult {
+  address: string;
+  chain: string;
+  explorerUrl: string;
+  scanResults: {
+    isHoneypot: boolean;
+    cannotBuy: boolean;
+    cannotSell: boolean;
+    buyTax: number;
+    sellTax: number;
+    hiddenOwner: boolean;
+    isProxy: boolean;
+    isOpenSource: boolean;
+    threats: string[];
+    riskScore: number;
+    severity: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  };
+}
+
 export default function AddDAppByUrlDialog() {
   const [open, setOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanResults, setScanResults] = useState<ScanResult[] | null>(null);
+  const [scanMessage, setScanMessage] = useState<string>('');
   const { toast } = useToast();
 
   const form = useForm<AddDAppFormData>({
@@ -73,15 +97,78 @@ export default function AddDAppByUrlDialog() {
   });
 
   const handleUrlPaste = async (url: string) => {
+    if (!url) return;
+
     try {
-      const urlObj = new URL(url);
+      // Normalize URL: add https:// if missing
+      let normalizedUrl = url.trim();
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = 'https://' + normalizedUrl;
+      }
+
+      // Parse to extract domain and name
+      const urlObj = new URL(normalizedUrl);
       const domain = urlObj.hostname.replace('www.', '');
       const name = domain.split('.')[0];
       
       form.setValue('name', name.charAt(0).toUpperCase() + name.slice(1));
-      form.setValue('website', url);
+      form.setValue('website', normalizedUrl);
+
+      // Automatically scan the website for contracts
+      setScanning(true);
+      setScanResults(null);
+      setScanMessage('');
+
+      const response = await apiRequest('POST', '/api/scan-website', { url: normalizedUrl });
+      const data = await response.json();
+
+      if (data.success) {
+        setScanResults(data.contracts || []);
+        
+        // Check if contracts were found but none were scanned successfully
+        const foundButNotScanned = data.contractsFound > 0 && (!data.contracts || data.contracts.length === 0);
+        
+        if (foundButNotScanned) {
+          setScanMessage('Found contract addresses but could not scan them. The contracts may be on unsupported chains or the scanning service is unavailable.');
+        } else {
+          setScanMessage(data.message || '');
+        }
+        
+        // Auto-detect chain from first contract if found
+        if (data.contracts && data.contracts.length > 0) {
+          const chainMap: Record<string, string> = {
+            'Ethereum': 'ethereum',
+            'Binance': 'bsc',
+            'Polygon': 'polygon',
+            'Arbitrum': 'arbitrum',
+            'Optimism': 'optimism',
+            'Avalanche': 'avalanche',
+            'Base': 'base',
+          };
+          const detectedChain = chainMap[data.contracts[0].chain] || 'ethereum';
+          form.setValue('chains', [detectedChain]);
+        }
+
+        toast({
+          title: data.contractsScanned > 0 ? 'Contracts Scanned' : 
+                 data.contractsFound > 0 ? 'Contracts Found' : 
+                 'No Contracts Found',
+          description: data.message,
+          variant: foundButNotScanned ? 'destructive' : 'default',
+        });
+      } else {
+        setScanMessage(data.message || 'Failed to scan website');
+      }
     } catch (error) {
-      console.error('Invalid URL:', error);
+      console.error('Error scanning URL:', error);
+      setScanMessage(error instanceof Error ? error.message : 'Failed to scan website. Please check the URL and try again.');
+      toast({
+        title: 'Scan Failed',
+        description: 'Unable to scan the website. Please verify the URL is correct.',
+        variant: 'destructive',
+      });
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -111,7 +198,7 @@ export default function AddDAppByUrlDialog() {
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="https://example.com"
+                      placeholder="empower.cash or uniswap.org"
                       data-testid="input-dapp-url"
                       onBlur={(e) => handleUrlPaste(e.target.value)}
                     />
@@ -120,6 +207,78 @@ export default function AddDAppByUrlDialog() {
                 </FormItem>
               )}
             />
+
+            {scanning && (
+              <Alert data-testid="alert-scanning">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <AlertDescription>
+                  Scanning website for smart contracts and security threats...
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!scanning && scanResults && scanResults.length > 0 && (
+              <div className="space-y-2" data-testid="scan-results">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Discovered Contracts ({scanResults.length})
+                </Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {scanResults.map((result, index) => (
+                    <div 
+                      key={index}
+                      className="p-3 border rounded-md bg-card space-y-2"
+                      data-testid={`contract-result-${index}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-mono truncate" title={result.address}>
+                            {result.address.slice(0, 10)}...{result.address.slice(-8)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {result.chain}
+                          </p>
+                        </div>
+                        <Badge 
+                          variant={
+                            result.scanResults.severity === 'SAFE' ? 'default' :
+                            result.scanResults.severity === 'LOW' ? 'secondary' :
+                            result.scanResults.severity === 'MEDIUM' ? 'outline' :
+                            'destructive'
+                          }
+                          data-testid={`badge-severity-${index}`}
+                        >
+                          {result.scanResults.severity}
+                        </Badge>
+                      </div>
+                      {result.scanResults.threats.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-destructive">
+                            {result.scanResults.threats.slice(0, 2).join(', ')}
+                            {result.scanResults.threats.length > 2 && ` +${result.scanResults.threats.length - 2} more`}
+                          </p>
+                        </div>
+                      )}
+                      {result.scanResults.threats.length === 0 && (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-3 h-3 text-green-500" />
+                          <p className="text-xs text-muted-foreground">No threats detected</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!scanning && scanMessage && (!scanResults || scanResults.length === 0) && (
+              <Alert data-testid="alert-no-contracts">
+                <AlertDescription className="text-sm">
+                  {scanMessage}
+                </AlertDescription>
+              </Alert>
+            )}
             
             <FormField
               control={form.control}

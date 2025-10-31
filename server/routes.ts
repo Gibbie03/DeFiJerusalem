@@ -823,6 +823,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/scan-website - Scan website for embedded contract addresses and threats
+  app.post("/api/scan-website", apiLimiter, async (req, res) => {
+    try {
+      const { url } = req.body;
+
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ 
+          error: "URL is required",
+          message: "Please provide a valid website URL (e.g., https://empower.cash)"
+        });
+      }
+
+      // Normalize URL
+      let websiteUrl = url.trim();
+      if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+        websiteUrl = 'https://' + websiteUrl;
+      }
+
+      console.log(`[SCAN-WEBSITE] Fetching website: ${websiteUrl}`);
+
+      // Fetch website content
+      const response = await fetch(websiteUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; JerusalemDeFiBot/1.0)',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+
+      if (!response.ok) {
+        return res.status(400).json({
+          error: "Failed to fetch website",
+          message: `Could not access ${websiteUrl}. Status: ${response.status}`
+        });
+      }
+
+      const html = await response.text();
+      console.log(`[SCAN-WEBSITE] Fetched ${html.length} bytes of HTML`);
+
+      // Extract contracts from HTML
+      const { extractContractsFromText } = await import('./lib/contract-extractor');
+      const { scanContractWithGoPlus } = await import('./lib/goplus-scanner');
+      
+      const foundContracts = extractContractsFromText(html);
+      console.log(`[SCAN-WEBSITE] Found ${foundContracts.length} contract addresses`);
+
+      if (foundContracts.length === 0) {
+        return res.json({
+          success: true,
+          websiteUrl,
+          contractsFound: 0,
+          contracts: [],
+          message: "No contract addresses found on this website. The website may not have embedded blockchain explorer links."
+        });
+      }
+
+      // Scan all found contracts (limit to first 5 to avoid abuse)
+      const contractsToScan = foundContracts.slice(0, 5);
+      const scannedContracts = [];
+
+      for (const contractInfo of contractsToScan) {
+        console.log(`[SCAN-WEBSITE] Scanning ${contractInfo.address} on ${contractInfo.chain}`);
+        try {
+          const contractScan = await scanContractWithGoPlus(contractInfo.address, contractInfo.chain);
+          
+          if (contractScan) {
+            scannedContracts.push({
+              address: contractInfo.address,
+              chain: contractInfo.chain,
+              explorerUrl: contractInfo.explorerUrl,
+              scanResults: {
+                isHoneypot: contractScan.isHoneypot,
+                cannotBuy: contractScan.cannotBuy,
+                cannotSell: contractScan.cannotSell,
+                buyTax: contractScan.buyTax,
+                sellTax: contractScan.sellTax,
+                hiddenOwner: contractScan.hiddenOwner,
+                isProxy: contractScan.isProxy,
+                isOpenSource: contractScan.isOpenSource,
+                threats: contractScan.threats,
+                riskScore: contractScan.riskScore,
+                severity: contractScan.severity,
+              }
+            });
+          }
+        } catch (scanError) {
+          console.error(`[SCAN-WEBSITE] Error scanning ${contractInfo.address}:`, scanError);
+          // Continue with next contract
+        }
+      }
+
+      res.json({
+        success: true,
+        websiteUrl,
+        contractsFound: foundContracts.length,
+        contractsScanned: scannedContracts.length,
+        contracts: scannedContracts,
+        message: scannedContracts.length > 0 
+          ? `Found and scanned ${scannedContracts.length} contract(s) from the website`
+          : "Found contract addresses but could not scan them. The contracts may be on unsupported chains."
+      });
+
+    } catch (error) {
+      console.error("Error scanning website:", error);
+      res.status(500).json({ 
+        error: "Failed to scan website",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // GET /api/blacklist - Get all blacklist entries (with rate limiting)
   app.get("/api/blacklist", apiLimiter, async (req, res) => {
     try {

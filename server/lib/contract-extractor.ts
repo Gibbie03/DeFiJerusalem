@@ -122,9 +122,6 @@ const EXPLORER_PATTERNS = [
   
   // Boba
   { pattern: /bobascan\.com\/(?:address|token)\/0x([a-fA-F0-9]{40})/i, chain: 'Boba' },
-  
-  // Generic 0x address pattern (fallback - no chain detection)
-  { pattern: /0x([a-fA-F0-9]{40})/i, chain: null },
 ];
 
 /**
@@ -136,9 +133,9 @@ export function extractContractFromUrl(url: string): ContractInfo | null {
   // Try each explorer pattern
   for (const { pattern, chain } of EXPLORER_PATTERNS) {
     const match = url.match(pattern);
-    if (match && match[1]) {
+    if (match && match[1] && chain) {
       const address = `0x${match[1]}`;
-      const normalizedChain = chain ? normalizeChainName(chain) : 'Unknown';
+      const normalizedChain = normalizeChainName(chain);
       return {
         address,
         chain: normalizedChain,
@@ -152,6 +149,7 @@ export function extractContractFromUrl(url: string): ContractInfo | null {
 
 /**
  * Extract multiple contract addresses from text (e.g., protocol description, social links)
+ * This searches for both blockchain explorer URLs AND raw contract addresses
  */
 export function extractContractsFromText(text: string): ContractInfo[] {
   if (!text) return [];
@@ -159,14 +157,33 @@ export function extractContractsFromText(text: string): ContractInfo[] {
   const contracts: ContractInfo[] = [];
   const seen = new Set<string>();
 
-  // Split by common delimiters to find URLs
-  const parts = text.split(/[\s,;|\n\r]/);
+  // First, try to extract from blockchain explorer URLs (more reliable as we get chain info)
+  const parts = text.split(/[\s,;|\n\r<>"']/);
   
   for (const part of parts) {
     const contractInfo = extractContractFromUrl(part);
     if (contractInfo && !seen.has(contractInfo.address.toLowerCase())) {
       contracts.push(contractInfo);
       seen.add(contractInfo.address.toLowerCase());
+    }
+  }
+
+  // Second pass: Find raw Ethereum-compatible addresses (0x followed by 40 hex chars)
+  // These are less reliable (no chain info), but better than nothing
+  const addressPattern = /0x[a-fA-F0-9]{40}/g;
+  const matches = text.match(addressPattern);
+  
+  if (matches) {
+    for (const address of matches) {
+      const lowerAddress = address.toLowerCase();
+      if (!seen.has(lowerAddress) && isValidAddress(address)) {
+        contracts.push({
+          address: lowerAddress,
+          chain: 'Ethereum', // Default to Ethereum for raw addresses
+          explorerUrl: `https://etherscan.io/address/${lowerAddress}`,
+        });
+        seen.add(lowerAddress);
+      }
     }
   }
 
