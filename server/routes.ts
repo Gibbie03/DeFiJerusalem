@@ -971,10 +971,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[SCAN-WEBSITE] Fetching website: ${websiteUrl}`);
 
-      // Fetch website content
+      // Fetch website content with realistic browser headers
       const response = await fetch(websiteUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; JerusalemDeFiBot/1.0)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Cache-Control': 'max-age=0',
         },
         redirect: 'follow',
         signal: AbortSignal.timeout(10000), // 10 second timeout
@@ -1085,11 +1095,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let html = '';
       let fetchError = null;
 
-      // Try to fetch website content
+      // Try to fetch website content with realistic browser headers
       try {
         const response = await fetch(websiteUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; JerusalemDeFiBot/1.0)',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Cache-Control': 'max-age=0',
           },
           redirect: 'follow',
           signal: AbortSignal.timeout(15000), // 15 second timeout
@@ -1100,6 +1120,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[SCAN-WEBSITE-SECURITY] Fetched ${html.length} bytes`);
         } else {
           fetchError = `HTTP ${response.status}: ${response.statusText}`;
+          console.log(`[SCAN-WEBSITE-SECURITY] HTTP ${response.status} - retrying with minimal headers`);
+          
+          // Retry with minimal headers if first attempt fails
+          try {
+            const retryResponse = await fetch(websiteUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              },
+              redirect: 'follow',
+              signal: AbortSignal.timeout(10000),
+            });
+            
+            if (retryResponse.ok) {
+              html = await retryResponse.text();
+              fetchError = null;
+              console.log(`[SCAN-WEBSITE-SECURITY] Retry succeeded, fetched ${html.length} bytes`);
+            }
+          } catch (retryError) {
+            console.log(`[SCAN-WEBSITE-SECURITY] Retry also failed`);
+          }
         }
       } catch (error) {
         fetchError = error instanceof Error ? error.message : 'Failed to fetch website';
