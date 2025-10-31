@@ -8,8 +8,9 @@ import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { auditLogger } from "./lib/audit-logger";
 import { threatLearner } from "./lib/threat-pattern-learner";
-import { insertProtocolSchema, insertTutorialVideoSchema, type Protocol } from "@shared/schema";
+import { insertProtocolSchema, insertTutorialVideoSchema, insertProtocolSubmissionSchema, type Protocol } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
+import { z } from "zod";
 
 // Pre-serialized cache for CMC-level performance (avoids re-serialization overhead)
 interface CacheEntry {
@@ -2183,6 +2184,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error uploading tutorial:", error);
       res.status(400).json({ 
         error: "Invalid tutorial data",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // POST /api/protocol-submissions - Submit a new protocol for review
+  app.post("/api/protocol-submissions", apiLimiter, async (req, res) => {
+    try {
+      const validatedData = insertProtocolSubmissionSchema.parse(req.body);
+      
+      const submission = await storage.createProtocolSubmission(validatedData);
+      
+      res.json({ 
+        success: true, 
+        submissionId: submission.id,
+        message: "Protocol submitted successfully. Our team will review it shortly." 
+      });
+    } catch (error) {
+      console.error("Error submitting protocol:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      res.status(500).json({ 
+        error: "Failed to submit protocol",
+        message: "Please try again later"
+      });
+    }
+  });
+
+  // GET /api/protocol-submissions - Get all protocol submissions (admin only)
+  app.get("/api/protocol-submissions", async (req, res) => {
+    try {
+      if (!req.session?.user?.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const status = req.query.status as string | undefined;
+      const submissions = await storage.getProtocolSubmissions(status);
+      
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch submissions",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // PATCH /api/protocol-submissions/:id - Update submission status (admin only)
+  app.patch("/api/protocol-submissions/:id", async (req, res) => {
+    try {
+      if (!req.session?.user?.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const { status, adminNotes } = req.body;
+
+      if (!status || !['pending', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const updated = await storage.updateProtocolSubmission(id, {
+        status,
+        adminNotes,
+        reviewedBy: req.session.user.username,
+        reviewedAt: new Date().toISOString(),
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (status === 'approved') {
+        try {
+          const protocolId = `submission-${id}`;
+          await storage.createProtocol({
+            id: protocolId,
+            name: updated.protocolName,
+            website: updated.website,
+            chains: updated.chains,
+            category: updated.category,
+            description: updated.description,
+            logo: updated.logo || null,
+            twitter: updated.twitter || null,
+            github: updated.github || null,
+            tvl: 0,
+            volume24h: 0,
+            change24h: 0,
+            securityScore: 0,
+            audited: (updated.auditLinks && updated.auditLinks.length > 0) || false,
+            auditCount: updated.auditLinks?.length || 0,
+            auditLinks: updated.auditLinks || [],
+            autoDiscovered: false,
+            manuallyAdded: true,
+            contractAddress: updated.contractAddresses 
+              ? Object.values(updated.contractAddresses)[0] 
+              : null,
+            contractChain: updated.contractAddresses 
+              ? Object.keys(updated.contractAddresses)[0] 
+              : null,
+            auditNote: null,
+            age: null,
+            sponsoredUntil: null,
+            sponsorshipTier: 'free',
+            featuredPosition: null,
+            defiSecurityScore: null,
+            defiAuditReports: null,
+            defiHasMultisig: null,
+            defiHasTimelock: null,
+            defiDataFetchedAt: null,
+            dailyActiveWallets: 0,
+            weeklyActiveWallets: 0,
+            monthlyActiveWallets: 0,
+            transactions24h: 0,
+            transactions7d: 0,
+            contractCalls24h: 0,
+            activityHistory: null,
+            rankByActivity: null,
+            rankByTvl: null,
+            rankByVolume: null,
+          });
+
+          console.log(`✅ Created protocol ${protocolId} from approved submission ${id}`);
+        } catch (createError) {
+          console.error("Error creating protocol from submission:", createError);
+        }
+      }
+
+      res.json({ success: true, submission: updated });
+    } catch (error) {
+      console.error("Error updating submission:", error);
+      res.status(500).json({ 
+        error: "Failed to update submission",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }

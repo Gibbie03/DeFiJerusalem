@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan, ProtocolSubmission, InsertProtocolSubmission } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans, protocolSubmissions } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -74,6 +74,12 @@ export interface IStorage {
   addContractScan(contractScan: Omit<ContractScan, 'id' | 'scannedAt'>): Promise<ContractScan>;
   getContractScanByAddress(contractAddress: string, chain: string): Promise<ContractScan | undefined>;
   getContractScansByProtocolId(protocolId: string): Promise<ContractScan[]>;
+  
+  // Protocol submission methods
+  createProtocolSubmission(submission: InsertProtocolSubmission): Promise<ProtocolSubmission>;
+  getProtocolSubmissions(status?: string): Promise<ProtocolSubmission[]>;
+  updateProtocolSubmission(id: string, updates: Partial<ProtocolSubmission>): Promise<ProtocolSubmission | undefined>;
+  createProtocol(protocol: InsertProtocol): Promise<Protocol>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1238,6 +1244,77 @@ export class DatabaseStorage implements IStorage {
       severity: scan.severity,
       rawData: scan.rawData as any,
       scannedAt: scan.scannedAt.toISOString(),
+    };
+  }
+
+  // Protocol submission methods
+  async createProtocolSubmission(submission: InsertProtocolSubmission): Promise<ProtocolSubmission> {
+    const id = `sub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const [result] = await db
+      .insert(protocolSubmissions)
+      .values({ ...submission, id })
+      .returning();
+    
+    return this.mapProtocolSubmission(result);
+  }
+
+  async getProtocolSubmissions(status?: string): Promise<ProtocolSubmission[]> {
+    let query = db.select().from(protocolSubmissions);
+    
+    if (status) {
+      query = query.where(eq(protocolSubmissions.status, status)) as any;
+    }
+    
+    const results = await query.orderBy(desc(protocolSubmissions.submittedAt));
+    return results.map(r => this.mapProtocolSubmission(r));
+  }
+
+  async updateProtocolSubmission(id: string, updates: Partial<ProtocolSubmission>): Promise<ProtocolSubmission | undefined> {
+    const [result] = await db
+      .update(protocolSubmissions)
+      .set(updates)
+      .where(eq(protocolSubmissions.id, id))
+      .returning();
+    
+    return result ? this.mapProtocolSubmission(result) : undefined;
+  }
+
+  async createProtocol(protocol: InsertProtocol): Promise<Protocol> {
+    const [result] = await db
+      .insert(protocols)
+      .values(protocol)
+      .onConflictDoUpdate({
+        target: protocols.id,
+        set: protocol,
+      })
+      .returning();
+    
+    return this.mapProtocol(result);
+  }
+
+  private mapProtocolSubmission(submission: any): ProtocolSubmission {
+    return {
+      id: submission.id,
+      submitterEmail: submission.submitterEmail,
+      submitterName: submission.submitterName,
+      protocolName: submission.protocolName,
+      website: submission.website,
+      chains: submission.chains as string[],
+      category: submission.category,
+      contractAddresses: submission.contractAddresses as Record<string, string> | null,
+      description: submission.description,
+      logo: submission.logo,
+      twitter: submission.twitter,
+      github: submission.github,
+      telegram: submission.telegram,
+      discord: submission.discord,
+      auditLinks: submission.auditLinks as string[] | null,
+      status: submission.status,
+      adminNotes: submission.adminNotes,
+      securityScanResult: submission.securityScanResult,
+      submittedAt: submission.submittedAt.toISOString(),
+      reviewedAt: submission.reviewedAt ? submission.reviewedAt.toISOString() : null,
+      reviewedBy: submission.reviewedBy,
     };
   }
 }
