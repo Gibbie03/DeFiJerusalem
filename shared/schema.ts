@@ -368,6 +368,39 @@ export const certikAudits = pgTable('certik_audits', {
   fetchedAtIdx: index('certik_audits_fetched_at_idx').on(table.fetchedAt),
 }));
 
+// AI Learning Pattern Persistence (Phase 2)
+export const aiLearnedPatterns = pgTable('ai_learned_patterns', {
+  id: text('id').primaryKey(),
+  pattern: text('pattern').notNull(),
+  severity: text('severity').notNull(),
+  category: text('category').notNull(),
+  confidence: real('confidence').notNull(),
+  occurrences: integer('occurrences').notNull().default(1),
+  examples: json('examples').$type<string[]>().notNull().default([]),
+  firstSeen: timestamp('first_seen').notNull().defaultNow(),
+  lastSeen: timestamp('last_seen').notNull().defaultNow(),
+}, (table) => ({
+  patternIdx: uniqueIndex('ai_learned_patterns_pattern_idx').on(table.pattern, table.severity),
+  confidenceIdx: index('ai_learned_patterns_confidence_idx').on(table.confidence),
+  categoryIdx: index('ai_learned_patterns_category_idx').on(table.category),
+  lastSeenIdx: index('ai_learned_patterns_last_seen_idx').on(table.lastSeen),
+}));
+
+export const aiScanHistory = pgTable('ai_scan_history', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id').notNull(),
+  entityName: text('entity_name').notNull(),
+  entityType: text('entity_type').notNull(),
+  threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
+  severity: text('severity').notNull(),
+  score: real('score').notNull(),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+}, (table) => ({
+  entityIdIdx: index('ai_scan_history_entity_id_idx').on(table.entityId),
+  entityTypeIdx: index('ai_scan_history_entity_type_idx').on(table.entityType),
+  timestampIdx: index('ai_scan_history_timestamp_idx').on(table.timestamp),
+}));
+
 // TypeScript Types - manually defined to use strings for timestamps
 export type Protocol = {
   id: string;
@@ -678,6 +711,29 @@ export type ContractScan = {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   rawData: any | null;
   scannedAt: string;
+};
+
+export type AILearnedPattern = {
+  id: string;
+  pattern: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  category: string;
+  confidence: number;
+  occurrences: number;
+  examples: string[];
+  firstSeen: string;
+  lastSeen: string;
+};
+
+export type AIScanHistory = {
+  id: string;
+  entityId: string;
+  entityName: string;
+  entityType: 'protocol' | 'wallet' | 'website';
+  threats: Threat[];
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  score: number;
+  timestamp: string;
 };
 
 // Zod Insert Schemas from Drizzle
