@@ -14,6 +14,9 @@ import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import BlacklistDetails from "@/pages/BlacklistDetails";
 import ThreatsPage from "@/pages/ThreatsPage";
+import ThreatEncyclopedia from "@/pages/ThreatEncyclopedia";
+import ThreatDetail from "@/pages/ThreatDetail";
+import ScamHallOfShame from "@/pages/ScamHallOfShame";
 import SecurityMethodology from "@/pages/SecurityMethodology";
 import WebsiteScanner from "@/pages/WebsiteScanner";
 import SubmitProtocol from "@/pages/SubmitProtocol";
@@ -83,7 +86,10 @@ function Router() {
                 <Route path="/blacklist" component={Blacklist} />
                 <Route path="/security-stats">{() => { window.location.href = '/threats'; return null; }}</Route>
                 <Route path="/how-it-works">{() => { window.location.href = '/security-methodology'; return null; }}</Route>
+                <Route path="/threats/encyclopedia/:threatId" component={ThreatDetail} />
+                <Route path="/threats/encyclopedia" component={ThreatEncyclopedia} />
                 <Route path="/threats" component={ThreatsPage} />
+                <Route path="/scam-hall-of-shame" component={ScamHallOfShame} />
                 <Route path="/security-methodology" component={SecurityMethodology} />
                 <Route path="/scan-website" component={WebsiteScanner} />
                 <Route path="/submit-protocol" component={SubmitProtocol} />

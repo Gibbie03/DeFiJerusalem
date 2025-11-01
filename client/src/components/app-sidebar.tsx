@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload, AlertTriangle } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload, AlertTriangle, Library, Skull } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +51,16 @@ const menuItems = [
     title: "Security & Threats",
     url: "/threats",
     icon: AlertTriangle,
+  },
+  {
+    title: "Threat Encyclopedia",
+    url: "/threats/encyclopedia",
+    icon: Library,
+  },
+  {
+    title: "Scam Hall of Shame",
+    url: "/scam-hall-of-shame",
+    icon: Skull,
   },
   {
     title: "Our Methodology",
