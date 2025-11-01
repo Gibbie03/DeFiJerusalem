@@ -22,7 +22,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
 - **Contract Discovery System**: Hybrid automated contract discovery combining DeFiLlama integration, manual CSV import of verified contracts, and experimental Etherscan web scraping (currently blocked). CSV import is the recommended, ToS-compliant method.
-- **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with drainer intelligence, supporting Ethereum and Solana, known drainer databases, transaction pattern detection, vanity address analysis, address poisoning detection, and risk scoring.
+- **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with drainer intelligence, supporting Ethereum and Solana, known drainer databases, transaction pattern detection, vanity address analysis, address poisoning detection, risk scoring, and token approval security scanning.
 - **Security Statistics Dashboard**: Comprehensive real-time statistics displaying total protocols, scan coverage, severity breakdown, 2025 Advanced Drainer Detection counts, and top highest risk protocols.
 - **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details with severity badges, detailed threat cards, and per-threat user advice.
 - **Triple-Layer Security Analysis**: Includes metadata-based scanning (38+ threat categories), GoPlus Security API for smart contract code analysis, and advanced 2025 drainer detection.
@@ -46,6 +46,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Community Scam Reporting System**: User-generated threat reports for protocols, wallets, websites, and contracts with multi-category classification, severity ratings, and status tracking. Includes comprehensive report form with evidence upload support.
 - **Public Scammer Address Database**: Searchable database of verified scammer addresses with multi-chain support, verification status tracking, evidence linking, and public API for lookups.
 - **Community Reporting & Threat Intelligence**: Includes a community scam reporting system, voting & reputation system, and public scammer address database.
+- **Token Approval Security Scanner**: Integrated GoPlus Approval Management API to detect risky ERC20 token approvals in Ethereum wallets. Features cross-referencing with DeFiJerusalem's scammer database and blacklisted protocols, risk-based revocation advice (CRITICAL/HIGH/MEDIUM/LOW), detection of unlimited approvals to unknown contracts, and Revoke.cash integration for safe approval management.
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM, optimized with indexing and UPSERT-based persistence.
@@ -61,7 +62,8 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.
 - **Blockchain Explorer Web Scraping**: Cheerio-based HTML parsing of Etherscan contractsVerified pages.
-- **GoPlus Security API**: Real-time smart contract code analysis.
+- **GoPlus Security API**: Real-time smart contract code analysis and token approval management.
+- **Revoke.cash**: Third-party tool integration for safe token approval revocation (with disclaimers).
 - **Twitter API v2 Filtered Stream**: Real-time monitoring of crypto threats.
 - **CertiK Skynet**: Public security score scraping and audit verification.
 - **Neon PostgreSQL**: Cloud-hosted PostgreSQL database.
