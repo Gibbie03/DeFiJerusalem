@@ -43,7 +43,7 @@ export default function ScamHallOfShame() {
       // Only show CRITICAL severity scams that are ACTIVE
       return data
         .filter((entry: BlacklistEntry) => entry.severity === 'CRITICAL' && entry.status === 'ACTIVE')
-        .sort((a: BlacklistEntry, b: BlacklistEntry) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+        .sort((a: BlacklistEntry, b: BlacklistEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
   });
 
@@ -90,7 +90,7 @@ export default function ScamHallOfShame() {
 
   const totalScams = scams?.length || 0;
   const recentScams = scams?.filter((s: BlacklistWithDetails) => {
-    const daysSince = (new Date().getTime() - new Date(s.createdAt || '').getTime()) / 86400000;
+    const daysSince = (new Date().getTime() - new Date(s.timestamp).getTime()) / 86400000;
     return daysSince <= 30;
   }).length || 0;
 
@@ -204,23 +204,23 @@ export default function ScamHallOfShame() {
                           CRITICAL SCAM
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          Caught {formatTimeAgo(scam.createdAt || '')}
+                          Caught {formatTimeAgo(scam.timestamp)}
                         </span>
                       </div>
                       <CardTitle className="text-xl mb-1" data-testid={`scam-name-${index}`}>
-                        {scam.name || scam.url || 'Unknown Protocol'}
+                        {scam.dappName || 'Unknown Protocol'}
                       </CardTitle>
-                      {scam.url && (
+                      {scam.website && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <ExternalLink className="w-3 h-3" />
-                          <code className="text-xs">{scam.url}</code>
+                          <code className="text-xs">{scam.website}</code>
                         </div>
                       )}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="flex items-center gap-1 text-destructive font-semibold">
-                        <TrendingDown className="w-4 h-4" />
-                        Score: {scam.securityScore}
+                        <AlertTriangle className="w-4 h-4" />
+                        {scam.threats.length} Threat{scam.threats.length !== 1 ? 's' : ''}
                       </div>
                     </div>
                   </div>
@@ -234,28 +234,19 @@ export default function ScamHallOfShame() {
                     </p>
                   </div>
 
-                  {scam.contractAddresses && scam.contractAddresses.length > 0 && (
+                  {scam.dappId && (
                     <div>
-                      <p className="text-sm font-semibold mb-2">Malicious Contract Address:</p>
-                      <div className="space-y-1">
-                        {scam.contractAddresses.slice(0, 3).map((addr: string, i: number) => (
-                          <code key={i} className="block text-xs bg-muted px-2 py-1 rounded font-mono">
-                            {addr}
-                          </code>
-                        ))}
-                        {scam.contractAddresses.length > 3 && (
-                          <p className="text-xs text-muted-foreground">
-                            +{scam.contractAddresses.length - 3} more contract{scam.contractAddresses.length - 3 !== 1 ? 's' : ''}
-                          </p>
-                        )}
-                      </div>
+                      <p className="text-sm font-semibold mb-2">DApp Identifier:</p>
+                      <code className="block text-xs bg-muted px-2 py-1 rounded font-mono">
+                        {scam.dappId}
+                      </code>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      Blacklisted: {formatDate(scam.createdAt || '')}
+                      Blacklisted: {formatDate(scam.timestamp)}
                     </div>
                     <Link href={`/blacklist/${scam.id}`}>
                       <Button size="sm" variant="outline" data-testid={`button-view-scam-${index}`}>
