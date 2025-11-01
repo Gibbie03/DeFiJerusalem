@@ -62,9 +62,14 @@ function Router() {
               <div className="w-10 h-10 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
                 <Landmark className="w-6 h-6 text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                JERUSALEM
-              </h1>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                  DeFiJerusalem
+                </h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  The only Dapps repository built for security
+                </p>
+              </div>
             </div>
 
             {/* Sidebar Toggle - Right */}
