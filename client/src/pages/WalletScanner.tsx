@@ -22,9 +22,34 @@ interface WalletScanResult {
     id: string;
     severity: string;
     blacklisted: boolean;
+    threatCount?: number;
   }[];
   riskScore: number;
   recommendations: string[];
+  drainerIntelligence?: {
+    operation: string;
+    totalStolen?: string;
+    lastActive?: string;
+    notes?: string;
+    source: string;
+    confidence: string;
+  } | null;
+  education?: {
+    transactionPatterns: Array<{
+      type: string;
+      signature: string;
+      description: string;
+      severity: string;
+    }>;
+    statistics: {
+      totalStolen: string;
+      victims: string;
+      permitAttacks: string;
+      averageLoss: string;
+      largestHeist: string;
+    };
+    protectionTips: string[];
+  };
 }
 
 export default function WalletScanner() {
@@ -157,18 +182,32 @@ export default function WalletScanner() {
             <p className="font-semibold mb-2">Example addresses to test:</p>
             <div className="space-y-1">
               <button
+                onClick={() => setWalletAddress('0x63605e53d422c4f1ac0e01390ac59aaf84c44a51')}
+                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-destructive hover:underline"
+                data-testid="example-pink-drainer"
+              >
+                ⚠️ DRAINER: 0x6360...4a51 (Pink Drainer - $85.3M stolen)
+              </button>
+              <button
                 onClick={() => setWalletAddress('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')}
                 className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-primary hover:underline"
                 data-testid="example-safe-address"
               >
-                Safe: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 (Vitalik's address)
+                Safe: 0xd8dA...6045 (Vitalik Buterin)
+              </button>
+              <button
+                onClick={() => setWalletAddress('0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')}
+                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-orange-500 hover:underline"
+                data-testid="example-vanity-address"
+              >
+                Suspicious: 0xdead...beef (Vanity pattern)
               </button>
               <button
                 onClick={() => setWalletAddress('0x0000000000000000000000000000000000000000')}
-                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-primary hover:underline"
+                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-muted-foreground hover:underline"
                 data-testid="example-null-address"
               >
-                Test: 0x0000000000000000000000000000000000000000 (Null address)
+                Test: 0x0000...0000 (Null/Burn address)
               </button>
             </div>
           </div>
@@ -280,6 +319,58 @@ export default function WalletScanner() {
             </Card>
           )}
 
+          {/* Drainer Intelligence Alert */}
+          {scanResult.drainerIntelligence && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardHeader>
+                <div className="flex items-center gap-2 text-destructive">
+                  <XCircle className="w-6 h-6" />
+                  <CardTitle>CONFIRMED DRAINER WALLET</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="font-semibold">
+                    This is a CONFIRMED wallet drainer operation. NEVER interact with this address!
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="grid gap-3 text-sm">
+                  <div className="flex justify-between p-2 bg-muted rounded">
+                    <span className="text-muted-foreground">Operation:</span>
+                    <span className="font-semibold">{scanResult.drainerIntelligence.operation}</span>
+                  </div>
+                  {scanResult.drainerIntelligence.totalStolen && (
+                    <div className="flex justify-between p-2 bg-muted rounded">
+                      <span className="text-muted-foreground">Total Stolen:</span>
+                      <span className="font-semibold text-destructive">{scanResult.drainerIntelligence.totalStolen}</span>
+                    </div>
+                  )}
+                  {scanResult.drainerIntelligence.lastActive && (
+                    <div className="flex justify-between p-2 bg-muted rounded">
+                      <span className="text-muted-foreground">Last Active:</span>
+                      <span className="font-semibold">{scanResult.drainerIntelligence.lastActive}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between p-2 bg-muted rounded">
+                    <span className="text-muted-foreground">Confidence:</span>
+                    <Badge variant="destructive">{scanResult.drainerIntelligence.confidence}</Badge>
+                  </div>
+                  {scanResult.drainerIntelligence.notes && (
+                    <div className="p-3 bg-muted rounded">
+                      <p className="text-xs font-semibold mb-1">Intelligence Notes:</p>
+                      <p className="text-sm">{scanResult.drainerIntelligence.notes}</p>
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    <strong>Source:</strong> {scanResult.drainerIntelligence.source}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recommendations */}
           {scanResult.recommendations.length > 0 && (
             <Card>
@@ -297,6 +388,88 @@ export default function WalletScanner() {
                 </ul>
               </CardContent>
             </Card>
+          )}
+
+          {/* Educational Content - Drainer Statistics */}
+          {scanResult.education && (
+            <>
+              <Card className="border-orange-500/20 bg-orange-500/5">
+                <CardHeader>
+                  <CardTitle>2024 Wallet Drainer Statistics</CardTitle>
+                  <CardDescription>Real-world data from blockchain forensics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="text-center p-3 bg-muted rounded">
+                      <p className="text-2xl font-bold text-destructive">{scanResult.education.statistics.totalStolen}</p>
+                      <p className="text-xs text-muted-foreground">Total Stolen</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded">
+                      <p className="text-2xl font-bold">{scanResult.education.statistics.victims}</p>
+                      <p className="text-xs text-muted-foreground">Victims</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded">
+                      <p className="text-2xl font-bold">{scanResult.education.statistics.averageLoss}</p>
+                      <p className="text-xs text-muted-foreground">Average Loss</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded">
+                      <p className="text-2xl font-bold text-orange-500">{scanResult.education.statistics.permitAttacks}</p>
+                      <p className="text-xs text-muted-foreground">Permit Attacks</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded col-span-2">
+                      <p className="text-2xl font-bold text-destructive">{scanResult.education.statistics.largestHeist}</p>
+                      <p className="text-xs text-muted-foreground">Largest Single Heist</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Transaction Patterns */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Known Drainer Transaction Patterns</CardTitle>
+                  <CardDescription>Malicious transaction signatures to watch for</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {scanResult.education.transactionPatterns.map((pattern, index) => (
+                    <div key={index} className="border rounded-lg p-3 space-y-2" data-testid={`pattern-${index}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-semibold text-sm">{pattern.type.replace(/_/g, ' ')}</h4>
+                          <code className="text-xs bg-muted px-2 py-1 rounded block mt-1 font-mono break-all">
+                            {pattern.signature}
+                          </code>
+                        </div>
+                        <Badge variant={pattern.severity === 'CRITICAL' ? 'destructive' : 'default'} className="text-xs">
+                          {pattern.severity}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{pattern.description}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Protection Tips */}
+              <Card className="border-green-500/20 bg-green-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    Protection Tips
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {scanResult.education.protectionTips.map((tip, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm">
+                        <span className="text-green-500 font-bold">•</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
       )}

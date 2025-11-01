@@ -1340,19 +1340,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }],
           associatedProtocols: [],
           riskScore: 0,
-          recommendations: ['Verify the address format before scanning']
+          recommendations: ['Verify the address format before scanning'],
+          drainerIntelligence: null
         });
       }
 
+      // Import drainer intelligence
+      const { 
+        checkKnownDrainerAddress,
+        checkVanityPatterns,
+        assessWalletRisk,
+        getDrainerEducation,
+        DRAINER_TRANSACTION_PATTERNS
+      } = await import('./lib/drainer-intelligence');
+
       const findings: any[] = [];
       const associatedProtocols: any[] = [];
-      let riskScore = 0;
+      let baseRiskScore = 0;
 
       // Check blacklist for protocols with this address
       const blacklist = await storage.getBlacklist();
       const protocols = await storage.getProtocols();
 
       // Check if address matches any contract addresses in protocols
+      let isAssociatedWithBlacklist = false;
       for (const protocol of protocols) {
         if (protocol.contractAddress && 
             protocol.contractAddress.toLowerCase() === normalizedAddress.toLowerCase()) {
@@ -1361,6 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const blacklistEntry = blacklist.find(b => b.dappId === protocol.id && b.status === 'ACTIVE');
           
           if (blacklistEntry) {
+            isAssociatedWithBlacklist = true;
             findings.push({
               type: 'BLACKLISTED_PROTOCOL',
               severity: blacklistEntry.severity,
@@ -1368,7 +1380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               evidence: `Protocol "${protocol.name}" flagged with ${blacklistEntry.threats.length} threats`
             });
 
-            riskScore += blacklistEntry.severity === 'CRITICAL' ? 80 : 
+            baseRiskScore += blacklistEntry.severity === 'CRITICAL' ? 80 : 
                         blacklistEntry.severity === 'HIGH' ? 60 :
                         blacklistEntry.severity === 'MEDIUM' ? 40 : 20;
 
@@ -1376,23 +1388,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: protocol.name,
               id: protocol.id,
               severity: blacklistEntry.severity,
-              blacklisted: true
+              blacklisted: true,
+              threatCount: blacklistEntry.threats.length
             });
           } else {
             associatedProtocols.push({
               name: protocol.name,
               id: protocol.id,
               severity: 'UNKNOWN',
-              blacklisted: false
+              blacklisted: false,
+              threatCount: 0
             });
           }
         }
       }
 
-      // Drainer pattern detection in address (basic heuristics)
-      const addressLower = normalizedAddress.toLowerCase();
-      
       // Check for null/burn address
+      const addressLower = normalizedAddress.toLowerCase();
       if (addressLower === '0x0000000000000000000000000000000000000000') {
         findings.push({
           type: 'NULL_ADDRESS',
@@ -1401,61 +1413,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if it's a known vanity address pattern that drainers sometimes use
-      const suspiciousPatterns = [
-        { pattern: /^0x0{20,}[a-f0-9]+$/, message: 'Suspicious leading zeros pattern' },
-        { pattern: /^0x[a-f0-9]*dead[a-f0-9]*$/i, message: 'Contains "dead" - common in scam addresses' },
-        { pattern: /^0x[a-f0-9]*beef[a-f0-9]*$/i, message: 'Contains "beef" - common vanity pattern' },
-      ];
+      // ADVANCED DRAINER INTELLIGENCE
+      // Use comprehensive drainer database and pattern matching
+      const riskAssessment = assessWalletRisk(normalizedAddress, isAssociatedWithBlacklist);
+      
+      // Merge findings from risk assessment
+      const combinedFindings = [...findings, ...riskAssessment.findings];
+      
+      // Use the higher risk score
+      const finalRiskScore = Math.max(baseRiskScore, riskAssessment.riskScore);
+      const finalSeverity = riskAssessment.severity;
+      const isDangerous = finalRiskScore >= 40;
 
-      for (const { pattern, message } of suspiciousPatterns) {
-        if (pattern.test(addressLower) && addressLower !== '0x0000000000000000000000000000000000000000') {
-          findings.push({
-            type: 'SUSPICIOUS_PATTERN',
-            severity: 'MEDIUM',
-            message: message,
-            evidence: 'Drainers sometimes use vanity addresses with specific patterns'
-          });
-          riskScore += 30;
-        }
-      }
+      // Get drainer intelligence for educational purposes
+      const drainerEducation = getDrainerEducation();
 
-      // Determine severity and danger level
-      let severity: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'SAFE';
-      if (riskScore >= 80) severity = 'CRITICAL';
-      else if (riskScore >= 60) severity = 'HIGH';
-      else if (riskScore >= 40) severity = 'MEDIUM';
-      else if (riskScore >= 20) severity = 'LOW';
-
-      const isDangerous = riskScore >= 40;
-
-      // Generate recommendations
-      const recommendations: string[] = [];
-      if (isDangerous) {
-        recommendations.push('⚠️ DO NOT interact with this address - high risk of fund loss');
-        recommendations.push('Verify the source before approving any transactions');
-        recommendations.push('Check recent transaction history on block explorers');
-      } else if (findings.length > 0) {
-        recommendations.push('Exercise caution when interacting with this address');
-        recommendations.push('Always verify addresses through official sources');
-      } else {
-        recommendations.push('No immediate threats detected, but always verify addresses');
-        recommendations.push('Check transaction history on Etherscan or similar explorers');
-      }
-
+      // Enhanced recommendations
+      let recommendations = riskAssessment.recommendations;
       if (associatedProtocols.some(p => p.blacklisted)) {
         recommendations.push('This address is linked to blacklisted protocols - avoid interaction');
+      }
+
+      // Add specific drainer operation details if found
+      const knownDrainer = checkKnownDrainerAddress(normalizedAddress);
+      let drainerIntelligence = null;
+      if (knownDrainer.isKnownDrainer && knownDrainer.details) {
+        drainerIntelligence = {
+          operation: knownDrainer.details.operation,
+          totalStolen: knownDrainer.details.totalStolen,
+          lastActive: knownDrainer.details.lastActive,
+          notes: knownDrainer.details.notes,
+          source: knownDrainer.details.source,
+          confidence: knownDrainer.details.confidence
+        };
       }
 
       res.json({
         address: normalizedAddress,
         isValid: true,
         isDangerous,
-        severity,
-        findings,
+        severity: finalSeverity,
+        findings: combinedFindings,
         associatedProtocols,
-        riskScore: Math.min(riskScore, 100),
-        recommendations
+        riskScore: finalRiskScore,
+        recommendations,
+        drainerIntelligence,
+        education: {
+          transactionPatterns: DRAINER_TRANSACTION_PATTERNS,
+          statistics: drainerEducation.statistics2024,
+          protectionTips: drainerEducation.protectionMeasures.slice(0, 3) // Top 3 tips
+        }
       });
 
     } catch (error) {
