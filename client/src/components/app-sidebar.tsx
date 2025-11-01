@@ -14,7 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 
 const menuItems = [
   {
@@ -97,13 +97,13 @@ const menuItems = [
     url: "/admin/dashboard",
     icon: Landmark,
   },
-];
+] as const;
 
 interface AppSidebarProps {
   side?: "left" | "right";
 }
 
-export function AppSidebar({ side = "left" }: AppSidebarProps) {
+function AppSidebarComponent({ side = "left" }: AppSidebarProps) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const { setOpenMobile, isMobile } = useSidebar();
@@ -121,14 +121,26 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
     if (isMobile) {
       setOpenMobile(false);
     }
-  }, [location, isMobile]);
+  }, [location, isMobile, setOpenMobile]);
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
+  const toggleTheme = useCallback(() => {
+    setTheme(prevTheme => {
+      const newTheme = prevTheme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', newTheme);
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
+      return newTheme;
+    });
+  }, []);
+
+  const themeIcon = useMemo(() => 
+    theme === 'dark' ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />,
+    [theme]
+  );
+
+  const themeLabel = useMemo(() => 
+    theme === 'dark' ? 'Light Mode' : 'Dark Mode',
+    [theme]
+  );
 
   return (
     <Sidebar side={side} collapsible="offcanvas" className="border-l">
@@ -137,16 +149,20 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location === item.url}>
-                    <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(' ', '-')}`}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(' ', '-')}`}>
+                        <Icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -160,10 +176,12 @@ export function AppSidebar({ side = "left" }: AppSidebarProps) {
           className="w-full justify-start"
           data-testid="button-theme-toggle"
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          {themeIcon}
+          {themeLabel}
         </Button>
       </SidebarFooter>
     </Sidebar>
   );
 }
+
+export const AppSidebar = memo(AppSidebarComponent);

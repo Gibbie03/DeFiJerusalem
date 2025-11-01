@@ -363,4 +363,23 @@
   .animate-ticker-desktop:hover {
     animation-play-state: paused;
   }
+
+  /* Sidebar performance optimizations */
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"] {
+    will-change: transform, width;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* Optimize sidebar transitions for better performance */
+  [data-slot="sidebar-gap"] {
+    transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Use GPU acceleration for sidebar content */
+  .group\\/sidebar-wrapper [data-slot="sidebar"] {
+    transform: translateZ(0);
+  }
 }
