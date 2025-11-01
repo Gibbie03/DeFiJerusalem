@@ -255,7 +255,7 @@ export default function SecurityMethodology() {
                       <TableCell>Solana transaction replay attacks and PDAs</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell className="font-semibold">High Tax (>20%)</TableCell>
+                      <TableCell className="font-semibold">High Tax ({'>'}20%)</TableCell>
                       <TableCell><Badge className="bg-orange-500/20 text-orange-700 dark:text-orange-400">+60</Badge></TableCell>
                       <TableCell>Excessive buy/sell tax discouraging trading</TableCell>
                     </TableRow>
