@@ -47,10 +47,12 @@ function formatTimeAgo(timestamp: string): string {
 }
 
 export function LatestThreatsWidget() {
-  const { data: threats, isLoading } = useQuery<ThreatEntry[]>({
-    queryKey: ['/api/threats', { limit: 5 }],
+  const { data, isLoading } = useQuery<{ threats: ThreatEntry[] }>({
+    queryKey: ['/api/threats', { limit: '5' }],
     refetchInterval: 120000, // Refresh every 2 minutes
   });
+  
+  const threats = data?.threats || [];
 
   if (isLoading) {
     return (
@@ -134,7 +136,7 @@ export function LatestThreatsWidget() {
               </div>
             </div>
             
-            {threat.topThreats.length > 0 && (
+            {threat.topThreats && threat.topThreats.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
                 {threat.topThreats.slice(0, 3).map((type, i) => (
                   <Badge

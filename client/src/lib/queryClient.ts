@@ -28,20 +28,29 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    // Build URL with cache-busting timestamp parameter
-    const baseUrl = queryKey.join("/") as string;
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    const cacheBustUrl = `${baseUrl}${separator}_t=${Date.now()}`;
+  async ({ queryKey, meta }) => {
+    const [baseUrl, ...params] = queryKey;
+    let url = baseUrl as string;
     
-    const res = await fetch(cacheBustUrl, {
+    if (params.length > 0 && typeof params[0] === 'object') {
+      const queryParams = new URLSearchParams();
+      Object.entries(params[0] as Record<string, string>).forEach(([key, value]) => {
+        queryParams.append(key, String(value));
+      });
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+    }
+    
+    const cacheBust = (meta as any)?.cacheBust === true;
+    if (cacheBust) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}_t=${Date.now()}`;
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
-      // Force no-cache at request level too
-      cache: "no-store",
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -58,8 +67,9 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 0, // Always treat data as stale to force fresh fetches (fixes mobile cache issues)
-      refetchOnMount: true, // Always refetch on mount to get latest data
+      staleTime: 3 * 60 * 1000, // 3 minutes - data is fresh for this duration
+      gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache even if unused
+      refetchOnMount: false, // Don't refetch on mount - rely on staleTime
       retry: false,
     },
     mutations: {
