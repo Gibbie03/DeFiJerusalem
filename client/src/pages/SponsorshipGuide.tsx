@@ -111,7 +111,7 @@ export default function SponsorshipGuide() {
     <div className="bg-background min-h-screen">
       <AdSpace position="top" />
       
-      <TrendingTicker onProtocolClick={(protocol: Protocol) => console.log('Clicked:', protocol)} />
+      <TrendingTicker />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-12">
         <div className="text-center space-y-4">

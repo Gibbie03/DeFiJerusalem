@@ -92,12 +92,12 @@ export default function ProtocolDetail() {
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-              {protocol.securityScore !== null && protocol.securityScore !== undefined && (
+              {(securityScan?.score !== null && securityScan?.score !== undefined) || (protocol.securityScore !== null && protocol.securityScore !== undefined) ? (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Security:</span>
-                  {getSeverityBadge(protocol.securityScore)}
+                  {getSeverityBadge(securityScan?.score ?? protocol.securityScore ?? 0)}
                 </div>
-              )}
+              ) : null}
               {securityScan?.isBlacklisted && (
                 <Badge variant="destructive" className="gap-1" data-testid="badge-blacklisted">
                   <XCircle className="w-3 h-3" />
