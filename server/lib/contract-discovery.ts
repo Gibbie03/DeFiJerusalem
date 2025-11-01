@@ -17,6 +17,13 @@ import {
   getHighPriorityScrapingChains,
   type ScrapedContract 
 } from './etherscan-scraper';
+import { 
+  loadCSVDirectory, 
+  convertCSVToDiscoveredContracts, 
+  getCSVExportURLs,
+  type CSVContract 
+} from './csv-contract-importer';
+import { join } from 'path';
 
 export type Chain = ChainKey;
 
@@ -509,7 +516,31 @@ export async function discoverContractsHybrid(options?: {
     console.log(`[CONTRACT-DISCOVERY] ✓ Etherscan Scraping: ${scrapedContracts.length} contracts`);
   }
 
-  // 3. Deduplicate by contract address + chain combination
+  // 3. Import from CSV files (if available)
+  console.log('[CONTRACT-DISCOVERY] Phase 3: Loading from CSV exports...');
+  const csvDir = join(process.cwd(), 'server', 'data', 'csv');
+  const csvData = loadCSVDirectory(csvDir);
+  
+  let csvContractCount = 0;
+  const csvEntries = Array.from(csvData.entries());
+  for (const [chain, csvContracts] of csvEntries) {
+    const discovered = convertCSVToDiscoveredContracts(csvContracts, chain);
+    allContracts.push(...discovered);
+    csvContractCount += discovered.length;
+  }
+  
+  if (csvContractCount > 0) {
+    console.log(`[CONTRACT-DISCOVERY] ✓ CSV Import: ${csvContractCount} contracts from ${csvData.size} chains`);
+  } else {
+    console.log('[CONTRACT-DISCOVERY] ℹ No CSV files found (this is optional)');
+    console.log('[CONTRACT-DISCOVERY] To use CSV imports:');
+    const urls = getCSVExportURLs();
+    Object.entries(urls).slice(0, 3).forEach(([chain, url]) => {
+      console.log(`[CONTRACT-DISCOVERY]   ${chain}: ${url}`);
+    });
+  }
+
+  // 4. Deduplicate by contract address + chain combination
   const uniqueContracts = deduplicateContracts(allContracts);
   
   console.log(`[CONTRACT-DISCOVERY] ✓ Hybrid Discovery Complete: ${uniqueContracts.length} unique contracts`);
