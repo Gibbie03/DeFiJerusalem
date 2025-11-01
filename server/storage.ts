@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans, protocolSubmissions, aiLearnedPatterns, aiScanHistory } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ScammerAddress, InsertScammerAddress, AlertSubscription, InsertAlertSubscription, WebhookEndpoint, InsertWebhookEndpoint } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -120,6 +120,29 @@ export interface IStorage {
     score: number;
     timestamp: string;
   }>>;
+
+  // Phase 4: Community & Reporting methods
+  createUserReport(report: import("@shared/schema").InsertUserReport): Promise<import("@shared/schema").UserReport>;
+  getUserReports(filters?: { status?: string; reportType?: string; limit?: number }): Promise<import("@shared/schema").UserReport[]>;
+  getUserReportById(id: string): Promise<import("@shared/schema").UserReport | undefined>;
+  updateUserReportStatus(id: string, status: string, adminNotes?: string): Promise<void>;
+  verifyUserReport(id: string, verifiedBy: string): Promise<void>;
+  voteOnReport(reportId: string, voterSessionId: string, voteType: 'upvote' | 'downvote'): Promise<void>;
+  removeVoteFromReport(reportId: string, voterSessionId: string): Promise<void>;
+  getUserReputation(userIdentifier: string): Promise<import("@shared/schema").UserReputation | undefined>;
+  updateUserReputation(userIdentifier: string, updates: Partial<import("@shared/schema").UserReputation>): Promise<void>;
+  
+  // Phase 5: Intelligence Sharing methods
+  addScammerAddress(address: import("@shared/schema").InsertScammerAddress): Promise<import("@shared/schema").ScammerAddress>;
+  getScammerAddresses(filters?: { chain?: string; category?: string; isActive?: boolean; limit?: number }): Promise<import("@shared/schema").ScammerAddress[]>;
+  searchScammerAddress(address: string, chain: string): Promise<import("@shared/schema").ScammerAddress | undefined>;
+  updateScammerAddress(id: string, updates: Partial<import("@shared/schema").ScammerAddress>): Promise<void>;
+  addAlertSubscription(subscription: import("@shared/schema").InsertAlertSubscription): Promise<import("@shared/schema").AlertSubscription>;
+  getAlertSubscriptions(filters?: { subscriptionType?: string; active?: boolean }): Promise<import("@shared/schema").AlertSubscription[]>;
+  updateAlertSubscription(id: string, updates: Partial<import("@shared/schema").AlertSubscription>): Promise<void>;
+  addWebhookEndpoint(webhook: import("@shared/schema").InsertWebhookEndpoint): Promise<import("@shared/schema").WebhookEndpoint>;
+  getWebhookEndpoints(filters?: { active?: boolean }): Promise<import("@shared/schema").WebhookEndpoint[]>;
+  updateWebhookEndpoint(id: string, updates: Partial<import("@shared/schema").WebhookEndpoint>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1321,6 +1344,322 @@ export class DatabaseStorage implements IStorage {
       score: r.score,
       timestamp: r.timestamp.toISOString(),
     }));
+  }
+
+  // Phase 4: Community & Reporting implementations
+  async createUserReport(report: InsertUserReport): Promise<UserReport> {
+    const id = `report_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    const [created] = await db
+      .insert(userReports)
+      .values({ id, ...report })
+      .returning();
+    
+    return created;
+  }
+
+  async getUserReports(filters?: { status?: string; reportType?: string; limit?: number }): Promise<UserReport[]> {
+    let query = db.select().from(userReports);
+
+    if (filters?.status) {
+      query = query.where(eq(userReports.status, filters.status)) as any;
+    }
+    if (filters?.reportType) {
+      query = query.where(eq(userReports.reportType, filters.reportType)) as any;
+    }
+
+    query = query.orderBy(desc(userReports.submittedAt)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    return await query;
+  }
+
+  async getUserReportById(id: string): Promise<UserReport | undefined> {
+    const [report] = await db
+      .select()
+      .from(userReports)
+      .where(eq(userReports.id, id));
+    
+    return report;
+  }
+
+  async updateUserReportStatus(id: string, status: string, adminNotes?: string): Promise<void> {
+    await db
+      .update(userReports)
+      .set({
+        status,
+        reviewedAt: new Date(),
+        adminNotes: adminNotes || null,
+      })
+      .where(eq(userReports.id, id));
+  }
+
+  async verifyUserReport(id: string, verifiedBy: string): Promise<void> {
+    await db
+      .update(userReports)
+      .set({
+        verified: true,
+        verifiedBy,
+        verifiedAt: new Date(),
+        status: 'verified',
+      })
+      .where(eq(userReports.id, id));
+  }
+
+  async voteOnReport(reportId: string, voterSessionId: string, voteType: 'upvote' | 'downvote'): Promise<void> {
+    const voteId = `vote_${reportId}_${voterSessionId}`;
+
+    // Check if vote already exists
+    const [existingVote] = await db
+      .select()
+      .from(reportVotes)
+      .where(
+        and(
+          eq(reportVotes.reportId, reportId),
+          eq(reportVotes.voterSessionId, voterSessionId)
+        )
+      );
+
+    if (existingVote) {
+      // Update existing vote
+      if (existingVote.voteType === voteType) {
+        // Same vote, do nothing
+        return;
+      } else {
+        // Different vote, update counts
+        await db
+          .update(reportVotes)
+          .set({ voteType })
+          .where(eq(reportVotes.id, existingVote.id));
+
+        // Adjust vote counts
+        if (voteType === 'upvote') {
+          await db
+            .update(userReports)
+            .set({
+              upvotes: sql`${userReports.upvotes} + 1`,
+              downvotes: sql`${userReports.downvotes} - 1`,
+            })
+            .where(eq(userReports.id, reportId));
+        } else {
+          await db
+            .update(userReports)
+            .set({
+              upvotes: sql`${userReports.upvotes} - 1`,
+              downvotes: sql`${userReports.downvotes} + 1`,
+            })
+            .where(eq(userReports.id, reportId));
+        }
+      }
+    } else {
+      // Create new vote
+      await db.insert(reportVotes).values({
+        id: voteId,
+        reportId,
+        voterSessionId,
+        voteType,
+      });
+
+      // Update vote counts
+      if (voteType === 'upvote') {
+        await db
+          .update(userReports)
+          .set({ upvotes: sql`${userReports.upvotes} + 1` })
+          .where(eq(userReports.id, reportId));
+      } else {
+        await db
+          .update(userReports)
+          .set({ downvotes: sql`${userReports.downvotes} + 1` })
+          .where(eq(userReports.id, reportId));
+      }
+    }
+  }
+
+  async removeVoteFromReport(reportId: string, voterSessionId: string): Promise<void> {
+    const [existingVote] = await db
+      .select()
+      .from(reportVotes)
+      .where(
+        and(
+          eq(reportVotes.reportId, reportId),
+          eq(reportVotes.voterSessionId, voterSessionId)
+        )
+      );
+
+    if (existingVote) {
+      await db
+        .delete(reportVotes)
+        .where(eq(reportVotes.id, existingVote.id));
+
+      // Update vote counts
+      if (existingVote.voteType === 'upvote') {
+        await db
+          .update(userReports)
+          .set({ upvotes: sql`${userReports.upvotes} - 1` })
+          .where(eq(userReports.id, reportId));
+      } else {
+        await db
+          .update(userReports)
+          .set({ downvotes: sql`${userReports.downvotes} - 1` })
+          .where(eq(userReports.id, reportId));
+      }
+    }
+  }
+
+  async getUserReputation(userIdentifier: string): Promise<UserReputation | undefined> {
+    const [reputation] = await db
+      .select()
+      .from(userReputation)
+      .where(eq(userReputation.userIdentifier, userIdentifier));
+    
+    return reputation;
+  }
+
+  async updateUserReputation(userIdentifier: string, updates: Partial<UserReputation>): Promise<void> {
+    const existing = await this.getUserReputation(userIdentifier);
+
+    if (existing) {
+      await db
+        .update(userReputation)
+        .set({ ...updates, lastActive: new Date() })
+        .where(eq(userReputation.userIdentifier, userIdentifier));
+    } else {
+      const id = `reputation_${userIdentifier}`;
+      await db
+        .insert(userReputation)
+        .values({
+          id,
+          userIdentifier,
+          ...updates,
+        });
+    }
+  }
+
+  // Phase 5: Intelligence Sharing implementations
+  async addScammerAddress(address: InsertScammerAddress): Promise<ScammerAddress> {
+    const id = `scammer_${address.chain}_${address.address}_${Date.now()}`;
+    
+    const [created] = await db
+      .insert(scammerAddresses)
+      .values({ id, ...address })
+      .returning();
+    
+    return created;
+  }
+
+  async getScammerAddresses(filters?: { chain?: string; category?: string; isActive?: boolean; limit?: number }): Promise<ScammerAddress[]> {
+    let query = db.select().from(scammerAddresses);
+
+    const conditions = [];
+    if (filters?.chain) {
+      conditions.push(eq(scammerAddresses.chain, filters.chain));
+    }
+    if (filters?.category) {
+      conditions.push(eq(scammerAddresses.category, filters.category));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(scammerAddresses.isActive, filters.isActive));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    query = query.orderBy(desc(scammerAddresses.addedAt)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    return await query;
+  }
+
+  async searchScammerAddress(address: string, chain: string): Promise<ScammerAddress | undefined> {
+    const [found] = await db
+      .select()
+      .from(scammerAddresses)
+      .where(
+        and(
+          eq(scammerAddresses.address, address.toLowerCase()),
+          eq(scammerAddresses.chain, chain)
+        )
+      );
+    
+    return found;
+  }
+
+  async updateScammerAddress(id: string, updates: Partial<ScammerAddress>): Promise<void> {
+    await db
+      .update(scammerAddresses)
+      .set(updates)
+      .where(eq(scammerAddresses.id, id));
+  }
+
+  async addAlertSubscription(subscription: InsertAlertSubscription): Promise<AlertSubscription> {
+    const id = `subscription_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    const [created] = await db
+      .insert(alertSubscriptions)
+      .values({ id, ...subscription })
+      .returning();
+    
+    return created;
+  }
+
+  async getAlertSubscriptions(filters?: { subscriptionType?: string; active?: boolean }): Promise<AlertSubscription[]> {
+    let query = db.select().from(alertSubscriptions);
+
+    const conditions = [];
+    if (filters?.subscriptionType) {
+      conditions.push(eq(alertSubscriptions.subscriptionType, filters.subscriptionType));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(alertSubscriptions.active, filters.active));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query;
+  }
+
+  async updateAlertSubscription(id: string, updates: Partial<AlertSubscription>): Promise<void> {
+    await db
+      .update(alertSubscriptions)
+      .set(updates)
+      .where(eq(alertSubscriptions.id, id));
+  }
+
+  async addWebhookEndpoint(webhook: InsertWebhookEndpoint): Promise<WebhookEndpoint> {
+    const id = `webhook_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    const [created] = await db
+      .insert(webhookEndpoints)
+      .values({ id, ...webhook })
+      .returning();
+    
+    return created;
+  }
+
+  async getWebhookEndpoints(filters?: { active?: boolean }): Promise<WebhookEndpoint[]> {
+    let query = db.select().from(webhookEndpoints);
+
+    if (filters?.active !== undefined) {
+      query = query.where(eq(webhookEndpoints.active, filters.active)) as any;
+    }
+
+    return await query;
+  }
+
+  async updateWebhookEndpoint(id: string, updates: Partial<WebhookEndpoint>): Promise<void> {
+    await db
+      .update(webhookEndpoints)
+      .set(updates)
+      .where(eq(webhookEndpoints.id, id));
   }
 }
 

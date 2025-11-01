@@ -736,6 +736,119 @@ export type AIScanHistory = {
   timestamp: string;
 };
 
+// Phase 4: Community & Reporting Tables
+export const userReports = pgTable('user_reports', {
+  id: text('id').primaryKey(),
+  reporterName: text('reporter_name'),
+  reporterEmail: text('reporter_email'),
+  reportType: text('report_type').notNull(), // 'protocol' | 'wallet' | 'website' | 'contract'
+  targetId: text('target_id').notNull(), // protocol ID, wallet address, website URL, or contract address
+  targetName: text('target_name').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  evidence: json('evidence').$type<Array<{ type: string; url: string; description: string }>>(),
+  severity: text('severity').notNull(), // 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+  category: text('category').notNull(), // threat category
+  status: text('status').notNull().default('pending'), // 'pending' | 'verified' | 'rejected' | 'investigating'
+  upvotes: integer('upvotes').notNull().default(0),
+  downvotes: integer('downvotes').notNull().default(0),
+  verified: boolean('verified').notNull().default(false),
+  verifiedBy: text('verified_by'),
+  verifiedAt: timestamp('verified_at'),
+  submittedAt: timestamp('submitted_at').notNull().defaultNow(),
+  reviewedAt: timestamp('reviewed_at'),
+  adminNotes: text('admin_notes'),
+}, (table) => ({
+  reportTypeIdx: index('user_reports_report_type_idx').on(table.reportType),
+  statusIdx: index('user_reports_status_idx').on(table.status),
+  submittedAtIdx: index('user_reports_submitted_at_idx').on(table.submittedAt),
+  targetIdIdx: index('user_reports_target_id_idx').on(table.targetId),
+}));
+
+export const reportVotes = pgTable('report_votes', {
+  id: text('id').primaryKey(),
+  reportId: text('report_id').notNull().references(() => userReports.id),
+  voterSessionId: text('voter_session_id').notNull(), // Session ID or IP hash for anonymous voting
+  voteType: text('vote_type').notNull(), // 'upvote' | 'downvote'
+  votedAt: timestamp('voted_at').notNull().defaultNow(),
+}, (table) => ({
+  reportIdIdx: index('report_votes_report_id_idx').on(table.reportId),
+  uniqueVoteIdx: uniqueIndex('report_votes_unique_vote_idx').on(table.reportId, table.voterSessionId),
+}));
+
+export const userReputation = pgTable('user_reputation', {
+  id: text('id').primaryKey(),
+  userIdentifier: text('user_identifier').notNull(), // email or session ID
+  reputationScore: integer('reputation_score').notNull().default(0),
+  reportsSubmitted: integer('reports_submitted').notNull().default(0),
+  reportsVerified: integer('reports_verified').notNull().default(0),
+  reportsRejected: integer('reports_rejected').notNull().default(0),
+  lastActive: timestamp('last_active').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  userIdentifierIdx: uniqueIndex('user_reputation_user_identifier_idx').on(table.userIdentifier),
+  reputationScoreIdx: index('user_reputation_reputation_score_idx').on(table.reputationScore),
+}));
+
+// Phase 5: Intelligence Sharing Tables
+export const scammerAddresses = pgTable('scammer_addresses', {
+  id: text('id').primaryKey(),
+  address: text('address').notNull(),
+  chain: text('chain').notNull(), // 'ethereum', 'bsc', 'polygon', 'solana', etc.
+  addressType: text('address_type').notNull(), // 'wallet' | 'contract'
+  category: text('category').notNull(), // 'drainer' | 'phishing' | 'rugpull' | 'ponzi' | 'honeypot'
+  severity: text('severity').notNull(), // 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+  description: text('description').notNull(),
+  associatedScam: text('associated_scam'), // Name of the scam operation
+  totalStolen: real('total_stolen').default(0), // Estimated amount stolen in USD
+  victimCount: integer('victim_count').default(0),
+  firstSeen: timestamp('first_seen').notNull().defaultNow(),
+  lastActivity: timestamp('last_activity'),
+  isActive: boolean('is_active').notNull().default(true),
+  relatedAddresses: json('related_addresses').$type<string[]>(), // Related scammer addresses
+  evidenceLinks: json('evidence_links').$type<string[]>(),
+  reportedBy: text('reported_by'), // Source of the report
+  verifiedAt: timestamp('verified_at'),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
+}, (table) => ({
+  addressIdx: uniqueIndex('scammer_addresses_address_chain_idx').on(table.address, table.chain),
+  chainIdx: index('scammer_addresses_chain_idx').on(table.chain),
+  categoryIdx: index('scammer_addresses_category_idx').on(table.category),
+  isActiveIdx: index('scammer_addresses_is_active_idx').on(table.isActive),
+  addedAtIdx: index('scammer_addresses_added_at_idx').on(table.addedAt),
+}));
+
+export const alertSubscriptions = pgTable('alert_subscriptions', {
+  id: text('id').primaryKey(),
+  email: text('email'),
+  telegramChatId: text('telegram_chat_id'),
+  subscriptionType: text('subscription_type').notNull(), // 'email' | 'telegram'
+  alertTypes: json('alert_types').$type<string[]>().notNull(), // ['new_threat', 'critical_alert', 'scammer_address', 'blacklist_update']
+  frequency: text('frequency').notNull().default('immediate'), // 'immediate' | 'daily' | 'weekly'
+  active: boolean('active').notNull().default(true),
+  lastSent: timestamp('last_sent'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  emailIdx: index('alert_subscriptions_email_idx').on(table.email),
+  telegramChatIdIdx: index('alert_subscriptions_telegram_chat_id_idx').on(table.telegramChatId),
+  subscriptionTypeIdx: index('alert_subscriptions_subscription_type_idx').on(table.subscriptionType),
+}));
+
+export const webhookEndpoints = pgTable('webhook_endpoints', {
+  id: text('id').primaryKey(),
+  url: text('url').notNull(),
+  secret: text('secret').notNull(), // HMAC secret for webhook verification
+  eventTypes: json('event_types').$type<string[]>().notNull(), // ['new_threat', 'blacklist_update', 'scammer_address']
+  active: boolean('active').notNull().default(true),
+  lastTriggered: timestamp('last_triggered'),
+  failureCount: integer('failure_count').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdBy: text('created_by'), // API key or admin ID
+}, (table) => ({
+  urlIdx: uniqueIndex('webhook_endpoints_url_idx').on(table.url),
+  activeIdx: index('webhook_endpoints_active_idx').on(table.active),
+}));
+
 // Zod Insert Schemas from Drizzle
 export const insertProtocolSchema = createInsertSchema(protocols).omit({ 
   discoveredAt: true, 
@@ -798,6 +911,47 @@ export const insertCertikAuditSchema = createInsertSchema(certikAudits).omit({
   fetchedAt: true
 });
 
+// Phase 4 & 5 Insert Schemas
+export const insertUserReportSchema = createInsertSchema(userReports).omit({ 
+  id: true, 
+  submittedAt: true,
+  reviewedAt: true,
+  upvotes: true,
+  downvotes: true,
+  verified: true,
+  verifiedBy: true,
+  verifiedAt: true
+}).extend({
+  reporterEmail: z.string().email().or(z.literal("")).optional().nullable()
+});
+
+export const insertReportVoteSchema = createInsertSchema(reportVotes).omit({ 
+  id: true, 
+  votedAt: true
+});
+
+export const insertUserReputationSchema = createInsertSchema(userReputation).omit({ 
+  id: true, 
+  lastActive: true,
+  createdAt: true
+});
+
+export const insertScammerAddressSchema = createInsertSchema(scammerAddresses).omit({ 
+  id: true, 
+  firstSeen: true,
+  addedAt: true
+});
+
+export const insertAlertSubscriptionSchema = createInsertSchema(alertSubscriptions).omit({ 
+  id: true, 
+  createdAt: true
+});
+
+export const insertWebhookEndpointSchema = createInsertSchema(webhookEndpoints).omit({ 
+  id: true, 
+  createdAt: true
+});
+
 export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
 export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
 export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
@@ -808,6 +962,21 @@ export type InsertProtocolSubmission = z.infer<typeof insertProtocolSubmissionSc
 export type InsertProtocolWhitelist = z.infer<typeof insertProtocolWhitelistSchema>;
 export type InsertTwitterAlert = z.infer<typeof insertTwitterAlertSchema>;
 export type InsertCertikAudit = z.infer<typeof insertCertikAuditSchema>;
+
+// Phase 4 & 5 Types
+export type UserReport = typeof userReports.$inferSelect;
+export type ReportVote = typeof reportVotes.$inferSelect;
+export type UserReputation = typeof userReputation.$inferSelect;
+export type ScammerAddress = typeof scammerAddresses.$inferSelect;
+export type AlertSubscription = typeof alertSubscriptions.$inferSelect;
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+
+export type InsertUserReport = z.infer<typeof insertUserReportSchema>;
+export type InsertReportVote = z.infer<typeof insertReportVoteSchema>;
+export type InsertUserReputation = z.infer<typeof insertUserReputationSchema>;
+export type InsertScammerAddress = z.infer<typeof insertScammerAddressSchema>;
+export type InsertAlertSubscription = z.infer<typeof insertAlertSubscriptionSchema>;
+export type InsertWebhookEndpoint = z.infer<typeof insertWebhookEndpointSchema>;
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());

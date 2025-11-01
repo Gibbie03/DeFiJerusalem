@@ -3,50 +3,6 @@
 ## Overview
 JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols, perform real-time security threat analysis, and detect major wallet and protocol threats across over 126 blockchain chains. It scans for 38+ distinct threat categories, including advanced 2025 wallet drainer operations, EIP-2612 permit signature exploits, approval phishing attacks, CREATE2 evasion techniques, and Solana-specific drains. The project aims to provide a comprehensive DeFi security tool to protect users against crypto scams, featuring a cybersecurity-themed UI, persistent PostgreSQL storage, and monetization features.
 
-## Project Status
-
-### Phase 1: MVP Complete ✅ (November 1, 2025)
-**Status:** Production Ready | **Test Coverage:** 100% E2E Passed | **Database:** 6,651 protocols scanned
-
-**Critical Blockers Resolved:**
-1. ✅ **UPSERT Re-scanning** - Fixed duplicate key errors when re-scanning protocols (server/storage.ts - onConflictDoUpdate)
-2. ✅ **AI Learning Integration** - All scan types now teach AI automatically (wallet scans, website scans, protocol scans)
-3. ✅ **Admin Blacklist Review** - Comprehensive UI for false positive detection and verification (client/src/pages/AdminDashboard.tsx)
-
-**Current Metrics:**
-- **Protocols Scanned:** 6,651 (100% coverage)
-- **Active Blacklist:** 3,022 entries
-- **Threat Detections:** 9 advanced drainer operations detected
-- **AI Learning:** PostgreSQL persistence active (patterns persist across restarts)
-- **End-to-End Tests:** All passing (Playwright verified)
-
-**Known Limitations:**
-- Etherscan web scraping blocked (403 Forbidden - use CSV import instead)
-- Manual false positive review needed for blacklist (admin UI now available)
-
-**Next Steps:** Phase 2 Priority 2-3 - Monitoring, caching, performance optimization
-
-### Phase 2: Production Hardening (In Progress)
-**Timeline:** 4-6 weeks | **Focus:** Monitoring, persistence, security, performance
-
-**Priority 1 (Weeks 1-2): ✅ COMPLETE**
-- ✅ **AI Pattern Persistence to PostgreSQL** - Implemented database tables (ai_learned_patterns, ai_scan_history), storage layer methods, async learner with initialization, all scan types persist to database
-- **Remaining:** Monitoring & observability (Sentry, APM, structured logging), enhanced rate limiting and CAPTCHA protection, database backup strategy and connection pooling
-
-**Priority 2 (Weeks 3-4):**
-- Caching layer (Redis for GoPlus/DeFiLlama responses)
-- Background job queue (Bull for batch operations)
-- Performance optimization (parallel processing, CDN integration)
-- Real-time updates via WebSockets
-
-**Priority 3 (Weeks 5-6):**
-- Premium tier features (API access, advanced scanning)
-- Enhanced AI capabilities (ML-based classification)
-- Community features (user reporting, social sharing)
-- Analytics dashboard for business intelligence
-
-**See:** PRODUCTION_READINESS_REPORT.md for detailed analysis
-
 ## User Preferences
 - **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)
 - **Forms**: Must use shadcn useForm + Form pattern with zodResolver for validation
@@ -65,9 +21,9 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
-- **Contract Discovery System**: Hybrid automated contract discovery combining three approaches: (1) DeFiLlama integration for established protocols with TVL data, extracting 6,894+ protocol contracts across 20+ blockchains with metadata; (2) CSV Import (RECOMMENDED) - Manual import of verified contract CSV exports from blockchain explorers, providing comprehensive coverage of all verified contracts across multiple chains; (3) Etherscan web scraping as experimental fallback (currently blocked by anti-bot protection). CSV import is the recommended method as it's ToS-compliant, provides ALL verified contracts (not just recent), and works reliably across all chains. CSV files are downloaded manually from explorer exportData pages (requires CAPTCHA) and placed in server/data/csv directory. Web scraping violates ToS and gets 403 Forbidden errors. Runs hourly background job with automatic deduplication across all sources.
-- **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with comprehensive drainer intelligence, supporting Ethereum and Solana addresses, known drainer databases, and transaction pattern detection. Includes vanity address analysis, address poisoning detection, educational content, risk scoring, drainer intelligence alerts, and blacklist integration.
-- **Security Statistics Dashboard**: Comprehensive real-time statistics page displaying total protocols, scan coverage, severity breakdown, 2025 Advanced Drainer Detection counts, and top highest risk protocols.
+- **Contract Discovery System**: Hybrid automated contract discovery combining DeFiLlama integration, manual CSV import of verified contracts, and experimental Etherscan web scraping (currently blocked). CSV import is the recommended, ToS-compliant method.
+- **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with drainer intelligence, supporting Ethereum and Solana, known drainer databases, transaction pattern detection, vanity address analysis, address poisoning detection, and risk scoring.
+- **Security Statistics Dashboard**: Comprehensive real-time statistics displaying total protocols, scan coverage, severity breakdown, 2025 Advanced Drainer Detection counts, and top highest risk protocols.
 - **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details with severity badges, detailed threat cards, and per-threat user advice.
 - **Triple-Layer Security Analysis**: Includes metadata-based scanning (38+ threat categories), GoPlus Security API for smart contract code analysis, and advanced 2025 drainer detection.
 - **Automatic Blacklisting**: DApps with CRITICAL severity scores are automatically blacklisted.
@@ -87,9 +43,12 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Intelligent Blacklist Verification System**: Cost-optimized false positive detection and targeted GoPlus re-scanning.
 - **Website Phishing Scanner**: Detects phishing patterns and scams through URL analysis, risk scoring, and manual HTML content analysis.
 - **Unified Security Scanner**: Single page combining wallet and website scanners with tab-based interface.
+- **Community Scam Reporting System**: User-generated threat reports for protocols, wallets, websites, and contracts with multi-category classification, severity ratings, and status tracking. Includes comprehensive report form with evidence upload support.
+- **Public Scammer Address Database**: Searchable database of verified scammer addresses with multi-chain support, verification status tracking, evidence linking, and public API for lookups.
+- **Community Reporting & Threat Intelligence**: Includes a community scam reporting system, voting & reputation system, and public scammer address database.
 
 ### System Design Choices
-- **Database Schema**: PostgreSQL with Drizzle ORM for various tables, optimized with indexing and UPSERT-based persistence.
+- **Database Schema**: PostgreSQL with Drizzle ORM, optimized with indexing and UPSERT-based persistence.
 - **Timestamp Management**: All timestamp fields use database-generated `.defaultNow()`.
 - **API Routes**: RESTful API for managing application data, including secure admin authentication and paginated protocol endpoints.
 - **Multi-Layer Security**: Implements rate limiting, secure admin initialization, audit logging, input validation/sanitization, security headers (Helmet), and secure session management.
@@ -101,7 +60,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.
-- **Blockchain Explorer Web Scraping**: Cheerio-based HTML parsing of Etherscan contractsVerified pages to discover recently verified contracts across multiple chains.
+- **Blockchain Explorer Web Scraping**: Cheerio-based HTML parsing of Etherscan contractsVerified pages.
 - **GoPlus Security API**: Real-time smart contract code analysis.
 - **Twitter API v2 Filtered Stream**: Real-time monitoring of crypto threats.
 - **CertiK Skynet**: Public security score scraping and audit verification.

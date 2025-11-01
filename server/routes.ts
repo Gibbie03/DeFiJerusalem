@@ -8,7 +8,7 @@ import { WalletDrainerDetector } from "./lib/wallet-drainer-detector";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { auditLogger } from "./lib/audit-logger";
 import { threatLearner } from "./lib/threat-pattern-learner";
-import { insertProtocolSchema, insertTutorialVideoSchema, insertProtocolSubmissionSchema, type Protocol } from "@shared/schema";
+import { insertProtocolSchema, insertTutorialVideoSchema, insertProtocolSubmissionSchema, insertUserReportSchema, insertScammerAddressSchema, insertAlertSubscriptionSchema, insertWebhookEndpointSchema, type Protocol } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 import { z } from "zod";
 
@@ -3644,6 +3644,367 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('[API] Error fetching contract discovery stats:', error);
       res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+  });
+
+  // ========== PHASE 4: COMMUNITY REPORTING ROUTES ==========
+  
+  // Submit a new user report
+  app.post('/api/reports', apiLimiter, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertUserReportSchema.parse(req.body);
+      
+      const report = await storage.createUserReport(validatedData);
+      
+      // Update user reputation
+      if (validatedData.reporterEmail) {
+        const reputation = await storage.getUserReputation(validatedData.reporterEmail);
+        const newReportsCount = (reputation?.reportsSubmitted || 0) + 1;
+        
+        await storage.updateUserReputation(validatedData.reporterEmail, {
+          reportsSubmitted: newReportsCount,
+          reputationScore: (reputation?.reputationScore || 0) + 5, // +5 points for submitting
+        });
+      }
+      
+      auditLogger.log({
+        action: 'user_report_created',
+        details: `User report created: ${report.id} - ${report.title}`,
+        severity: 'info',
+      });
+      
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error('[API] Error creating user report:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid report data', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create report' });
+      }
+    }
+  });
+  
+  // Get all user reports with filtering
+  app.get('/api/reports', async (req: Request, res: Response) => {
+    try {
+      const status = req.query.status as string | undefined;
+      const reportType = req.query.reportType as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const reports = await storage.getUserReports({ status, reportType, limit });
+      
+      res.json({ reports, total: reports.length });
+    } catch (error) {
+      console.error('[API] Error fetching user reports:', error);
+      res.status(500).json({ error: 'Failed to fetch reports' });
+    }
+  });
+  
+  // Get a specific user report
+  app.get('/api/reports/:id', async (req: Request, res: Response) => {
+    try {
+      const report = await storage.getUserReportById(req.params.id);
+      
+      if (!report) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error('[API] Error fetching report:', error);
+      res.status(500).json({ error: 'Failed to fetch report' });
+    }
+  });
+  
+  // Vote on a report
+  app.post('/api/reports/:id/vote', apiLimiter, async (req: Request, res: Response) => {
+    try {
+      const { voteType } = req.body;
+      
+      if (!voteType || (voteType !== 'upvote' && voteType !== 'downvote')) {
+        return res.status(400).json({ error: 'Invalid vote type' });
+      }
+      
+      // Use IP as voter identifier (with UUID fallback)
+      const voterSessionId = req.ip || crypto.randomUUID();
+      
+      await storage.voteOnReport(req.params.id, voterSessionId, voteType);
+      
+      // Get updated report
+      const report = await storage.getUserReportById(req.params.id);
+      
+      res.json({ 
+        success: true, 
+        upvotes: report?.upvotes || 0,
+        downvotes: report?.downvotes || 0,
+      });
+    } catch (error) {
+      console.error('[API] Error voting on report:', error);
+      res.status(500).json({ error: 'Failed to vote on report' });
+    }
+  });
+  
+  // Remove vote from report
+  app.delete('/api/reports/:id/vote', apiLimiter, async (req: Request, res: Response) => {
+    try {
+      const voterSessionId = req.ip || crypto.randomUUID();
+      
+      await storage.removeVoteFromReport(req.params.id, voterSessionId);
+      
+      // Get updated report
+      const report = await storage.getUserReportById(req.params.id);
+      
+      res.json({ 
+        success: true, 
+        upvotes: report?.upvotes || 0,
+        downvotes: report?.downvotes || 0,
+      });
+    } catch (error) {
+      console.error('[API] Error removing vote:', error);
+      res.status(500).json({ error: 'Failed to remove vote' });
+    }
+  });
+  
+  // Update report status (admin only)
+  app.patch('/api/reports/:id/status', async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const { status, adminNotes } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ error: 'Status is required' });
+      }
+      
+      await storage.updateUserReportStatus(req.params.id, status, adminNotes);
+      
+      auditLogger.log({
+        action: 'user_report_status_updated',
+        adminId: req.session.user.id,
+        adminUsername: req.session.user.username,
+        details: `Report ${req.params.id} status updated to ${status}`,
+        severity: 'info',
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[API] Error updating report status:', error);
+      res.status(500).json({ error: 'Failed to update report status' });
+    }
+  });
+  
+  // Verify a report (admin only)
+  app.patch('/api/reports/:id/verify', async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const report = await storage.getUserReportById(req.params.id);
+      
+      if (!report) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+      
+      await storage.verifyUserReport(req.params.id, req.session.user.username);
+      
+      // Update reporter reputation
+      if (report.reporterEmail) {
+        const reputation = await storage.getUserReputation(report.reporterEmail);
+        await storage.updateUserReputation(report.reporterEmail, {
+          reportsVerified: (reputation?.reportsVerified || 0) + 1,
+          reputationScore: (reputation?.reputationScore || 0) + 20, // +20 points for verified report
+        });
+      }
+      
+      auditLogger.log({
+        action: 'user_report_verified',
+        adminId: req.session.user.id,
+        adminUsername: req.session.user.username,
+        details: `Report ${req.params.id} verified`,
+        severity: 'info',
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[API] Error verifying report:', error);
+      res.status(500).json({ error: 'Failed to verify report' });
+    }
+  });
+
+  // ========== PHASE 5: SCAMMER ADDRESS DATABASE ROUTES ==========
+  
+  // Get scammer addresses with filtering
+  app.get('/api/scammer-addresses', async (req: Request, res: Response) => {
+    try {
+      const chain = req.query.chain as string | undefined;
+      const category = req.query.category as string | undefined;
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const limit = parseInt(req.query.limit as string) || 100;
+      
+      const addresses = await storage.getScammerAddresses({ chain, category, isActive, limit });
+      
+      res.json({ addresses, total: addresses.length });
+    } catch (error) {
+      console.error('[API] Error fetching scammer addresses:', error);
+      res.status(500).json({ error: 'Failed to fetch scammer addresses' });
+    }
+  });
+  
+  // Search for a specific scammer address
+  app.get('/api/scammer-addresses/search', async (req: Request, res: Response) => {
+    try {
+      const address = req.query.address as string;
+      const chain = req.query.chain as string;
+      
+      if (!address || !chain) {
+        return res.status(400).json({ error: 'Address and chain parameters are required' });
+      }
+      
+      const found = await storage.searchScammerAddress(address, chain);
+      
+      if (!found) {
+        return res.json({ found: false, address: null });
+      }
+      
+      res.json({ found: true, address: found });
+    } catch (error) {
+      console.error('[API] Error searching scammer address:', error);
+      res.status(500).json({ error: 'Failed to search address' });
+    }
+  });
+  
+  // Add scammer address (admin only)
+  app.post('/api/scammer-addresses', async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const validatedData = insertScammerAddressSchema.parse(req.body);
+      
+      // Check if address already exists
+      const existing = await storage.searchScammerAddress(validatedData.address, validatedData.chain);
+      if (existing) {
+        return res.status(409).json({ error: 'Address already exists in database' });
+      }
+      
+      const address = await storage.addScammerAddress(validatedData);
+      
+      auditLogger.log({
+        action: 'scammer_address_added',
+        adminId: req.session.user.id,
+        adminUsername: req.session.user.username,
+        details: `Scammer address added: ${address.address} on ${address.chain}`,
+        severity: 'info',
+      });
+      
+      res.status(201).json(address);
+    } catch (error: any) {
+      console.error('[API] Error adding scammer address:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid address data', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to add scammer address' });
+      }
+    }
+  });
+
+  // ========== PHASE 5: ALERT SUBSCRIPTION ROUTES ==========
+  
+  // Subscribe to alerts
+  app.post('/api/alert-subscriptions', apiLimiter, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertAlertSubscriptionSchema.parse(req.body);
+      
+      const subscription = await storage.addAlertSubscription(validatedData);
+      
+      res.status(201).json(subscription);
+    } catch (error: any) {
+      console.error('[API] Error creating alert subscription:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid subscription data', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create subscription' });
+      }
+    }
+  });
+  
+  // Get alert subscriptions (admin only)
+  app.get('/api/alert-subscriptions', async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const subscriptionType = req.query.subscriptionType as string | undefined;
+      const active = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
+      
+      const subscriptions = await storage.getAlertSubscriptions({ subscriptionType, active });
+      
+      res.json({ subscriptions, total: subscriptions.length });
+    } catch (error) {
+      console.error('[API] Error fetching alert subscriptions:', error);
+      res.status(500).json({ error: 'Failed to fetch subscriptions' });
+    }
+  });
+
+  // ========== PHASE 5: WEBHOOK ENDPOINT ROUTES ==========
+  
+  // Add webhook endpoint (admin only)
+  app.post('/api/webhooks', async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const validatedData = insertWebhookEndpointSchema.parse(req.body);
+      
+      // Generate HMAC secret
+      const secret = crypto.randomBytes(32).toString('hex');
+      
+      const webhook = await storage.addWebhookEndpoint({
+        ...validatedData,
+        secret,
+        createdBy: req.session.user.username,
+      });
+      
+      auditLogger.log({
+        action: 'webhook_endpoint_added',
+        adminId: req.session.user.id,
+        adminUsername: req.session.user.username,
+        details: `Webhook endpoint added: ${webhook.url}`,
+        severity: 'info',
+      });
+      
+      res.status(201).json(webhook);
+    } catch (error: any) {
+      console.error('[API] Error adding webhook endpoint:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid webhook data', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to add webhook endpoint' });
+      }
+    }
+  });
+  
+  // Get webhook endpoints (admin only)
+  app.get('/api/webhooks', async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const active = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
+      
+      const webhooks = await storage.getWebhookEndpoints({ active });
+      
+      res.json({ webhooks, total: webhooks.length });
+    } catch (error) {
+      console.error('[API] Error fetching webhook endpoints:', error);
+      res.status(500).json({ error: 'Failed to fetch webhooks' });
     }
   });
 
