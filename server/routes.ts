@@ -1309,6 +1309,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/scan-wallet - Scan wallet address for drainer footprints
+  app.post("/api/scan-wallet", apiLimiter, async (req, res) => {
+    try {
+      const { address } = req.body;
+
+      if (!address || typeof address !== 'string') {
+        return res.status(400).json({ 
+          error: "Address is required",
+          message: "Please provide a valid wallet address"
+        });
+      }
+
+      const normalizedAddress = address.trim();
+      
+      // Basic Ethereum address validation
+      const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+      const isValid = ethAddressRegex.test(normalizedAddress);
+
+      if (!isValid) {
+        return res.json({
+          address: normalizedAddress,
+          isValid: false,
+          isDangerous: false,
+          severity: 'SAFE',
+          findings: [{
+            type: 'INVALID_ADDRESS',
+            severity: 'LOW',
+            message: 'Invalid wallet address format. Please provide a valid Ethereum-compatible address (0x...)'
+          }],
+          associatedProtocols: [],
+          riskScore: 0,
+          recommendations: ['Verify the address format before scanning']
+        });
+      }
+
+      const findings: any[] = [];
+      const associatedProtocols: any[] = [];
+      let riskScore = 0;
+
+      // Check blacklist for protocols with this address
+      const blacklist = await storage.getBlacklist();
+      const protocols = await storage.getProtocols();
+
+      // Check if address matches any contract addresses in protocols
+      for (const protocol of protocols) {
+        if (protocol.contractAddress && 
+            protocol.contractAddress.toLowerCase() === normalizedAddress.toLowerCase()) {
+          
+          // Find if this protocol is blacklisted
+          const blacklistEntry = blacklist.find(b => b.dappId === protocol.id && b.status === 'ACTIVE');
+          
+          if (blacklistEntry) {
+            findings.push({
+              type: 'BLACKLISTED_PROTOCOL',
+              severity: blacklistEntry.severity,
+              message: `This address is associated with blacklisted protocol: ${protocol.name}`,
+              evidence: `Protocol "${protocol.name}" flagged with ${blacklistEntry.threats.length} threats`
+            });
+
+            riskScore += blacklistEntry.severity === 'CRITICAL' ? 80 : 
+                        blacklistEntry.severity === 'HIGH' ? 60 :
+                        blacklistEntry.severity === 'MEDIUM' ? 40 : 20;
+
+            associatedProtocols.push({
+              name: protocol.name,
+              id: protocol.id,
+              severity: blacklistEntry.severity,
+              blacklisted: true
+            });
+          } else {
+            associatedProtocols.push({
+              name: protocol.name,
+              id: protocol.id,
+              severity: 'UNKNOWN',
+              blacklisted: false
+            });
+          }
+        }
+      }
+
+      // Drainer pattern detection in address (basic heuristics)
+      const addressLower = normalizedAddress.toLowerCase();
+      
+      // Check for null/burn address
+      if (addressLower === '0x0000000000000000000000000000000000000000') {
+        findings.push({
+          type: 'NULL_ADDRESS',
+          severity: 'LOW',
+          message: 'This is the null/burn address - commonly used in token burns'
+        });
+      }
+
+      // Check if it's a known vanity address pattern that drainers sometimes use
+      const suspiciousPatterns = [
+        { pattern: /^0x0{20,}[a-f0-9]+$/, message: 'Suspicious leading zeros pattern' },
+        { pattern: /^0x[a-f0-9]*dead[a-f0-9]*$/i, message: 'Contains "dead" - common in scam addresses' },
+        { pattern: /^0x[a-f0-9]*beef[a-f0-9]*$/i, message: 'Contains "beef" - common vanity pattern' },
+      ];
+
+      for (const { pattern, message } of suspiciousPatterns) {
+        if (pattern.test(addressLower) && addressLower !== '0x0000000000000000000000000000000000000000') {
+          findings.push({
+            type: 'SUSPICIOUS_PATTERN',
+            severity: 'MEDIUM',
+            message: message,
+            evidence: 'Drainers sometimes use vanity addresses with specific patterns'
+          });
+          riskScore += 30;
+        }
+      }
+
+      // Determine severity and danger level
+      let severity: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'SAFE';
+      if (riskScore >= 80) severity = 'CRITICAL';
+      else if (riskScore >= 60) severity = 'HIGH';
+      else if (riskScore >= 40) severity = 'MEDIUM';
+      else if (riskScore >= 20) severity = 'LOW';
+
+      const isDangerous = riskScore >= 40;
+
+      // Generate recommendations
+      const recommendations: string[] = [];
+      if (isDangerous) {
+        recommendations.push('⚠️ DO NOT interact with this address - high risk of fund loss');
+        recommendations.push('Verify the source before approving any transactions');
+        recommendations.push('Check recent transaction history on block explorers');
+      } else if (findings.length > 0) {
+        recommendations.push('Exercise caution when interacting with this address');
+        recommendations.push('Always verify addresses through official sources');
+      } else {
+        recommendations.push('No immediate threats detected, but always verify addresses');
+        recommendations.push('Check transaction history on Etherscan or similar explorers');
+      }
+
+      if (associatedProtocols.some(p => p.blacklisted)) {
+        recommendations.push('This address is linked to blacklisted protocols - avoid interaction');
+      }
+
+      res.json({
+        address: normalizedAddress,
+        isValid: true,
+        isDangerous,
+        severity,
+        findings,
+        associatedProtocols,
+        riskScore: Math.min(riskScore, 100),
+        recommendations
+      });
+
+    } catch (error) {
+      console.error("[SCAN-WALLET] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to scan wallet address",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // POST /api/blacklist/filter-analysis - Analyze blacklist for potential false positives
   app.post("/api/blacklist/filter-analysis", apiLimiter, async (req, res) => {
     try {

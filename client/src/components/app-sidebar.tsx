@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload, AlertTriangle, Library, Skull } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload, AlertTriangle, Library, Skull, Wallet } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +36,11 @@ const menuItems = [
     title: "Scan Website",
     url: "/scan-website",
     icon: ScanSearch,
+  },
+  {
+    title: "Scan Wallet",
+    url: "/scan-wallet",
+    icon: Wallet,
   },
   {
     title: "Submit Protocol",
