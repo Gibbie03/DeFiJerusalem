@@ -440,79 +440,77 @@ export default function Dashboard() {
           </AlertDescription>
         </Alert>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <SearchBar value={searchValue} onChange={setSearchValue} />
-              </div>
-              <div className="flex gap-2">
-                <AddDAppByUrlDialog />
-                <Button
-                  onClick={handleScanAll}
-                  disabled={scanMutation.isPending || protocols.length === 0}
-                  variant="default"
-                  data-testid="button-scan-all"
-                >
-                  <ScanSearch className="w-4 h-4 mr-2" />
-                  {scanMutation.isPending ? 'Scanning...' : 'Scan All'}
-                </Button>
-              </div>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <SearchBar value={searchValue} onChange={setSearchValue} />
             </div>
-            
-            <div className="flex gap-2 flex-wrap">
-              <Select value={selectedChain} onValueChange={setSelectedChain}>
-                <SelectTrigger className="w-[160px]" data-testid="select-chain">
-                  <SelectValue placeholder="Filter by chain" />
-                </SelectTrigger>
-                <SelectContent>
-                  {chains.map((chain) => (
-                    <SelectItem key={chain} value={chain} data-testid={`option-chain-${chain}`}>
-                      {chain === 'all' ? 'All Chains' : chain.charAt(0).toUpperCase() + chain.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[160px]" data-testid="select-category">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category} data-testid={`option-category-${category}`}>
-                      {category === 'all' ? 'All Categories' : category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
+            <div className="flex gap-2">
+              <AddDAppByUrlDialog />
               <Button
-                variant={sortBy === 'tvl' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy('tvl')}
-                data-testid="button-sort-tvl"
+                onClick={handleScanAll}
+                disabled={scanMutation.isPending || protocols.length === 0}
+                variant="default"
+                data-testid="button-scan-all"
               >
-                <DollarSign className="w-4 h-4 mr-2" />
-                Rank by TVL
-              </Button>
-              
-              <Button
-                variant={sortBy === 'security' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy('security')}
-                data-testid="button-sort-security"
-              >
-                <Shield className="w-4 h-4 mr-2" />
-                Rank by Security
+                <ScanSearch className="w-4 h-4 mr-2" />
+                {scanMutation.isPending ? 'Scanning...' : 'Scan All'}
               </Button>
             </div>
           </div>
           
-          <div className="space-y-4">
-            <LatestThreatsWidget />
-            <SecurityRatingLegend />
+          <div className="flex gap-2 flex-wrap">
+            <Select value={selectedChain} onValueChange={setSelectedChain}>
+              <SelectTrigger className="w-[160px]" data-testid="select-chain">
+                <SelectValue placeholder="Filter by chain" />
+              </SelectTrigger>
+              <SelectContent>
+                {chains.map((chain) => (
+                  <SelectItem key={chain} value={chain} data-testid={`option-chain-${chain}`}>
+                    {chain === 'all' ? 'All Chains' : chain.charAt(0).toUpperCase() + chain.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[160px]" data-testid="select-category">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category} data-testid={`option-category-${category}`}>
+                    {category === 'all' ? 'All Categories' : category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Button
+              variant={sortBy === 'tvl' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy('tvl')}
+              data-testid="button-sort-tvl"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Rank by TVL
+            </Button>
+            
+            <Button
+              variant={sortBy === 'security' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy('security')}
+              data-testid="button-sort-security"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Rank by Security
+            </Button>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LatestThreatsWidget />
+          <SecurityRatingLegend />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
