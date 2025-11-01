@@ -138,21 +138,18 @@ export default function AdSpace({ position }: AdSpaceProps) {
           {!isConfigured && (
             <div className="text-center p-4 border border-dashed border-muted-foreground/20 rounded">
               <p className="text-sm text-muted-foreground font-medium">
-                Put Your Banner Here
+                Put your banner here
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Contact: <a 
-                  href="https://t.me/pingu1st" 
+                Contact admin: <a 
+                  href="https://t.me/gibbie03" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-primary hover:underline font-medium"
                   data-testid="link-contact-telegram"
                 >
-                  t.me/pingu1st
+                  t.me/gibbie03
                 </a>
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Expected Revenue: <span className="font-semibold text-green-500">$2-6 CPM</span>
               </p>
             </div>
           )}
