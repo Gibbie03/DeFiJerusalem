@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, BarChart3, ScanSearch, Upload, AlertTriangle, Library, Skull, Wallet } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, Skull } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -33,14 +33,9 @@ const menuItems = [
     icon: TrendingUp,
   },
   {
-    title: "Scan Website",
-    url: "/scan-website",
-    icon: ScanSearch,
-  },
-  {
-    title: "Scan Wallet",
-    url: "/scan-wallet",
-    icon: Wallet,
+    title: "Security Scanner",
+    url: "/security-scanner",
+    icon: Shield,
   },
   {
     title: "Submit Protocol",
@@ -50,7 +45,7 @@ const menuItems = [
   {
     title: "Blacklisted",
     url: "/blacklist",
-    icon: Shield,
+    icon: Lock,
   },
   {
     title: "Security & Threats",
@@ -85,7 +80,7 @@ const menuItems = [
   {
     title: "Admin",
     url: "/admin/dashboard",
-    icon: Lock,
+    icon: Landmark,
   },
 ];
 
