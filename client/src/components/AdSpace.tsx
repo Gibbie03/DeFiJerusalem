@@ -141,14 +141,14 @@ export default function AdSpace({ position }: AdSpaceProps) {
                 Put your banner here
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Contact admin: <a 
+                Contact <a 
                   href="https://t.me/gibbie03" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-primary hover:underline font-medium"
                   data-testid="link-contact-telegram"
                 >
-                  t.me/gibbie03
+                  admin
                 </a>
               </p>
             </div>
