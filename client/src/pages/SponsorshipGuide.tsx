@@ -104,7 +104,7 @@ const REQUIREMENTS = [
 
 export default function SponsorshipGuide() {
   const handleContactSales = (tier: string) => {
-    window.open('https://t.me/pingu1st', '_blank');
+    window.open('https://t.me/gibbie03', '_blank');
   };
 
   return (
@@ -246,11 +246,11 @@ export default function SponsorshipGuide() {
           <p className="text-muted-foreground">
             Contact our partnerships team at{' '}
             <a
-              href="mailto:sponsorships@Defijerusalem.com"
+              href="mailto:partnerships@defijerusalem.com"
               className="text-primary hover:underline font-semibold"
               data-testid="link-email-sponsorships"
             >
-              sponsorships@Defijerusalem.com
+              partnerships@defijerusalem.com
             </a>
           </p>
           
@@ -295,13 +295,13 @@ export default function SponsorshipGuide() {
               data-testid="button-social-telegram"
             >
               <a
-                href="https://t.me/DefiJerusalem"
+                href="https://t.me/gibbie03"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
-                Join Telegram
+                Contact on Telegram
               </a>
             </Button>
           </div>

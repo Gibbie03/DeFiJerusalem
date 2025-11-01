@@ -1,7 +1,13 @@
 # JERUSALEM DeFi Security Scanner
 
 ## Overview
-JERUSALEM DeFi Security Scanner is a full-stack JavaScript application designed to discover DeFi protocols, perform real-time security threat analysis, and detect major wallet and protocol threats across over 126 blockchain chains. It scans for 38+ distinct threat categories, including advanced 2025 wallet drainer operations, EIP-2612 permit signature exploits, approval phishing attacks, CREATE2 evasion techniques, and Solana-specific drains. The project aims to provide a comprehensive DeFi security tool to protect users against crypto scams, featuring a cybersecurity-themed UI, persistent PostgreSQL storage, and monetization features.
+JERUSALEM DeFi Security Scanner (defijerusalem.com) is a full-stack JavaScript application designed to discover DeFi protocols, perform real-time security threat analysis, and detect major wallet and protocol threats across over 126 blockchain chains. It scans for 38+ distinct threat categories, including advanced 2025 wallet drainer operations, EIP-2612 permit signature exploits, approval phishing attacks, CREATE2 evasion techniques, and Solana-specific drains. The project aims to provide a comprehensive DeFi security tool to protect users against crypto scams, featuring a cybersecurity-themed UI, persistent PostgreSQL storage, and monetization features.
+
+### Contact Information
+- **Telegram**: https://t.me/gibbie03
+- **Partnerships Email**: partnerships@defijerusalem.com
+- **Security Reports**: security@defijerusalem.com
+- **General Contact**: contact@defijerusalem.com
 
 ## User Preferences
 - **Design**: Cybersecurity-themed dark mode with Shield iconography (no emoji usage)

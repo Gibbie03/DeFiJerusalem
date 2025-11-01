@@ -32,14 +32,14 @@ export function Footer() {
             </a>
             
             <a
-              href="https://t.me/DefiJerusalem"
+              href="https://t.me/gibbie03"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors hover-elevate px-3 py-1.5 rounded-md"
               data-testid="link-telegram"
             >
               <SiTelegram className="w-4 h-4" />
-              <span>DefiJerusalem</span>
+              <span>Telegram</span>
             </a>
           </div>
         </div>
