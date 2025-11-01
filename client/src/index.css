@@ -368,9 +368,7 @@
   [data-slot="sidebar"],
   [data-slot="sidebar-gap"] {
     will-change: transform, width;
-    transform: translateZ(0);
     backface-visibility: hidden;
-    perspective: 1000px;
   }
 
   /* Optimize sidebar transitions for better performance */
@@ -378,8 +376,8 @@
     transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Use GPU acceleration for sidebar content */
-  .group\\/sidebar-wrapper [data-slot="sidebar"] {
+  /* GPU acceleration for sidebar content only (not the sidebar container itself) */
+  [data-slot="sidebar"] > * {
     transform: translateZ(0);
   }
 }
