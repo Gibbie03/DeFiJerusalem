@@ -21,6 +21,14 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
 - **Contract Verification Tracking**: Automated discovery of newly verified smart contracts across 8 major blockchain explorers.
+- **Wallet Address Scanner**: Real-time wallet address analysis feature allowing users to scan Ethereum-compatible addresses for drainer footprints, blacklist associations, and suspicious patterns. Features include:
+  - Address validation and format checking
+  - Association with blacklisted protocols
+  - Suspicious vanity pattern detection (null address, "dead", "beef" patterns)
+  - Risk scoring (0-100) with severity levels
+  - Actionable security recommendations
+  - Accessible via `/scan-wallet` route and sidebar navigation
+  - POST `/api/scan-wallet` endpoint for address analysis
 - **Security Statistics Dashboard**: Comprehensive real-time statistics page displaying:
   - Total protocols and scan coverage percentage
   - Severity breakdown with visual progress bars (CRITICAL, HIGH, MEDIUM, LOW, SAFE)
