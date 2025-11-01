@@ -1,4 +1,5 @@
 import type { Protocol, SecurityScan, Threat } from '@shared/schema';
+import type { IStorage } from '../storage';
 
 // Whitelist of well-established, verified protocols
 const VERIFIED_PROTOCOLS = new Set([
@@ -110,16 +111,29 @@ const SCAM_PATTERNS = {
   
   // ===== PROTOCOL-SPECIFIC THREATS =====
   
-  // Suspicious domain patterns (typosquatting)
+  // Suspicious domain patterns (typosquatting) with legitimate counterparts
   typosquatPatterns: [
-    /unisvvap/i, /uniswa[pr]/i, /unlswap/i, /uni5wap/i, // Uniswap imposters
-    /aa[vw]e/i, /aav[ve]/i, /a4ve/i, // Aave imposters
-    /pancak[es]wap/i, /pancakesvvap/i, /p4ncake/i, // PancakeSwap imposters
-    /metam[ao]sk/i, /metamasc/i, /met4mask/i, // MetaMask imposters
-    /sushi[sw]ap/i, /sushisvvap/i, /5ushi/i, // Sushiswap imposters
-    /curv[e3]/i, /curv3/i, // Curve imposters
-    /compound/i, /c0mpound/i, // Compound imposters
-    /maker[da]o/i, /mak3r/i, // MakerDAO imposters
+    { pattern: /unisvvap/i, legit: 'uniswap' },
+    { pattern: /uniswa[pr]/i, legit: 'uniswap' },
+    { pattern: /unlswap/i, legit: 'uniswap' },
+    { pattern: /uni5wap/i, legit: 'uniswap' },
+    { pattern: /aa[vw]e(?!gotchi)/i, legit: 'aave' }, // Exclude aavegotchi
+    { pattern: /aav[ve](?!gotchi)/i, legit: 'aave' },
+    { pattern: /a4ve/i, legit: 'aave' },
+    { pattern: /pancak[es]wap/i, legit: 'pancakeswap' },
+    { pattern: /pancakesvvap/i, legit: 'pancakeswap' },
+    { pattern: /p4ncake/i, legit: 'pancakeswap' },
+    { pattern: /metam[ao]sk/i, legit: 'metamask' },
+    { pattern: /metamasc/i, legit: 'metamask' },
+    { pattern: /met4mask/i, legit: 'metamask' },
+    { pattern: /sushi[sw]ap/i, legit: 'sushiswap' },
+    { pattern: /sushisvvap/i, legit: 'sushiswap' },
+    { pattern: /5ushi/i, legit: 'sushiswap' },
+    { pattern: /curv[e3]/i, legit: 'curve' },
+    { pattern: /curv3/i, legit: 'curve' },
+    { pattern: /comp0und/i, legit: 'compound' },
+    { pattern: /c0mpound/i, legit: 'compound' },
+    { pattern: /mak3r/i, legit: 'maker' },
   ],
   
   // Known scam protocol name patterns (using word boundaries for context-aware matching)
@@ -607,6 +621,39 @@ const SCAM_PATTERNS = {
 
 // WalletDrainerDetector - Security scanning engine
 export class WalletDrainerDetector {
+  private storage: IStorage | null = null;
+
+  constructor(storage?: IStorage) {
+    this.storage = storage || null;
+  }
+
+  /**
+   * Check if the original legitimate protocol exists in our database
+   * before flagging something as an imposter
+   */
+  private async checkOriginalProtocolExists(legitimateName: string): Promise<Protocol | null> {
+    if (!this.storage) {
+      return null; // Can't check database without storage
+    }
+
+    try {
+      // Get all protocols and search for the legitimate name
+      const allProtocols = await this.storage.getAllProtocols();
+      
+      // Find exact or close match
+      const originalProtocol = allProtocols.find((p: Protocol) => 
+        p.name.toLowerCase() === legitimateName.toLowerCase() ||
+        p.name.toLowerCase().includes(legitimateName.toLowerCase()) ||
+        p.id.toLowerCase().includes(legitimateName.toLowerCase())
+      );
+
+      return originalProtocol || null;
+    } catch (error) {
+      console.error(`Error checking for original protocol "${legitimateName}":`, error);
+      return null;
+    }
+  }
+
   // Check if protocol is verified/whitelisted
   private isVerifiedProtocol(dapp: Protocol): boolean {
     const name = dapp.name.toLowerCase().trim();
@@ -711,15 +758,38 @@ export class WalletDrainerDetector {
       const likelyLegit = hasHighTVL && hasAudits;
       
       if (!likelyLegit) {
-        for (const pattern of SCAM_PATTERNS.typosquatPatterns) {
+        for (const { pattern, legit } of SCAM_PATTERNS.typosquatPatterns) {
           if (pattern.test(nameAndDesc) || pattern.test(website)) {
-            results.threats.push({
-              type: 'IMPOSTER',
-              severity: 'CRITICAL',
-              message: 'Potential imposter protocol - name resembles popular DeFi protocol',
-            });
-            results.score += 90;
-            break;
+            // Check if the original protocol exists in our database
+            const originalProtocol = await this.checkOriginalProtocolExists(legit);
+            
+            // Only flag as imposter if:
+            // 1. We have the real protocol in our database
+            // 2. This protocol is NOT the original (different ID/website)
+            const isActualImposter = originalProtocol && (
+              originalProtocol.id !== dapp.id &&
+              originalProtocol.name.toLowerCase() !== dapp.name.toLowerCase()
+            );
+            
+            if (isActualImposter) {
+              results.threats.push({
+                type: 'IMPOSTER',
+                severity: 'CRITICAL',
+                message: `Potential imposter of "${originalProtocol.name}" - name resembles the legitimate protocol`,
+              });
+              results.score += 90;
+              break;
+            } else if (!originalProtocol) {
+              // Original doesn't exist in our DB - flag with lower severity
+              results.threats.push({
+                type: 'IMPOSTER',
+                severity: 'HIGH',
+                message: `Potential imposter protocol - name resembles "${legit}" (original not verified in our database)`,
+              });
+              results.score += 60;
+              break;
+            }
+            // If it IS the original, don't flag it
           }
         }
       }

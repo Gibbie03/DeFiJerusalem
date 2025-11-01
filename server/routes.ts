@@ -70,7 +70,7 @@ let lastBackgroundRefresh = 0;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const discovery = new DAppDiscovery();
-  const detector = new WalletDrainerDetector();
+  const detector = new WalletDrainerDetector(storage);
   let blacklistManager: BlacklistManager;
 
   // Initialize blacklist manager with existing data
