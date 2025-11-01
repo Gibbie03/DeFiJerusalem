@@ -365,6 +365,400 @@ function CertikAuditsPanel({ session }: { session: AdminSession | undefined }) {
   );
 }
 
+function BlacklistReviewPanel({ session }: { session: AdminSession | undefined }) {
+  const { toast } = useToast();
+  const [minLegitimacyScore, setMinLegitimacyScore] = useState(20);
+  const [viewMode, setViewMode] = useState<'all' | 'flagged'>('all');
+  const [selectedEntry, setSelectedEntry] = useState<any>(null);
+  
+  const { data: blacklist = [], isLoading: blacklistLoading } = useQuery<BlacklistEntry[]>({
+    queryKey: ['/api/blacklist'],
+    enabled: session?.authenticated,
+  });
+
+  const analysisMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/blacklist/filter-analysis', {
+        minLegitimacyScore,
+        excludeObviousScams: true,
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Analysis Complete',
+        description: `Found ${data.potentialFalsePositives.length} potential false positives from ${data.stats.total} blacklisted entries`,
+      });
+      setViewMode('flagged');
+    },
+    onError: (error) => {
+      toast({
+        title: 'Analysis Failed',
+        description: error instanceof Error ? error.message : 'Failed to analyze blacklist',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/blacklist/verify-filtered', {
+        minLegitimacyScore,
+        maxScans: 50,
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Verification Complete',
+        description: `Re-scanned ${data.analyzed} protocols. Recommend removing ${data.summary.removeFromBlacklist}, keeping ${data.summary.keepBlacklisted}, manual review ${data.summary.needsManualReview}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Verification Failed',
+        description: error instanceof Error ? error.message : 'Failed to verify blacklist',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const removeFromBlacklistMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      const res = await apiRequest('DELETE', `/api/blacklist/${entryId}`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Entry Removed',
+        description: 'Successfully removed from blacklist',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
+      setSelectedEntry(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Removal Failed',
+        description: error instanceof Error ? error.message : 'Failed to remove entry',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const activeBlacklist = blacklist.filter(b => b.status === 'ACTIVE');
+  const displayedEntries = viewMode === 'all' 
+    ? activeBlacklist
+    : analysisMutation.data?.potentialFalsePositives || [];
+
+  const stats = analysisMutation.data?.stats;
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Blacklist Review & False Positive Detection</CardTitle>
+              <CardDescription>
+                Review {activeBlacklist.length} blacklisted protocols and identify potential false positives
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('all')}
+                data-testid="button-view-all"
+              >
+                View All
+              </Button>
+              <Button
+                variant={viewMode === 'flagged' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('flagged')}
+                data-testid="button-view-flagged"
+              >
+                Potential False Positives
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Label className="text-sm">Minimum Legitimacy Score</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={minLegitimacyScore}
+                  onChange={(e) => setMinLegitimacyScore(Number(e.target.value))}
+                  className="mt-1"
+                  data-testid="input-legitimacy-score"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Higher scores indicate more likely false positives (e.g., protocols with high TVL, audits, or established history)
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => analysisMutation.mutate()}
+                disabled={analysisMutation.isPending}
+                data-testid="button-analyze-blacklist"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                {analysisMutation.isPending ? 'Analyzing...' : 'Analyze for False Positives'}
+              </Button>
+              
+              <Button
+                onClick={() => verifyMutation.mutate()}
+                disabled={verifyMutation.isPending}
+                variant="outline"
+                data-testid="button-verify-blacklist"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                {verifyMutation.isPending ? 'Verifying...' : 'Re-scan with GoPlus (50 max)'}
+              </Button>
+            </div>
+          </div>
+
+          {stats && (
+            <div className="grid grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{stats.total}</div>
+                  <div className="text-xs text-muted-foreground">Total Blacklisted</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-yellow-600">{stats.potentialFalsePositives}</div>
+                  <div className="text-xs text-muted-foreground">Potential False Positives</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">{stats.highLegitimacy}</div>
+                  <div className="text-xs text-muted-foreground">High Legitimacy</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-red-600">{stats.obviousScams}</div>
+                  <div className="text-xs text-muted-foreground">Obvious Scams</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {blacklistLoading ? (
+            <div className="text-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : displayedEntries.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {viewMode === 'all' ? 'No blacklisted protocols' : 'Run analysis to identify potential false positives'}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Protocol</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Threats</TableHead>
+                    {viewMode === 'flagged' && <TableHead>Legitimacy Score</TableHead>}
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayedEntries.map((entry: any) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">
+                        {entry.dappName || entry.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={
+                            entry.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-700 border-red-500/30' :
+                            entry.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-700 border-orange-500/30' :
+                            entry.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30' :
+                            'bg-blue-500/20 text-blue-700 border-blue-500/30'
+                          }
+                        >
+                          {entry.severity}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{entry.threats?.length || 0}</TableCell>
+                      {viewMode === 'flagged' && (
+                        <TableCell>
+                          <Badge className="bg-green-500/20 text-green-700 border-green-500/30">
+                            {entry.legitimacyScore}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(entry.timestamp).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedEntry(entry)}
+                            data-testid={`button-view-${entry.id}`}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            Review
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {verifyMutation.data && (
+            <Card className="bg-blue-500/10 border-blue-500/30">
+              <CardHeader>
+                <CardTitle className="text-sm">Verification Results</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="font-semibold text-green-600">{verifyMutation.data.summary.removeFromBlacklist}</div>
+                    <div className="text-xs text-muted-foreground">Recommend Removal</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-red-600">{verifyMutation.data.summary.keepBlacklisted}</div>
+                    <div className="text-xs text-muted-foreground">Keep Blacklisted</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-yellow-600">{verifyMutation.data.summary.needsManualReview}</div>
+                    <div className="text-xs text-muted-foreground">Manual Review Needed</div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Used {verifyMutation.data.scansPerformed} GoPlus API scans across {verifyMutation.data.analyzed} protocols
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedEntry && (
+        <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Review: {selectedEntry.dappName || selectedEntry.name}</DialogTitle>
+              <DialogDescription>
+                Detailed information and removal options
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-semibold">Severity</Label>
+                <div className="mt-1">
+                  <Badge
+                    className={
+                      selectedEntry.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-700 border-red-500/30' :
+                      selectedEntry.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-700 border-orange-500/30' :
+                      'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+                    }
+                  >
+                    {selectedEntry.severity}
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedEntry.legitimacyScore !== undefined && (
+                <div>
+                  <Label className="text-sm font-semibold">Legitimacy Score</Label>
+                  <div className="mt-1">
+                    <Badge className="bg-green-500/20 text-green-700 border-green-500/30">
+                      {selectedEntry.legitimacyScore} / 100
+                    </Badge>
+                  </div>
+                  {selectedEntry.legitimacyReasons && selectedEntry.legitimacyReasons.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {selectedEntry.legitimacyReasons.map((reason: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                          <span>{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <Label className="text-sm font-semibold">Reason for Blacklisting</Label>
+                <p className="mt-1 text-sm">{selectedEntry.reason || 'No reason provided'}</p>
+              </div>
+
+              {selectedEntry.threats && selectedEntry.threats.length > 0 && (
+                <div>
+                  <Label className="text-sm font-semibold">Detected Threats ({selectedEntry.threats.length})</Label>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {selectedEntry.threats.map((threat: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <XCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                        <span>{threat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {selectedEntry.website && (
+                <div>
+                  <Label className="text-sm font-semibold">Website</Label>
+                  <a 
+                    href={selectedEntry.website} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline block mt-1"
+                  >
+                    {selectedEntry.website}
+                  </a>
+                </div>
+              )}
+
+              <div className="pt-4 border-t flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={() => removeFromBlacklistMutation.mutate(selectedEntry.id)}
+                  disabled={removeFromBlacklistMutation.isPending}
+                  data-testid="button-remove-from-blacklist"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  {removeFromBlacklistMutation.isPending ? 'Removing...' : 'Remove from Blacklist'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedEntry(null)}
+                  data-testid="button-cancel-review"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -706,62 +1100,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="blacklist" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Blacklisted Protocols</CardTitle>
-                <CardDescription>
-                  Protocols flagged with critical security issues
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {blacklistLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Loading blacklist...
-                  </div>
-                ) : blacklist.filter(b => b.status === 'ACTIVE').length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No blacklisted protocols
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Protocol</TableHead>
-                          <TableHead>Severity</TableHead>
-                          <TableHead>Threats</TableHead>
-                          <TableHead>Timestamp</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {blacklist
-                          .filter(b => b.status === 'ACTIVE')
-                          .map((entry) => (
-                            <TableRow key={entry.id}>
-                              <TableCell className="font-medium">
-                                {entry.dappName}
-                              </TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                  entry.severity === 'CRITICAL' ? 'bg-destructive text-destructive-foreground' :
-                                  entry.severity === 'HIGH' ? 'bg-orange-500 text-white' :
-                                  'bg-yellow-500 text-black'
-                                }`}>
-                                  {entry.severity}
-                                </span>
-                              </TableCell>
-                              <TableCell>{entry.threats.length}</TableCell>
-                              <TableCell>
-                                {new Date(entry.timestamp).toLocaleDateString()}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <BlacklistReviewPanel session={session} />
           </TabsContent>
 
           <TabsContent value="sponsorships" className="space-y-4">
