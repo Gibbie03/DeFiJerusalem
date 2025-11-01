@@ -665,41 +665,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/protocols/:id - Fetch a single protocol by ID
-  app.get("/api/protocols/:id", apiLimiter, async (req, res) => {
-    try {
-      const { id } = req.params;
-      
-      // Try cache first
-      const cacheKey = `protocol-${id}`;
-      const cached = getCache(cacheKey);
-      if (cached) {
-        return res.json(cached.data);
-      }
-      
-      // Get from database
-      const protocol = await storage.getProtocol(id);
-      
-      if (!protocol) {
-        return res.status(404).json({ 
-          error: "Protocol not found",
-          message: `Protocol with ID "${id}" does not exist`
-        });
-      }
-      
-      // Cache for 5 minutes
-      setCache(cacheKey, protocol, 5 * 60 * 1000);
-      
-      res.json(protocol);
-    } catch (error) {
-      console.error(`Error fetching protocol ${req.params.id}:`, error);
-      res.status(500).json({ 
-        error: "Failed to fetch protocol",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
   // POST /api/protocols - Add a manual protocol
   app.post("/api/protocols", async (req, res) => {
     try {
@@ -2743,6 +2708,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching trending protocols:", error);
       res.status(500).json({ 
         error: "Failed to fetch trending protocols",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // GET /api/protocols/:id - Fetch a single protocol by ID (MUST be after /new and /trending)
+  app.get("/api/protocols/:id", apiLimiter, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Try cache first
+      const cacheKey = `protocol-${id}`;
+      const cached = getCache(cacheKey);
+      if (cached) {
+        return res.json(cached.data);
+      }
+      
+      // Get from database
+      const protocol = await storage.getProtocol(id);
+      
+      if (!protocol) {
+        return res.status(404).json({ 
+          error: "Protocol not found",
+          message: `Protocol with ID "${id}" does not exist`
+        });
+      }
+      
+      // Cache for 5 minutes
+      setCache(cacheKey, protocol, 5 * 60 * 1000);
+      
+      res.json(protocol);
+    } catch (error) {
+      console.error(`Error fetching protocol ${req.params.id}:`, error);
+      res.status(500).json({ 
+        error: "Failed to fetch protocol",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
