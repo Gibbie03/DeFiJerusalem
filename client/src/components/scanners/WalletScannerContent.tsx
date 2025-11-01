@@ -36,6 +36,36 @@ interface WalletScanResult {
     source: string;
     confidence: string;
   } | null;
+  tokenApprovals?: {
+    totalApprovals: number;
+    summary?: {
+      total: number;
+      critical: number;
+      highRisk: number;
+      shouldRevoke: number;
+      hasRiskyApprovals: boolean;
+    };
+    approvals: Array<{
+      tokenName: string;
+      tokenSymbol: string;
+      tokenAddress: string;
+      spenderAddress: string;
+      spenderLabel: string;
+      approvedAmount: string;
+      balance: string;
+      isUnlimited: boolean;
+      isMalicious: boolean;
+      isKnownScammer: boolean;
+      isBlacklistedProtocol: boolean;
+      blacklistedProtocolName?: string | null;
+      maliciousBehaviors: string[];
+      approvedTime: number;
+      transactionHash: string;
+      riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+      shouldRevoke: boolean;
+      revocationAdvice: string;
+    }>;
+  } | null;
   education?: {
     transactionPatterns: Array<{
       type: string;
@@ -397,6 +427,172 @@ export default function WalletScannerContent() {
                     </li>
                   ))}
                 </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Token Approvals Section */}
+          {scanResult.tokenApprovals && scanResult.tokenApprovals.approvals.length > 0 && (
+            <Card className={scanResult.tokenApprovals.summary?.hasRiskyApprovals ? 'border-destructive/50' : ''}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Token Approvals Analysis</CardTitle>
+                    <CardDescription>
+                      Active ERC20 token approvals found for this wallet
+                    </CardDescription>
+                  </div>
+                  {scanResult.tokenApprovals.summary && scanResult.tokenApprovals.summary.hasRiskyApprovals && (
+                    <Badge variant="destructive" className="text-sm">
+                      {scanResult.tokenApprovals.summary.shouldRevoke} REQUIRE ATTENTION
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Summary Alert */}
+                {scanResult.tokenApprovals.summary && scanResult.tokenApprovals.summary.hasRiskyApprovals && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="font-semibold">
+                      {scanResult.tokenApprovals.summary.critical > 0 && (
+                        <span>CRITICAL: {scanResult.tokenApprovals.summary.critical} approval{scanResult.tokenApprovals.summary.critical > 1 ? 's' : ''} to malicious/blacklisted contracts. </span>
+                      )}
+                      {scanResult.tokenApprovals.summary.highRisk > 0 && (
+                        <span>HIGH RISK: {scanResult.tokenApprovals.summary.highRisk} unlimited approval{scanResult.tokenApprovals.summary.highRisk > 1 ? 's' : ''} to unknown contracts. </span>
+                      )}
+                      Revoke immediately to protect your assets.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Approvals List */}
+                <div className="space-y-3">
+                  {scanResult.tokenApprovals.approvals.map((approval, index) => (
+                    <div 
+                      key={index} 
+                      className={`border rounded-lg p-4 space-y-3 ${
+                        approval.riskLevel === 'CRITICAL' ? 'border-destructive bg-destructive/5' :
+                        approval.riskLevel === 'HIGH' ? 'border-orange-500 bg-orange-500/5' :
+                        approval.riskLevel === 'MEDIUM' ? 'border-yellow-500 bg-yellow-500/5' :
+                        'border-border'
+                      }`}
+                      data-testid={`approval-${index}`}
+                    >
+                      {/* Approval Header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{approval.tokenName} ({approval.tokenSymbol})</h4>
+                            {approval.isUnlimited && (
+                              <Badge variant="outline" className="text-xs">UNLIMITED</Badge>
+                            )}
+                          </div>
+                          <code className="text-xs text-muted-foreground block break-all">
+                            Token: {approval.tokenAddress}
+                          </code>
+                        </div>
+                        <Badge variant={
+                          approval.riskLevel === 'CRITICAL' ? 'destructive' :
+                          approval.riskLevel === 'HIGH' ? 'destructive' :
+                          approval.riskLevel === 'MEDIUM' ? 'default' :
+                          'secondary'
+                        } as any}>
+                          {approval.riskLevel}
+                        </Badge>
+                      </div>
+
+                      {/* Spender Info */}
+                      <div className="space-y-1 text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="text-muted-foreground font-semibold min-w-20">Spender:</span>
+                          <div className="flex-1">
+                            <span className="font-medium">{approval.spenderLabel}</span>
+                            <code className="text-xs text-muted-foreground block break-all mt-1">
+                              {approval.spenderAddress}
+                            </code>
+                          </div>
+                        </div>
+                        {approval.isBlacklistedProtocol && approval.blacklistedProtocolName && (
+                          <Alert variant="destructive" className="mt-2">
+                            <XCircle className="h-4 w-4" />
+                            <AlertDescription className="text-xs">
+                              This contract belongs to "{approval.blacklistedProtocolName}" which is blacklisted on DeFiJerusalem
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                        {approval.isKnownScammer && (
+                          <Alert variant="destructive" className="mt-2">
+                            <XCircle className="h-4 w-4" />
+                            <AlertDescription className="text-xs">
+                              This address is in our verified scammer database
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+
+                      {/* Revocation Advice */}
+                      {approval.revocationAdvice && (
+                        <div className={`p-3 rounded text-sm ${
+                          approval.shouldRevoke ? 'bg-destructive/10 border border-destructive/50' :
+                          'bg-muted'
+                        }`}>
+                          <p className="font-semibold mb-1">
+                            {approval.shouldRevoke ? '⚠️ Security Advice:' : 'ℹ️ Advice:'}
+                          </p>
+                          <p className={approval.shouldRevoke ? 'text-destructive font-semibold' : ''}>
+                            {approval.revocationAdvice}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Transaction Details */}
+                      <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
+                        <div>Approved: {new Date(approval.approvedTime * 1000).toLocaleDateString()}</div>
+                        <a 
+                          href={`https://etherscan.io/tx/${approval.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          View on Etherscan <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Revoke.cash Link */}
+                <Alert className="border-primary/50 bg-primary/5">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <AlertDescription>
+                    <p className="font-semibold mb-2">Need to revoke token approvals?</p>
+                    <p className="text-sm mb-3">
+                      Use Revoke.cash, a trusted tool for managing and revoking ERC20 token approvals. 
+                      Connect your wallet to safely remove risky approvals.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      asChild
+                      className="hover-elevate"
+                      data-testid="button-revoke-cash"
+                    >
+                      <a 
+                        href={`https://revoke.cash/address/${scanResult.address}?chainId=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2"
+                      >
+                        Revoke Approvals on Revoke.cash
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      DeFiJerusalem is not affiliated with Revoke.cash. Always verify URLs before connecting your wallet.
+                    </p>
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           )}
