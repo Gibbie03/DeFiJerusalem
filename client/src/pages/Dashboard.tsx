@@ -17,6 +17,7 @@ import AddDAppByUrlDialog from '@/components/AddDAppByUrlDialog';
 import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
 import SecurityRatingLegend from '@/components/SecurityRatingLegend';
+import { LatestThreatsWidget } from '@/components/LatestThreatsWidget';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
 
 // Paginated response type
@@ -508,7 +509,8 @@ export default function Dashboard() {
             </div>
           </div>
           
-          <div>
+          <div className="space-y-4">
+            <LatestThreatsWidget />
             <SecurityRatingLegend />
           </div>
         </div>
