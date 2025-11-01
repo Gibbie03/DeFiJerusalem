@@ -450,6 +450,11 @@ export class DatabaseStorage implements IStorage {
         scannedAt: sql`CURRENT_TIMESTAMP`, // Update timestamp on re-scan
       },
     });
+
+    // SYNC: Update protocol.securityScore to match scan.score for consistency
+    await db.update(protocols)
+      .set({ securityScore: scan.score })
+      .where(eq(protocols.id, protocolId));
   }
 
   async getTutorials(): Promise<TutorialVideo[]> {

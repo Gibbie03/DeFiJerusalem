@@ -226,12 +226,12 @@ const ProtocolRow = memo(({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex flex-col items-center gap-1">
-              {getSecurityBadge(protocol.securityScore)}
+              {getSecurityBadge(scan?.score ?? protocol.securityScore)}
               {scan && getSeverityBadge(scan.severity)}
             </div>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
-            <p className="text-xs font-semibold mb-1">Security Score: {protocol.securityScore}/100</p>
+            <p className="text-xs font-semibold mb-1">Security Score: {scan?.score ?? protocol.securityScore}/100</p>
             {scan && (
               <>
                 <p className="text-xs font-semibold mt-2 mb-1">Severity: {scan.severity}</p>
