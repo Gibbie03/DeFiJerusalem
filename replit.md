@@ -21,18 +21,26 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
 - **Contract Verification Tracking**: Automated discovery of newly verified smart contracts across 8 major blockchain explorers.
-- **Wallet Address Scanner**: Real-time wallet address analysis feature with comprehensive drainer intelligence based on blockchain forensics research (2024-2025). Features include:
-  - **Known drainer database**: Confirmed Pink Drainer ($85.3M stolen) and Inferno Drainer ($80M+ stolen) wallet addresses with operation details, total stolen amounts, last active dates, and confidence levels
-  - **Transaction pattern detection**: 5 critical drainer signatures including UNLIMITED_APPROVAL (0xfff...fff), PERMIT_SIGNATURE (0x8fcbaf0c - 56.7% of attacks), SET_APPROVAL_FOR_ALL (0xa22cb465), INCREASE_ALLOWANCE (0x39509351), and APPROVE (0x095ea7b3)
+- **Wallet Address Scanner**: Real-time multi-chain wallet address analysis feature with comprehensive drainer intelligence based on blockchain forensics research (2024-2025). Features include:
+  - **Multi-Chain Support**: Automatic detection and validation of both Ethereum (0x + 40 hex) and Solana (base58, 32-44 chars) addresses
+  - **Known drainer database**: 6 confirmed addresses across 2 chains:
+    - **Ethereum**: Pink Drainer ($85.3M stolen), Inferno Drainer ($80M+ stolen)
+    - **Solana**: CLINKSINK Drainer ($900K+ stolen, confirmed by Google Mandiant), 2 Twitter-reported addresses
+  - **Transaction pattern detection**: 9 critical signatures:
+    - **Ethereum (5)**: UNLIMITED_APPROVAL, PERMIT_SIGNATURE (56.7% of attacks), SET_APPROVAL_FOR_ALL, INCREASE_ALLOWANCE, APPROVE
+    - **Solana (4)**: DIRECT_TRANSFER, AUTHORITY_TRANSFER, TOCTOU_ATTACK (bit-flip), SIMULATION_BYPASS
   - **Vanity address analysis**: 6 suspicious pattern detectors (excessive zeros, "dead", "beef", "cafe", "badc0de", repetitive characters) used by scammers
   - **Address poisoning detection**: Identifies lookalike addresses matching first/last characters of known addresses
-  - **Educational content**: 2024 drainer statistics ($494M stolen, 332K victims, $1,490 average loss), protection tips, and attack vector explanations
+  - **Educational content**: Chain-specific 2024 statistics:
+    - **Ethereum**: $494M stolen, 332K victims, $1,490 average loss, 56.7% permit attacks
+    - **Solana**: $4M+ stolen, 5,706 victims, CLINKSINK $900K+, Rainbow+Node $4.17M
   - **Risk scoring**: 0-100 scale with CRITICAL (≥80), HIGH (≥60), MEDIUM (≥40), LOW (≥20), SAFE (<20) severity levels
-  - **Drainer intelligence alerts**: Dedicated UI for confirmed drainer wallets showing operation name, stolen amounts, activity timeline, and forensics sources
+  - **Drainer intelligence alerts**: Dedicated UI showing operation name, stolen amounts, activity timeline, forensics sources, and confidence levels (CONFIRMED/SUSPECTED)
   - **Blacklist integration**: Cross-references wallet addresses with blacklisted protocol contracts
+  - **Chain badge display**: Visual indicators (⟠ Ethereum / ◎ Solana) in scan results
   - Accessible via `/scan-wallet` route and sidebar navigation
-  - POST `/api/scan-wallet` endpoint returns comprehensive analysis with drainerIntelligence and education objects
-  - Data sources: Etherscan labels, Check Point Research, ScamSniffer, Group-IB, Blockaid, SlowMist
+  - POST `/api/scan-wallet` endpoint returns comprehensive analysis with chain detection, drainerIntelligence, and chain-specific education objects
+  - Data sources: Etherscan labels, Check Point Research, ScamSniffer, Group-IB, Blockaid, SlowMist, Google Mandiant, Twitter intelligence reports
 - **Security Statistics Dashboard**: Comprehensive real-time statistics page displaying:
   - Total protocols and scan coverage percentage
   - Severity breakdown with visual progress bars (CRITICAL, HIGH, MEDIUM, LOW, SAFE)
