@@ -1,42 +1,14 @@
+/**
+ * Contract Discovery Service
+ * 
+ * Fetches recently verified smart contracts from blockchain explorers
+ * Supports 40+ blockchains using Etherscan's multi-chain API
+ */
+
 import type { DiscoveredContract } from '@shared/schema';
+import { EXPLORER_APIS, ChainKey, getMainnetChains, getHighPriorityChains } from './blockchain-apis';
 
-// Blockchain explorer API endpoints
-const EXPLORER_APIS = {
-  ethereum: {
-    baseUrl: 'https://api.etherscan.io/api',
-    apiKeyEnv: 'ETHERSCAN_API_KEY',
-  },
-  bsc: {
-    baseUrl: 'https://api.bscscan.com/api',
-    apiKeyEnv: 'BSCSCAN_API_KEY',
-  },
-  polygon: {
-    baseUrl: 'https://api.polygonscan.com/api',
-    apiKeyEnv: 'POLYGONSCAN_API_KEY',
-  },
-  arbitrum: {
-    baseUrl: 'https://api.arbiscan.io/api',
-    apiKeyEnv: 'ARBISCAN_API_KEY',
-  },
-  optimism: {
-    baseUrl: 'https://api-optimistic.etherscan.io/api',
-    apiKeyEnv: 'OPTIMISTIC_ETHERSCAN_API_KEY',
-  },
-  avalanche: {
-    baseUrl: 'https://api.snowtrace.io/api',
-    apiKeyEnv: 'SNOWTRACE_API_KEY',
-  },
-  fantom: {
-    baseUrl: 'https://api.ftmscan.com/api',
-    apiKeyEnv: 'FTMSCAN_API_KEY',
-  },
-  base: {
-    baseUrl: 'https://api.basescan.org/api',
-    apiKeyEnv: 'BASESCAN_API_KEY',
-  }
-};
-
-export type Chain = keyof typeof EXPLORER_APIS;
+export type Chain = ChainKey;
 
 interface ExplorerContractResult {
   SourceCode: string;
@@ -78,16 +50,21 @@ export async function fetchRecentlyVerifiedContracts(
   offset: number = 20
 ): Promise<Partial<DiscoveredContract>[]> {
   const explorer = EXPLORER_APIS[chain];
+  if (!explorer) {
+    console.warn(`[CONTRACT-DISCOVERY] Unknown chain: ${chain}`);
+    return [];
+  }
+  
   const apiKey = process.env[explorer.apiKeyEnv];
 
   if (!apiKey) {
-    console.warn(`Missing API key for ${chain}: ${explorer.apiKeyEnv}`);
+    console.warn(`[CONTRACT-DISCOVERY] Missing API key for ${chain}: ${explorer.apiKeyEnv}`);
     return [];
   }
 
   try {
     // Fetch recently verified contracts
-    const url = new URL(explorer.baseUrl);
+    const url = new URL(explorer.apiUrl);
     url.searchParams.set('module', 'contract');
     url.searchParams.set('action', 'listcontracts');
     url.searchParams.set('page', page.toString());
@@ -110,16 +87,17 @@ export async function fetchRecentlyVerifiedContracts(
           // Rate limiting
           await new Promise(resolve => setTimeout(resolve, 250));
         } catch (error) {
-          console.error(`Error fetching contract ${contract.ContractAddress}:`, error);
+          console.error(`[CONTRACT-DISCOVERY] Error fetching contract ${contract.ContractAddress}:`, error);
         }
       }
 
+      console.log(`[CONTRACT-DISCOVERY] ✓ ${explorer.name}: ${contracts.length} contracts fetched`);
       return contracts;
     }
 
     return [];
   } catch (error) {
-    console.error(`Error fetching verified contracts from ${chain}:`, error);
+    console.error(`[CONTRACT-DISCOVERY] Error fetching verified contracts from ${chain}:`, error);
     return [];
   }
 }
@@ -133,6 +111,10 @@ export async function fetchContractDetails(
   apiKey?: string
 ): Promise<Partial<DiscoveredContract> | null> {
   const explorer = EXPLORER_APIS[chain];
+  if (!explorer) {
+    return null;
+  }
+  
   const key = apiKey || process.env[explorer.apiKeyEnv];
 
   if (!key) {
@@ -141,7 +123,7 @@ export async function fetchContractDetails(
 
   try {
     // Fetch source code
-    const sourceUrl = new URL(explorer.baseUrl);
+    const sourceUrl = new URL(explorer.apiUrl);
     sourceUrl.searchParams.set('module', 'contract');
     sourceUrl.searchParams.set('action', 'getsourcecode');
     sourceUrl.searchParams.set('address', contractAddress);
@@ -161,7 +143,7 @@ export async function fetchContractDetails(
     let txHash: string | null = null;
 
     try {
-      const txUrl = new URL(explorer.baseUrl);
+      const txUrl = new URL(explorer.apiUrl);
       txUrl.searchParams.set('module', 'contract');
       txUrl.searchParams.set('action', 'getcontractcreation');
       txUrl.searchParams.set('contractaddresses', contractAddress);
@@ -175,7 +157,7 @@ export async function fetchContractDetails(
         txHash = txData.result[0].txHash;
       }
     } catch (error) {
-      console.error('Error fetching creation tx:', error);
+      console.error('[CONTRACT-DISCOVERY] Error fetching creation tx:', error);
     }
 
     // Parse ABI
@@ -191,7 +173,7 @@ export async function fetchContractDetails(
     // Analyze contract type
     const metadata = analyzeContractType(contractData, abi);
 
-    const explorerBaseUrl = explorer.baseUrl.replace('/api', '');
+    const explorerBaseUrl = explorer.apiUrl.replace('/api', '');
     const explorerUrl = `${explorerBaseUrl}/address/${contractAddress}`;
 
     return {
@@ -314,22 +296,48 @@ function analyzeContractType(contractData: ExplorerContractResult, abi: any[] | 
 /**
  * Discover contracts across multiple chains
  */
-export async function discoverContractsMultiChain(chains: Chain[] = ['ethereum', 'bsc', 'polygon']): Promise<Partial<DiscoveredContract>[]> {
+export async function discoverContractsMultiChain(
+  chains?: Chain[],
+  options?: { page?: number; offset?: number; filter?: 'all' | 'mainnet' | 'priority' }
+): Promise<Partial<DiscoveredContract>[]> {
   const allContracts: Partial<DiscoveredContract>[] = [];
+  
+  // Determine chains to scan
+  let targetChains: Chain[];
+  if (chains) {
+    targetChains = chains;
+  } else {
+    switch (options?.filter) {
+      case 'priority':
+        targetChains = getHighPriorityChains();
+        break;
+      case 'mainnet':
+        targetChains = getMainnetChains();
+        break;
+      default:
+        targetChains = ['ethereum', 'binance', 'polygon', 'arbitrum', 'base'];
+    }
+  }
+  
+  console.log(`[CONTRACT-DISCOVERY] Discovering contracts on ${targetChains.length} chains...`);
 
-  for (const chain of chains) {
+  for (const chain of targetChains) {
     try {
-      console.log(`Discovering contracts on ${chain}...`);
-      const contracts = await fetchRecentlyVerifiedContracts(chain, 1, 10);
+      const contracts = await fetchRecentlyVerifiedContracts(
+        chain, 
+        options?.page || 1, 
+        options?.offset || 10
+      );
       allContracts.push(...contracts);
       
       // Rate limiting between chains
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
-      console.error(`Error discovering contracts on ${chain}:`, error);
+      console.error(`[CONTRACT-DISCOVERY] Error discovering contracts on ${chain}:`, error);
     }
   }
 
+  console.log(`[CONTRACT-DISCOVERY] Total: ${allContracts.length} contracts discovered`);
   return allContracts;
 }
 
