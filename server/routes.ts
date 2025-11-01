@@ -3538,6 +3538,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== CONTRACT DISCOVERY ROUTES ==========
+  
+  // Get discovered contracts
+  app.get('/api/discovered-contracts', async (req: Request, res: Response) => {
+    try {
+      const status = req.query.status as string | undefined;
+      const chain = req.query.chain as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const contracts = await storage.getDiscoveredContracts({
+        status,
+        chain,
+        limit,
+      });
+      
+      res.json({ contracts, total: contracts.length });
+    } catch (error) {
+      console.error('[API] Error fetching discovered contracts:', error);
+      res.status(500).json({ error: 'Failed to fetch discovered contracts' });
+    }
+  });
+  
+  // Trigger manual contract discovery
+  app.post('/api/discover-contracts', async (req: Request, res: Response) => {
+    try {
+      const { getContractDiscoveryJob } = await import('./jobs/contract-discovery-job');
+      const job = getContractDiscoveryJob();
+      
+      // Run in background
+      job.run().catch(error => {
+        console.error('[API] Contract discovery error:', error);
+      });
+      
+      res.json({ 
+        message: 'Contract discovery started',
+        stats: job.getStats(),
+      });
+    } catch (error) {
+      console.error('[API] Error starting contract discovery:', error);
+      res.status(500).json({ error: 'Failed to start contract discovery' });
+    }
+  });
+  
+  // Get contract discovery job stats
+  app.get('/api/contract-discovery-stats', async (req: Request, res: Response) => {
+    try {
+      const { getContractDiscoveryJob } = await import('./jobs/contract-discovery-job');
+      const job = getContractDiscoveryJob();
+      
+      res.json(job.getStats());
+    } catch (error) {
+      console.error('[API] Error fetching contract discovery stats:', error);
+      res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

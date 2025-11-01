@@ -188,5 +188,18 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start contract discovery job (runs every hour)
+    if (process.env.ETHERSCAN_API_KEY) {
+      import('./jobs/contract-discovery-job').then(({ getContractDiscoveryJob }) => {
+        const job = getContractDiscoveryJob();
+        job.startPeriodic(60); // Run every 60 minutes
+        log('✓ Contract discovery job started (hourly)');
+      }).catch(error => {
+        log(`✗ Failed to start contract discovery job: ${error.message}`);
+      });
+    } else {
+      log('⚠ Contract discovery disabled: ETHERSCAN_API_KEY not set');
+    }
   });
 })();

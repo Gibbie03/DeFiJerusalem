@@ -79,7 +79,7 @@ export class ContractDiscoveryJob {
             contractName: contract.contractName ?? 'Unknown',
             chain: contract.chain,
             contractType: contract.contractType ?? null,
-            verifiedAt: contract.verifiedAt ?? null,
+            verifiedAt: contract.verifiedAt ? new Date(contract.verifiedAt) : null,
             compilerVersion: contract.compilerVersion ?? null,
             optimization: contract.optimization ?? false,
             sourceCode: contract.sourceCode ?? null,
