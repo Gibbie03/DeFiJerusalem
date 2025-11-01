@@ -59,6 +59,9 @@ const CHAIN_FILENAME_PATTERNS: Record<string, ChainKey> = {
   'avalanche': 'avalanche',
   'avax': 'avalanche',
   'snowtrace': 'avalanche',
+  'fantom': 'fantom',
+  'ftm': 'fantom',
+  'ftmscan': 'fantom',
 };
 
 /**
@@ -200,6 +203,16 @@ export function loadCSVDirectory(dirPath: string): Map<ChainKey, CSVContract[]> 
 }
 
 /**
+ * Sanitize numeric string by removing commas and other formatting
+ */
+function sanitizeNumericString(value: string): number {
+  // Remove commas, spaces, and other non-numeric characters (except decimal point)
+  const cleaned = value.replace(/[,\s]/g, '');
+  const parsed = parseInt(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
  * Convert CSV contracts to DiscoveredContract format
  */
 export function convertCSVToDiscoveredContracts(
@@ -215,7 +228,7 @@ export function convertCSVToDiscoveredContracts(
     txHash: contract.txHash,
     metadata: {
       license: contract.license && contract.license !== '-' ? contract.license : undefined,
-      txCount: parseInt(contract.txCount) || 0,
+      txCount: sanitizeNumericString(contract.txCount),
       balance: contract.balance,
       source: 'csv-export' as const,
     },
