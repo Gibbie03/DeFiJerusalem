@@ -21,7 +21,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
-- **Contract Verification Tracking**: Automated discovery of newly verified smart contracts across 8 major blockchain explorers.
+- **Contract Discovery System**: Automated DeFi protocol and contract discovery via DeFiLlama integration. Extracts 6,894+ protocol contracts across 20+ blockchains with metadata including TVL, social links, and categories. Runs hourly background job to keep database updated. Future enhancement: Direct blockchain explorer API integration pending Etherscan API V2 migration.
 - **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with comprehensive drainer intelligence, supporting Ethereum and Solana addresses, known drainer databases, and transaction pattern detection. Includes vanity address analysis, address poisoning detection, educational content, risk scoring, drainer intelligence alerts, and blacklist integration.
 - **Security Statistics Dashboard**: Comprehensive real-time statistics page displaying total protocols, scan coverage, severity breakdown, 2025 Advanced Drainer Detection counts, and top highest risk protocols.
 - **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details with severity badges, detailed threat cards, and per-threat user advice.
