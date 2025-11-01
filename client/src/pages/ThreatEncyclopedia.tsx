@@ -59,27 +59,27 @@ export default function ThreatEncyclopedia() {
 
   // SEO meta tags
   useEffect(() => {
-    document.title = 'Crypto Threat Encyclopedia - 10+ DeFi Security Threats Explained | JERUSALEM';
+    document.title = 'DeFi Threat Encyclopedia - 38+ Security Threats Explained & Protection Guide - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Comprehensive guide to cryptocurrency security threats including wallet drainers, rug pulls, honeypots, and approval phishing. Learn how to protect your crypto assets from scams and exploits.');
+      metaDescription.setAttribute('content', 'Complete encyclopedia of 38+ cryptocurrency security threats including wallet drainers, rug pulls, honeypots, EIP-2612 permit exploits, and approval phishing. Expert-verified protection strategies for DeFi users across 126+ blockchains.');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'Comprehensive guide to cryptocurrency security threats including wallet drainers, rug pulls, honeypots, and approval phishing. Learn how to protect your crypto assets from scams and exploits.';
+      meta.content = 'Complete encyclopedia of 38+ cryptocurrency security threats including wallet drainers, rug pulls, honeypots, EIP-2612 permit exploits, and approval phishing. Expert-verified protection strategies for DeFi users across 126+ blockchains.';
       document.head.appendChild(meta);
     }
 
     // Open Graph tags
     const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
     ogTitle.setAttribute('property', 'og:title');
-    ogTitle.setAttribute('content', 'Crypto Threat Encyclopedia - DeFi Security Threats Explained');
+    ogTitle.setAttribute('content', 'DeFi Threat Encyclopedia - 38+ Security Threats Explained - DeFiJerusalem');
     if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
 
     const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
     ogDescription.setAttribute('property', 'og:description');
-    ogDescription.setAttribute('content', 'Learn about the latest DeFi security threats including Pink Drainer, Angel Drainer, honeypots, rug pulls, and more. Expert protection strategies included.');
+    ogDescription.setAttribute('content', 'Learn about the latest DeFi security threats including Pink Drainer, Angel Drainer, Inferno Drainer, honeypots, rug pulls, and more. Expert protection strategies across 126+ blockchains.');
     if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
   }, []);
 

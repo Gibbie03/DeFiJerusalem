@@ -9,11 +9,11 @@ export default function SecurityScanner() {
   const [activeTab, setActiveTab] = useState('wallet');
 
   useEffect(() => {
-    document.title = 'Security Scanner - JERUSALEM';
+    document.title = 'Multi-Chain Security Analysis & Threat Intelligence - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Comprehensive security scanner for crypto wallets and websites. Detect drainer addresses, phishing sites, and malicious smart contracts across Ethereum and Solana.');
+      metaDescription.setAttribute('content', 'Advanced multi-chain security analysis for wallets and websites. Real-time threat detection across 126+ blockchains including drainer operations, phishing sites, and malicious smart contracts on Ethereum and Solana.');
     }
   }, []);
 

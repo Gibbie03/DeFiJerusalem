@@ -14,26 +14,26 @@ interface BlacklistWithDetails extends BlacklistEntry {
 
 export default function ScamHallOfShame() {
   useEffect(() => {
-    document.title = 'Scam Hall of Shame - Confirmed Crypto Scams Caught by JERUSALEM';
+    document.title = 'Verified Crypto Scams Database - DeFi Threat Intelligence Archive - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'See real scams and rug pulls caught by JERUSALEM DeFi Security Scanner. Learn from actual cases of wallet drainers, honeypots, and exit scams with detailed threat analysis.');
+      metaDescription.setAttribute('content', 'Comprehensive database of verified crypto scams and rug pulls detected across 126+ blockchains. Learn from real cases of wallet drainers, honeypots, exit scams, and DeFi exploits with detailed threat intelligence analysis.');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'See real scams and rug pulls caught by JERUSALEM DeFi Security Scanner. Learn from actual cases of wallet drainers, honeypots, and exit scams with detailed threat analysis.';
+      meta.content = 'Comprehensive database of verified crypto scams and rug pulls detected across 126+ blockchains. Learn from real cases of wallet drainers, honeypots, exit scams, and DeFi exploits with detailed threat intelligence analysis.';
       document.head.appendChild(meta);
     }
 
     const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
     ogTitle.setAttribute('property', 'og:title');
-    ogTitle.setAttribute('content', 'Scam Hall of Shame - JERUSALEM Security');
+    ogTitle.setAttribute('content', 'Verified Crypto Scams Database - DeFiJerusalem Threat Intelligence');
     if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
 
     const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
     ogDescription.setAttribute('property', 'og:description');
-    ogDescription.setAttribute('content', 'Real cryptocurrency scams caught and documented by JERUSALEM. See how we protect DeFi users from wallet drainers, rug pulls, and honeypots.');
+    ogDescription.setAttribute('content', 'Real cryptocurrency scams caught and documented by DeFiJerusalem. Multi-chain threat intelligence protecting DeFi users from wallet drainers, rug pulls, and honeypots.');
     if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
   }, []);
 

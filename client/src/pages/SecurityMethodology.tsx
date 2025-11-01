@@ -10,26 +10,26 @@ import { Progress } from '@/components/ui/progress';
 export default function SecurityMethodology() {
   // SEO meta tags
   useEffect(() => {
-    document.title = 'Security Score Methodology - How We Calculate Safety Ratings | JERUSALEM';
+    document.title = 'Security Score Methodology - Multi-Layer Threat Analysis System - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Understand our dual-scoring security system that protects you from crypto scams. Learn how we calculate trust scores, scam scores, and final safety ratings for 6,600+ DeFi protocols.');
+      metaDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s triple-layer security analysis system. Learn how we calculate trust scores, detect 38+ threat categories, and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'Understand our dual-scoring security system that protects you from crypto scams. Learn how we calculate trust scores, scam scores, and final safety ratings for 6,600+ DeFi protocols.';
+      meta.content = 'Full transparency into DeFiJerusalem\'s triple-layer security analysis system. Learn how we calculate trust scores, detect 38+ threat categories, and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.';
       document.head.appendChild(meta);
     }
 
     const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
     ogTitle.setAttribute('property', 'og:title');
-    ogTitle.setAttribute('content', 'Security Score Methodology - JERUSALEM DeFi Security');
+    ogTitle.setAttribute('content', 'Security Methodology - Triple-Layer Threat Analysis - DeFiJerusalem');
     if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
 
     const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
     ogDescription.setAttribute('property', 'og:description');
-    ogDescription.setAttribute('content', 'Full transparency into how we calculate security scores for DeFi protocols using our dual-scoring system.');
+    ogDescription.setAttribute('content', 'Full transparency into how DeFiJerusalem calculates security scores for DeFi protocols using triple-layer analysis: metadata scanning, GoPlus API integration, and AI threat detection across 126+ blockchains.');
     if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
   }, []);
 

@@ -67,11 +67,11 @@ export default function WalletScanner() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Wallet Address Scanner - JERUSALEM';
+    document.title = 'Wallet Address Threat Intelligence & Drainer Detection - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Scan wallet addresses for drainer footprints and malicious activity. Check if a wallet has been involved in crypto scams, rug pulls, or wallet draining operations.');
+      metaDescription.setAttribute('content', 'Advanced wallet address analysis with AI-powered drainer detection. Verify wallet safety, detect malicious activity, and protect against crypto scams and rug pulls across Ethereum and Solana blockchains.');
     }
   }, []);
 

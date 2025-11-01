@@ -149,27 +149,27 @@ export default function ThreatsPage() {
 
   // SEO meta tags
   useEffect(() => {
-    document.title = 'Live Threat Feed - Real-Time DeFi Security Alerts | JERUSALEM';
+    document.title = 'Live DeFi Threat Intelligence Feed - Real-Time Multi-Chain Security Alerts - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Real-time security threat feed detecting scams, rug pulls, and exploits across 126+ blockchain networks. Monitor critical threats in DeFi protocols and DApps as they happen.');
+      metaDescription.setAttribute('content', 'Real-time DeFi threat intelligence feed detecting scams, rug pulls, and exploits across 126+ blockchain networks. AI-powered monitoring of 6,651+ protocols with instant alerts for critical threats, drainer operations, and vulnerabilities.');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'Real-time security threat feed detecting scams, rug pulls, and exploits across 126+ blockchain networks. Monitor critical threats in DeFi protocols and DApps as they happen.';
+      meta.content = 'Real-time DeFi threat intelligence feed detecting scams, rug pulls, and exploits across 126+ blockchain networks. AI-powered monitoring of 6,651+ protocols with instant alerts for critical threats, drainer operations, and vulnerabilities.';
       document.head.appendChild(meta);
     }
 
     // Open Graph tags
     const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
     ogTitle.setAttribute('property', 'og:title');
-    ogTitle.setAttribute('content', 'Live Threat Feed - Real-Time DeFi Security Alerts');
+    ogTitle.setAttribute('content', 'Live DeFi Threat Intelligence Feed - Real-Time Security - DeFiJerusalem');
     if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
 
     const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
     ogDescription.setAttribute('property', 'og:description');
-    ogDescription.setAttribute('content', 'Monitor real-time security threats across DeFi. Get instant alerts about scams, rug pulls, drainer attacks, and vulnerabilities.');
+    ogDescription.setAttribute('content', 'Monitor real-time security threats across 126+ blockchains. Get instant alerts about scams, rug pulls, drainer attacks, and DeFi vulnerabilities with AI-powered threat intelligence.');
     if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
 
     const ogType = document.querySelector('meta[property="og:type"]') || document.createElement('meta');
