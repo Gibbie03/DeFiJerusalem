@@ -355,6 +355,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addSecurityScan(protocolId: string, scan: SecurityScan): Promise<void> {
+    // Use UPSERT to allow re-scanning protocols (update if exists, insert if new)
     await db.insert(securityScans).values({
       id: `scan-${protocolId}-${Date.now()}`,
       protocolId,
@@ -362,6 +363,15 @@ export class DatabaseStorage implements IStorage {
       severity: scan.severity,
       threats: scan.threats as any,
       score: scan.score,
+    }).onConflictDoUpdate({
+      target: securityScans.protocolId,
+      set: {
+        isBlacklisted: scan.isBlacklisted,
+        severity: scan.severity,
+        threats: scan.threats as any,
+        score: scan.score,
+        scannedAt: sql`CURRENT_TIMESTAMP`, // Update timestamp on re-scan
+      },
     });
   }
 

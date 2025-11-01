@@ -1197,14 +1197,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({
+      const websiteScanResult = {
         success: true,
         url: websiteUrl,
         phishing: phishingScan,
         contracts: contractScanResults,
         fetchError: fetchError || null,
         scannedAt: new Date().toISOString(),
-      });
+      };
+
+      // AI LEARNING: Learn from website scan (every scan teaches the AI)
+      threatLearner.learnFromWebsiteScan(websiteScanResult, websiteUrl);
+
+      res.json(websiteScanResult);
 
     } catch (error) {
       console.error("[SCAN-WEBSITE-SECURITY] Error:", error);
@@ -1449,7 +1454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
-      res.json({
+      const walletScanResult = {
         address: normalizedAddress,
         isValid: true,
         chain: addressInfo.chain,
@@ -1472,7 +1477,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           solanaStatistics: addressInfo.chain === 'SOLANA' ? drainerEducation.solanaStatistics : undefined,
           protectionTips: drainerEducation.protectionMeasures.slice(0, 3) // Top 3 tips
         }
-      });
+      };
+
+      // AI LEARNING: Learn from wallet scan (every scan teaches the AI)
+      threatLearner.learnFromWalletScan(walletScanResult, normalizedAddress);
+
+      res.json(walletScanResult);
 
     } catch (error) {
       console.error("[SCAN-WALLET] Error:", error);

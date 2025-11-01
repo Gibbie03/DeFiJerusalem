@@ -181,6 +181,70 @@ export class ThreatPatternLearner {
   }
 
   /**
+   * Learn from wallet address scan
+   */
+  public learnFromWalletScan(walletScanResult: any, address: string): void {
+    // Track wallet scan
+    this.scanHistory.push({
+      type: 'wallet_scan',
+      address,
+      chain: walletScanResult.chain,
+      isDangerous: walletScanResult.isDangerous,
+      severity: walletScanResult.severity,
+      riskScore: walletScanResult.riskScore,
+      findings: walletScanResult.findings,
+      timestamp: new Date(),
+    });
+
+    // Learn from drainer patterns
+    if (walletScanResult.drainerIntelligence) {
+      this.recordExploitSignature('KNOWN_DRAINER_WALLET', {
+        operation: walletScanResult.drainerIntelligence.operation,
+        chain: walletScanResult.chain,
+        confidence: walletScanResult.drainerIntelligence.confidence,
+      });
+    }
+
+    // Learn from wallet findings
+    for (const finding of walletScanResult.findings || []) {
+      this.learnThreatPattern(finding, { name: `Wallet ${address.substring(0, 10)}...`, id: address });
+    }
+
+    console.log(`[AI-LEARNING] Learned from wallet scan: ${address} (${walletScanResult.severity}, ${walletScanResult.findings?.length || 0} findings)`);
+  }
+
+  /**
+   * Learn from website phishing scan
+   */
+  public learnFromWebsiteScan(phishingScanResult: any, url: string): void {
+    // Track website scan
+    this.scanHistory.push({
+      type: 'website_scan',
+      url,
+      domain: phishingScanResult.phishing?.domain,
+      isScam: phishingScanResult.phishing?.isScam,
+      severity: phishingScanResult.phishing?.severity,
+      riskScore: phishingScanResult.phishing?.riskScore,
+      indicators: phishingScanResult.phishing?.indicators,
+      timestamp: new Date(),
+    });
+
+    // Learn from phishing indicators
+    for (const indicator of phishingScanResult.phishing?.indicators || []) {
+      this.learnThreatPattern(
+        {
+          type: `PHISHING_${indicator.type.toUpperCase()}`,
+          severity: indicator.severity,
+          message: indicator.description
+        },
+        { name: phishingScanResult.phishing?.domain || url, id: url }
+      );
+    }
+
+    console.log(`[AI-LEARNING] Learned from website scan: ${url} (${phishingScanResult.phishing?.severity}, ${phishingScanResult.phishing?.indicators?.length || 0} indicators)`);
+  }
+
+  /**
    * Get insights from learned patterns
    */
   public getInsights(): ScanInsight {
