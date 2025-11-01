@@ -54,6 +54,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Community Reporting & Threat Intelligence**: Includes a community scam reporting system, voting & reputation system, and public scammer address database.
 - **Token Approval Security Scanner**: Integrated GoPlus Approval Management API to detect risky ERC20 token approvals in Ethereum wallets. Features cross-referencing with DeFiJerusalem's scammer database and blacklisted protocols, risk-based revocation advice (CRITICAL/HIGH/MEDIUM/LOW), detection of unlimited approvals to unknown contracts, and Revoke.cash integration for safe approval management.
 - **Solana Security Education**: Educational content explaining why Solana's SPL token delegate authority model is safer than Ethereum's unlimited ERC-20 allowances, helping users understand the reduced approval attack surface on Solana.
+- **Professional Pitch Deck System**: Automated PDF generation for sponsorship outreach, including tier-specific pitch documents (Featured, Sponsored, Premium) and tutorial feature benefits. Each pitch deck includes ROI metrics, platform strengths, case studies, and clear CTAs. Generated using pdfkit with professional design and brand consistency.
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM, optimized with indexing and UPSERT-based persistence.
@@ -65,6 +66,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **False Positive Prevention**: Context-aware scam patterns, exclusions for legitimate entities, and TVL-based filtering.
 - **Context-Aware IMPOSTER Detection**: Intelligent heuristics to distinguish legitimate integrations from scams, with whitelist overrides.
 - **Trust Score Consistency**: Frontend components prioritize real-time `securityScan.score` data with fallback to cached `protocol.securityScore`. Backend automatically syncs protocol cache during scan completion to prevent score drift.
+- **Sponsorship Outreach Materials**: Professional PDF pitch decks generated via `scripts/generate-pitch-pdfs.ts` using pdfkit. Includes 4 documents: Featured Tier (6 pages), Sponsored Tier (6 pages), Premium Tier (6 pages), and Tutorial Feature Benefits (10 pages). All documents feature ROI metrics, platform value propositions, and contact information.
 
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
