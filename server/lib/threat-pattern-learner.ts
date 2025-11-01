@@ -1,8 +1,12 @@
 /**
- * Threat Pattern Learner
+ * Threat Pattern Learner - Phase 2: Database Persistence
  * AI-powered system that learns from security scans to identify new exploit patterns
  * and automatically update threat detection rules
+ * 
+ * PHASE 2 UPGRADE: Now persists learned patterns to PostgreSQL instead of in-memory storage
  */
+
+import type { IStorage } from '../storage';
 
 interface ThreatPattern {
   pattern: string;
@@ -27,29 +31,144 @@ export class ThreatPatternLearner {
   private scanHistory: any[] = [];
   private readonly MIN_CONFIDENCE = 0.7;
   private readonly MIN_OCCURRENCES = 3;
+  private storage: IStorage | null = null;
+  private isInitialized = false;
+
+  /**
+   * Initialize with database storage (Phase 2)
+   */
+  public async initialize(storage: IStorage): Promise<void> {
+    this.storage = storage;
+    await this.loadPatternsFromDatabase();
+    await this.loadScanHistoryFromDatabase();
+    this.isInitialized = true;
+    console.log('[AI-LEARNING] Initialized with database persistence');
+    console.log(`[AI-LEARNING] Loaded ${this.learnedPatterns.size} patterns from database`);
+  }
+
+  /**
+   * Load learned patterns from database on startup
+   */
+  private async loadPatternsFromDatabase(): Promise<void> {
+    if (!this.storage) return;
+    
+    try {
+      const patterns = await this.storage.getAllAIPatterns();
+      
+      for (const pattern of patterns) {
+        const key = `${pattern.pattern}_${pattern.severity}`;
+        this.learnedPatterns.set(key, {
+          pattern: pattern.pattern,
+          severity: pattern.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+          category: pattern.category,
+          confidence: pattern.confidence,
+          occurrences: pattern.occurrences,
+          examples: pattern.examples,
+          firstSeen: new Date(pattern.firstSeen),
+          lastSeen: new Date(pattern.lastSeen),
+        });
+      }
+    } catch (error) {
+      console.error('[AI-LEARNING] Failed to load patterns from database:', error);
+    }
+  }
+
+  /**
+   * Load scan history from database
+   */
+  private async loadScanHistoryFromDatabase(): Promise<void> {
+    if (!this.storage) return;
+    
+    try {
+      const history = await this.storage.getAIScanHistory(1000);
+      this.scanHistory = history.map(h => ({
+        protocolId: h.entityId,
+        protocolName: h.entityName,
+        entityType: h.entityType,
+        threats: h.threats,
+        severity: h.severity,
+        score: h.score,
+        timestamp: new Date(h.timestamp),
+      }));
+    } catch (error) {
+      console.error('[AI-LEARNING] Failed to load scan history from database:', error);
+    }
+  }
+
+  /**
+   * Persist pattern to database
+   */
+  private async persistPattern(pattern: ThreatPattern): Promise<void> {
+    if (!this.storage) return;
+    
+    try {
+      await this.storage.upsertAIPattern({
+        pattern: pattern.pattern,
+        severity: pattern.severity,
+        category: pattern.category,
+        confidence: pattern.confidence,
+        occurrences: pattern.occurrences,
+        examples: pattern.examples,
+      });
+    } catch (error) {
+      console.error('[AI-LEARNING] Failed to persist pattern to database:', error);
+    }
+  }
+
+  /**
+   * Persist scan to database
+   */
+  private async persistScan(scan: {
+    entityId: string;
+    entityName: string;
+    entityType: 'protocol' | 'wallet' | 'website';
+    threats: any[];
+    severity: string;
+    score: number;
+  }): Promise<void> {
+    if (!this.storage) return;
+    
+    try {
+      await this.storage.addAIScanHistory(scan);
+    } catch (error) {
+      console.error('[AI-LEARNING] Failed to persist scan to database:', error);
+    }
+  }
 
   /**
    * Learn from a completed security scan
    */
-  public learnFromScan(scanResult: any, protocol: any): void {
-    // Track the scan
-    this.scanHistory.push({
+  public async learnFromScan(scanResult: any, protocol: any): Promise<void> {
+    // Track the scan (both in-memory and database)
+    const scanRecord = {
       protocolId: protocol.id,
       protocolName: protocol.name,
       threats: scanResult.threats,
       severity: scanResult.severity,
       score: scanResult.score,
       timestamp: new Date(),
+    };
+    
+    this.scanHistory.push(scanRecord);
+
+    // Persist to database (Phase 2)
+    await this.persistScan({
+      entityId: protocol.id,
+      entityName: protocol.name,
+      entityType: 'protocol',
+      threats: scanResult.threats,
+      severity: scanResult.severity,
+      score: scanResult.score,
     });
 
     // Extract patterns from threats
     for (const threat of scanResult.threats) {
-      this.learnThreatPattern(threat, protocol);
+      await this.learnThreatPattern(threat, protocol);
     }
 
     // Analyze contract scan data if available
     if (scanResult.contractScan) {
-      this.learnFromContractScan(scanResult.contractScan, protocol);
+      await this.learnFromContractScan(scanResult.contractScan, protocol);
     }
 
     // Keep history manageable (last 1000 scans)
@@ -61,7 +180,7 @@ export class ThreatPatternLearner {
   /**
    * Learn threat patterns from individual threat
    */
-  private learnThreatPattern(threat: any, protocol: any): void {
+  private async learnThreatPattern(threat: any, protocol: any): Promise<void> {
     const key = `${threat.type}_${threat.severity}`;
     const existing = this.learnedPatterns.get(key);
 
@@ -76,9 +195,12 @@ export class ThreatPatternLearner {
       if (!existing.examples.includes(example) && existing.examples.length < 10) {
         existing.examples.push(example);
       }
+
+      // Persist update to database (Phase 2)
+      await this.persistPattern(existing);
     } else {
       // Create new pattern
-      this.learnedPatterns.set(key, {
+      const newPattern: ThreatPattern = {
         pattern: threat.type,
         severity: threat.severity,
         category: this.categorizeThreat(threat.type),
@@ -87,17 +209,22 @@ export class ThreatPatternLearner {
         firstSeen: new Date(),
         lastSeen: new Date(),
         examples: [`${protocol.name}: ${threat.message}`],
-      });
+      };
+      
+      this.learnedPatterns.set(key, newPattern);
+
+      // Persist new pattern to database (Phase 2)
+      await this.persistPattern(newPattern);
     }
   }
 
   /**
    * Learn from smart contract scan results
    */
-  private learnFromContractScan(contractScan: any, protocol: any): void {
+  private async learnFromContractScan(contractScan: any, protocol: any): Promise<void> {
     // Learn from honeypot patterns
     if (contractScan.isHoneypot) {
-      this.recordExploitSignature('HONEYPOT_DETECTED', {
+      await this.recordExploitSignature('HONEYPOT_DETECTED', {
         cannotBuy: contractScan.cannotBuy,
         cannotSell: contractScan.cannotSell,
         buyTax: contractScan.buyTax,
@@ -107,7 +234,7 @@ export class ThreatPatternLearner {
 
     // Learn from hidden owner patterns
     if (contractScan.hiddenOwner) {
-      this.recordExploitSignature('HIDDEN_OWNER', {
+      await this.recordExploitSignature('HIDDEN_OWNER', {
         canTakeBackOwnership: contractScan.canTakeBackOwnership,
         ownerChangeBalance: contractScan.ownerChangeBalance,
       });
@@ -115,7 +242,7 @@ export class ThreatPatternLearner {
 
     // Learn from high tax patterns
     if (contractScan.buyTax > 10 || contractScan.sellTax > 10) {
-      this.recordExploitSignature('EXCESSIVE_TAXES', {
+      await this.recordExploitSignature('EXCESSIVE_TAXES', {
         buyTax: contractScan.buyTax,
         sellTax: contractScan.sellTax,
       });
@@ -125,7 +252,7 @@ export class ThreatPatternLearner {
   /**
    * Record exploit signature for future detection
    */
-  private recordExploitSignature(type: string, data: any): void {
+  private async recordExploitSignature(type: string, data: any): Promise<void> {
     const signature = JSON.stringify({ type, data });
     const key = `exploit_${type}`;
     
@@ -133,8 +260,12 @@ export class ThreatPatternLearner {
     if (existing) {
       existing.occurrences++;
       existing.confidence = Math.min(1.0, existing.confidence + 0.1);
+      existing.lastSeen = new Date();
+      
+      // Persist update to database (Phase 2)
+      await this.persistPattern(existing);
     } else {
-      this.learnedPatterns.set(key, {
+      const newPattern: ThreatPattern = {
         pattern: type,
         severity: 'CRITICAL',
         category: 'Smart Contract Exploit',
@@ -143,7 +274,12 @@ export class ThreatPatternLearner {
         firstSeen: new Date(),
         lastSeen: new Date(),
         examples: [signature],
-      });
+      };
+      
+      this.learnedPatterns.set(key, newPattern);
+
+      // Persist new pattern to database (Phase 2)
+      await this.persistPattern(newPattern);
     }
   }
 
@@ -183,9 +319,9 @@ export class ThreatPatternLearner {
   /**
    * Learn from wallet address scan
    */
-  public learnFromWalletScan(walletScanResult: any, address: string): void {
-    // Track wallet scan
-    this.scanHistory.push({
+  public async learnFromWalletScan(walletScanResult: any, address: string): Promise<void> {
+    // Track wallet scan (both in-memory and database)
+    const scanRecord = {
       type: 'wallet_scan',
       address,
       chain: walletScanResult.chain,
@@ -194,11 +330,23 @@ export class ThreatPatternLearner {
       riskScore: walletScanResult.riskScore,
       findings: walletScanResult.findings,
       timestamp: new Date(),
+    };
+    
+    this.scanHistory.push(scanRecord);
+
+    // Persist to database (Phase 2)
+    await this.persistScan({
+      entityId: address,
+      entityName: `Wallet ${address.substring(0, 10)}...`,
+      entityType: 'wallet',
+      threats: walletScanResult.findings || [],
+      severity: walletScanResult.severity,
+      score: walletScanResult.riskScore,
     });
 
     // Learn from drainer patterns
     if (walletScanResult.drainerIntelligence) {
-      this.recordExploitSignature('KNOWN_DRAINER_WALLET', {
+      await this.recordExploitSignature('KNOWN_DRAINER_WALLET', {
         operation: walletScanResult.drainerIntelligence.operation,
         chain: walletScanResult.chain,
         confidence: walletScanResult.drainerIntelligence.confidence,
@@ -207,7 +355,7 @@ export class ThreatPatternLearner {
 
     // Learn from wallet findings
     for (const finding of walletScanResult.findings || []) {
-      this.learnThreatPattern(finding, { name: `Wallet ${address.substring(0, 10)}...`, id: address });
+      await this.learnThreatPattern(finding, { name: `Wallet ${address.substring(0, 10)}...`, id: address });
     }
 
     console.log(`[AI-LEARNING] Learned from wallet scan: ${address} (${walletScanResult.severity}, ${walletScanResult.findings?.length || 0} findings)`);
@@ -216,9 +364,9 @@ export class ThreatPatternLearner {
   /**
    * Learn from website phishing scan
    */
-  public learnFromWebsiteScan(phishingScanResult: any, url: string): void {
-    // Track website scan
-    this.scanHistory.push({
+  public async learnFromWebsiteScan(phishingScanResult: any, url: string): Promise<void> {
+    // Track website scan (both in-memory and database)
+    const scanRecord = {
       type: 'website_scan',
       url,
       domain: phishingScanResult.phishing?.domain,
@@ -227,11 +375,23 @@ export class ThreatPatternLearner {
       riskScore: phishingScanResult.phishing?.riskScore,
       indicators: phishingScanResult.phishing?.indicators,
       timestamp: new Date(),
+    };
+    
+    this.scanHistory.push(scanRecord);
+
+    // Persist to database (Phase 2)
+    await this.persistScan({
+      entityId: url,
+      entityName: phishingScanResult.phishing?.domain || url,
+      entityType: 'website',
+      threats: phishingScanResult.phishing?.indicators || [],
+      severity: phishingScanResult.phishing?.severity || 'LOW',
+      score: phishingScanResult.phishing?.riskScore || 0,
     });
 
     // Learn from phishing indicators
     for (const indicator of phishingScanResult.phishing?.indicators || []) {
-      this.learnThreatPattern(
+      await this.learnThreatPattern(
         {
           type: `PHISHING_${indicator.type.toUpperCase()}`,
           severity: indicator.severity,

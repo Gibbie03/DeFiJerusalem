@@ -160,6 +160,16 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Initialize AI Learning with database persistence (Phase 2)
+  try {
+    const { threatLearner } = await import('./lib/threat-pattern-learner');
+    const { storage } = await import('./storage');
+    await threatLearner.initialize(storage);
+    log('✓ AI Learning initialized with database persistence');
+  } catch (error: any) {
+    log(`✗ Failed to initialize AI Learning: ${error.message}`);
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

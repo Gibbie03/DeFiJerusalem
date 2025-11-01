@@ -18,7 +18,7 @@ export default function ProtocolDetail() {
   });
 
   const { data: securityScans, isLoading: scansLoading } = useQuery<Record<string, any>>({
-    queryKey: ['/api/security-scans'],
+    queryKey: ['/api/scans'],
   });
 
   const protocol = protocols?.find((p) => p.id === protocolId);

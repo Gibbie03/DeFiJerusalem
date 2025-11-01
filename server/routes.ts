@@ -159,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               // Learn from this re-scan
               const scanWithContract = { ...combinedScanResult, contractScan };
-              threatLearner.learnFromScan(scanWithContract, protocol);
+              await threatLearner.learnFromScan(scanWithContract, protocol);
               
             } catch (error) {
               console.error(`[AI-LEARNING] Error re-scanning ${protocol.name}:`, error);
@@ -791,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // AI LEARNING: Learn from this scan (includes contract scan data)
             const scanWithContract = { ...scanResult, contractScan };
-            threatLearner.learnFromScan(scanWithContract, protocol);
+            await threatLearner.learnFromScan(scanWithContract, protocol);
 
             // AI-ENHANCED BLACKLISTING: Get AI recommendation
             const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);
@@ -1207,7 +1207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // AI LEARNING: Learn from website scan (every scan teaches the AI)
-      threatLearner.learnFromWebsiteScan(websiteScanResult, websiteUrl);
+      await threatLearner.learnFromWebsiteScan(websiteScanResult, websiteUrl);
 
       res.json(websiteScanResult);
 
@@ -1480,7 +1480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // AI LEARNING: Learn from wallet scan (every scan teaches the AI)
-      threatLearner.learnFromWalletScan(walletScanResult, normalizedAddress);
+      await threatLearner.learnFromWalletScan(walletScanResult, normalizedAddress);
 
       res.json(walletScanResult);
 
@@ -3254,7 +3254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             scansToStore.push({ protocolId: id, scan: scanResult });
 
             // AI LEARNING: Learn from this scan to identify future exploits
-            threatLearner.learnFromScan(scanResult, protocol);
+            await threatLearner.learnFromScan(scanResult, protocol);
 
             // AI-ENHANCED BLACKLISTING: Get AI recommendation
             const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);

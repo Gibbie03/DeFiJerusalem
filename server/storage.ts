@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan, ProtocolSubmission, InsertProtocolSubmission } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans, protocolSubmissions } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans, protocolSubmissions, aiLearnedPatterns, aiScanHistory } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -80,6 +80,45 @@ export interface IStorage {
   getProtocolSubmissions(status?: string): Promise<ProtocolSubmission[]>;
   updateProtocolSubmission(id: string, updates: Partial<ProtocolSubmission>): Promise<ProtocolSubmission | undefined>;
   createProtocol(protocol: InsertProtocol): Promise<Protocol>;
+  
+  // AI Learning persistence methods (Phase 2)
+  upsertAIPattern(pattern: {
+    pattern: string;
+    severity: string;
+    category: string;
+    confidence: number;
+    occurrences: number;
+    examples: string[];
+  }): Promise<void>;
+  getAllAIPatterns(): Promise<Array<{
+    id: string;
+    pattern: string;
+    severity: string;
+    category: string;
+    confidence: number;
+    occurrences: number;
+    examples: string[];
+    firstSeen: string;
+    lastSeen: string;
+  }>>;
+  addAIScanHistory(scan: {
+    entityId: string;
+    entityName: string;
+    entityType: 'protocol' | 'wallet' | 'website';
+    threats: Array<{ type: string; severity: string; message: string }>;
+    severity: string;
+    score: number;
+  }): Promise<void>;
+  getAIScanHistory(limit?: number): Promise<Array<{
+    id: string;
+    entityId: string;
+    entityName: string;
+    entityType: string;
+    threats: Array<{ type: string; severity: string; message: string }>;
+    severity: string;
+    score: number;
+    timestamp: string;
+  }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1154,6 +1193,119 @@ export class DatabaseStorage implements IStorage {
       reviewedAt: submission.reviewedAt ? submission.reviewedAt.toISOString() : null,
       reviewedBy: submission.reviewedBy,
     };
+  }
+
+  // AI Learning persistence methods (Phase 2)
+  async upsertAIPattern(pattern: {
+    pattern: string;
+    severity: string;
+    category: string;
+    confidence: number;
+    occurrences: number;
+    examples: string[];
+  }): Promise<void> {
+    const id = `ai_pattern_${pattern.pattern}_${pattern.severity}`;
+    
+    await db
+      .insert(aiLearnedPatterns)
+      .values({
+        id,
+        pattern: pattern.pattern,
+        severity: pattern.severity,
+        category: pattern.category,
+        confidence: pattern.confidence,
+        occurrences: pattern.occurrences,
+        examples: pattern.examples as any,
+      })
+      .onConflictDoUpdate({
+        target: [aiLearnedPatterns.pattern, aiLearnedPatterns.severity],
+        set: {
+          confidence: pattern.confidence,
+          occurrences: pattern.occurrences,
+          examples: pattern.examples as any,
+          lastSeen: new Date(),
+        },
+      });
+  }
+
+  async getAllAIPatterns(): Promise<Array<{
+    id: string;
+    pattern: string;
+    severity: string;
+    category: string;
+    confidence: number;
+    occurrences: number;
+    examples: string[];
+    firstSeen: string;
+    lastSeen: string;
+  }>> {
+    const results = await db
+      .select()
+      .from(aiLearnedPatterns)
+      .orderBy(desc(aiLearnedPatterns.confidence));
+    
+    return results.map(r => ({
+      id: r.id,
+      pattern: r.pattern,
+      severity: r.severity,
+      category: r.category,
+      confidence: r.confidence,
+      occurrences: r.occurrences,
+      examples: r.examples as string[],
+      firstSeen: r.firstSeen.toISOString(),
+      lastSeen: r.lastSeen.toISOString(),
+    }));
+  }
+
+  async addAIScanHistory(scan: {
+    entityId: string;
+    entityName: string;
+    entityType: 'protocol' | 'wallet' | 'website';
+    threats: Array<{ type: string; severity: string; message: string }>;
+    severity: string;
+    score: number;
+  }): Promise<void> {
+    const id = `ai_scan_${scan.entityType}_${scan.entityId}_${Date.now()}`;
+    
+    await db
+      .insert(aiScanHistory)
+      .values({
+        id,
+        entityId: scan.entityId,
+        entityName: scan.entityName,
+        entityType: scan.entityType,
+        threats: scan.threats as any,
+        severity: scan.severity,
+        score: scan.score,
+      });
+  }
+
+  async getAIScanHistory(limit: number = 1000): Promise<Array<{
+    id: string;
+    entityId: string;
+    entityName: string;
+    entityType: string;
+    threats: Array<{ type: string; severity: string; message: string }>;
+    severity: string;
+    score: number;
+    timestamp: string;
+  }>> {
+    const results = await db
+      .select()
+      .from(aiScanHistory)
+      .orderBy(desc(aiScanHistory.timestamp))
+      .limit(limit);
+    
+    return results.map(r => ({
+      id: r.id,
+      entityId: r.entityId,
+      entityName: r.entityName,
+      entityType: r.entityType,
+      threats: r.threats as Array<{ type: string; severity: string; message: string }>,
+      severity: r.severity,
+      score: r.score,
+      timestamp: r.timestamp.toISOString(),
+    }));
   }
 }
 
