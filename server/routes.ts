@@ -1454,6 +1454,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
+      // FETCH TOKEN APPROVALS using GoPlus API
+      let tokenApprovals = null;
+      let approvalsError = null;
+      
+      if (addressInfo.chain === 'ETHEREUM') {
+        try {
+          const chainId = '1'; // Ethereum mainnet
+          const approvalsUrl = `https://api.gopluslabs.io/api/v2/token_approval_security/${chainId}?addresses=${normalizedAddress}`;
+          
+          const approvalsResponse = await fetch(approvalsUrl, {
+            headers: {
+              'Accept': '*/*',
+              'Authorization': process.env.GOPLUS_API_KEY ? `Bearer ${process.env.GOPLUS_API_KEY}` : ''
+            }
+          });
+          
+          if (approvalsResponse.ok) {
+            const approvalsData = await approvalsResponse.json();
+            
+            if (approvalsData.code === 1 && approvalsData.result) {
+              const addressData = approvalsData.result[normalizedAddress.toLowerCase()];
+              
+              if (addressData && addressData.approved_list) {
+                tokenApprovals = {
+                  totalApprovals: addressData.approved_list.length,
+                  approvals: addressData.approved_list.map((approval: any) => ({
+                    tokenName: approval.token_name,
+                    tokenSymbol: approval.token_symbol,
+                    tokenAddress: approval.token_address,
+                    spenderAddress: approval.approved_contract,
+                    spenderLabel: approval.address_info?.label || 'Unknown Contract',
+                    approvedAmount: approval.approved_amount,
+                    balance: approval.balance,
+                    isUnlimited: approval.approved_amount === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ||
+                                 approval.approved_amount === '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+                    isMalicious: approval.malicious_address === 1,
+                    maliciousBehaviors: approval.malicious_behavior || [],
+                    approvedTime: approval.approved_time,
+                    transactionHash: approval.hash,
+                    riskLevel: approval.malicious_address === 1 ? 'HIGH' : 
+                              (approval.approved_amount === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ? 'MEDIUM' : 'LOW')
+                  }))
+                };
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[WALLET-SCAN] Error fetching token approvals:', error);
+          approvalsError = 'Failed to fetch token approvals';
+        }
+      }
+
       const walletScanResult = {
         address: normalizedAddress,
         isValid: true,
@@ -1466,6 +1518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         riskScore: finalRiskScore,
         recommendations,
         drainerIntelligence,
+        tokenApprovals, // NEW: Token approvals data
         education: {
           transactionPatterns: DRAINER_TRANSACTION_PATTERNS.filter(p => 
             // Show chain-specific patterns
