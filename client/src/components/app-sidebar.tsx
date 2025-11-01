@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, Skull, AlertOctagon, Database } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, Skull, AlertOctagon, Database, MessageSquare } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +41,11 @@ const menuItems = [
     title: "Report Scam",
     url: "/report-scam",
     icon: AlertOctagon,
+  },
+  {
+    title: "Community Reports",
+    url: "/community-reports",
+    icon: MessageSquare,
   },
   {
     title: "Scammer Addresses",

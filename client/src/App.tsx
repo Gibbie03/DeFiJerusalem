@@ -26,6 +26,7 @@ import SponsorshipGuide from "@/pages/SponsorshipGuide";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ReportScam from "@/pages/ReportScam";
+import CommunityReports from "@/pages/CommunityReports";
 import ScammerAddresses from "@/pages/ScammerAddresses";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
@@ -100,6 +101,7 @@ function Router() {
                 <Route path="/tutorials" component={Tutorials} />
                 <Route path="/sponsorship" component={SponsorshipGuide} />
                 <Route path="/report-scam" component={ReportScam} />
+                <Route path="/community-reports" component={CommunityReports} />
                 <Route path="/scammer-addresses" component={ScammerAddresses} />
                 <Route path="/admin/login" component={AdminLogin} />
                 <Route path="/admin/dashboard" component={AdminDashboard} />
