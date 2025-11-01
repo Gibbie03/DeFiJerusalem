@@ -1477,25 +1477,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const addressData = approvalsData.result[normalizedAddress.toLowerCase()];
               
               if (addressData && addressData.approved_list) {
+                // Get scammer addresses to cross-reference
+                const scammerAddresses = await storage.getScammerAddresses({});
+                const scammerAddressSet = new Set(
+                  scammerAddresses.map(s => s.address.toLowerCase())
+                );
+                
                 tokenApprovals = {
                   totalApprovals: addressData.approved_list.length,
-                  approvals: addressData.approved_list.map((approval: any) => ({
-                    tokenName: approval.token_name,
-                    tokenSymbol: approval.token_symbol,
-                    tokenAddress: approval.token_address,
-                    spenderAddress: approval.approved_contract,
-                    spenderLabel: approval.address_info?.label || 'Unknown Contract',
-                    approvedAmount: approval.approved_amount,
-                    balance: approval.balance,
-                    isUnlimited: approval.approved_amount === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ||
-                                 approval.approved_amount === '115792089237316195423570985008687907853269984665640564039457584007913129639935',
-                    isMalicious: approval.malicious_address === 1,
-                    maliciousBehaviors: approval.malicious_behavior || [],
-                    approvedTime: approval.approved_time,
-                    transactionHash: approval.hash,
-                    riskLevel: approval.malicious_address === 1 ? 'HIGH' : 
-                              (approval.approved_amount === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ? 'MEDIUM' : 'LOW')
+                  approvals: await Promise.all(addressData.approved_list.map(async (approval: any) => {
+                    const spenderLower = approval.approved_contract.toLowerCase();
+                    const isUnlimited = approval.approved_amount === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ||
+                                       approval.approved_amount === '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+                    
+                    // Check if spender is in our scammer database
+                    const isKnownScammer = scammerAddressSet.has(spenderLower);
+                    
+                    // Check if spender is associated with blacklisted protocol
+                    const spenderProtocol = protocols.find(p => 
+                      p.contractAddress && p.contractAddress.toLowerCase() === spenderLower
+                    );
+                    const isBlacklistedProtocol = spenderProtocol ? 
+                      blacklist.some(b => b.dappId === spenderProtocol.id && b.status === 'ACTIVE') : 
+                      false;
+                    
+                    // Determine risk level and advice
+                    let riskLevel = 'LOW';
+                    let revocationAdvice = '';
+                    let shouldRevoke = false;
+                    
+                    if (approval.malicious_address === 1 || isKnownScammer) {
+                      riskLevel = 'CRITICAL';
+                      shouldRevoke = true;
+                      revocationAdvice = 'REVOKE IMMEDIATELY - This contract is flagged as malicious in our security database.';
+                    } else if (isBlacklistedProtocol) {
+                      riskLevel = 'CRITICAL';
+                      shouldRevoke = true;
+                      revocationAdvice = `REVOKE IMMEDIATELY - This approval is for "${spenderProtocol?.name}", which is blacklisted on DeFiJerusalem for security violations.`;
+                    } else if (isUnlimited && !approval.address_info?.label) {
+                      riskLevel = 'HIGH';
+                      shouldRevoke = true;
+                      revocationAdvice = 'REVOKE RECOMMENDED - Unlimited approval to unknown/unverified contract. This is a major security risk.';
+                    } else if (isUnlimited) {
+                      riskLevel = 'MEDIUM';
+                      revocationAdvice = `Consider revoking - Unlimited approval to ${approval.address_info.label}. While this may be a legitimate service, unlimited approvals always carry risk.`;
+                    } else if (!approval.address_info?.label) {
+                      riskLevel = 'MEDIUM';
+                      revocationAdvice = 'Monitor this approval - Unknown contract with limited approval. Review if you recognize this transaction.';
+                    }
+                    
+                    return {
+                      tokenName: approval.token_name,
+                      tokenSymbol: approval.token_symbol,
+                      tokenAddress: approval.token_address,
+                      spenderAddress: approval.approved_contract,
+                      spenderLabel: approval.address_info?.label || 'Unknown Contract',
+                      approvedAmount: approval.approved_amount,
+                      balance: approval.balance,
+                      isUnlimited,
+                      isMalicious: approval.malicious_address === 1,
+                      isKnownScammer,
+                      isBlacklistedProtocol,
+                      blacklistedProtocolName: isBlacklistedProtocol ? spenderProtocol?.name : null,
+                      maliciousBehaviors: approval.malicious_behavior || [],
+                      approvedTime: approval.approved_time,
+                      transactionHash: approval.hash,
+                      riskLevel,
+                      shouldRevoke,
+                      revocationAdvice
+                    };
                   }))
+                };
+                
+                // Add summary stats
+                const criticalApprovals = tokenApprovals.approvals.filter(a => a.riskLevel === 'CRITICAL').length;
+                const highRiskApprovals = tokenApprovals.approvals.filter(a => a.riskLevel === 'HIGH').length;
+                const shouldRevokeCount = tokenApprovals.approvals.filter(a => a.shouldRevoke).length;
+                
+                tokenApprovals.summary = {
+                  total: tokenApprovals.totalApprovals,
+                  critical: criticalApprovals,
+                  highRisk: highRiskApprovals,
+                  shouldRevoke: shouldRevokeCount,
+                  hasRiskyApprovals: shouldRevokeCount > 0
                 };
               }
             }
