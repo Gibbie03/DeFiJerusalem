@@ -13,14 +13,13 @@ import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import BlacklistDetails from "@/pages/BlacklistDetails";
-import SecurityStats from "@/pages/SecurityStats";
 import ThreatsPage from "@/pages/ThreatsPage";
+import SecurityMethodology from "@/pages/SecurityMethodology";
 import WebsiteScanner from "@/pages/WebsiteScanner";
 import SubmitProtocol from "@/pages/SubmitProtocol";
 import ProtocolDetail from "@/pages/ProtocolDetail";
 import Tutorials from "@/pages/Tutorials";
 import SponsorshipGuide from "@/pages/SponsorshipGuide";
-import HowItWorks from "@/pages/HowItWorks";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/not-found";
@@ -82,11 +81,12 @@ function Router() {
                 <Route path="/protocol/:id" component={ProtocolDetail} />
                 <Route path="/blacklist/:id" component={BlacklistDetails} />
                 <Route path="/blacklist" component={Blacklist} />
-                <Route path="/security-stats" component={SecurityStats} />
+                <Route path="/security-stats">{() => { window.location.href = '/threats'; return null; }}</Route>
+                <Route path="/how-it-works">{() => { window.location.href = '/security-methodology'; return null; }}</Route>
                 <Route path="/threats" component={ThreatsPage} />
+                <Route path="/security-methodology" component={SecurityMethodology} />
                 <Route path="/scan-website" component={WebsiteScanner} />
                 <Route path="/submit-protocol" component={SubmitProtocol} />
-                <Route path="/how-it-works" component={HowItWorks} />
                 <Route path="/tutorials" component={Tutorials} />
                 <Route path="/sponsorship" component={SponsorshipGuide} />
                 <Route path="/admin/login" component={AdminLogin} />

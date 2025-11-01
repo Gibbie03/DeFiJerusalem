@@ -48,18 +48,13 @@ const menuItems = [
     icon: Shield,
   },
   {
-    title: "Security Stats",
-    url: "/security-stats",
-    icon: BarChart3,
-  },
-  {
-    title: "Live Threats",
+    title: "Security & Threats",
     url: "/threats",
     icon: AlertTriangle,
   },
   {
-    title: "How It Works",
-    url: "/how-it-works",
+    title: "Our Methodology",
+    url: "/security-methodology",
     icon: BookOpen,
   },
   {
