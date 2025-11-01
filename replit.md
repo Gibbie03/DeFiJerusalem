@@ -21,7 +21,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 
 ### Feature Specifications
 - **Protocol Discovery & Display**: Fetches and displays protocols from DeFiLlama in a sortable, filterable table.
-- **Contract Discovery System**: Automated DeFi protocol and contract discovery via DeFiLlama integration. Extracts 6,894+ protocol contracts across 20+ blockchains with metadata including TVL, social links, and categories. Runs hourly background job to keep database updated. Future enhancement: Direct blockchain explorer API integration pending Etherscan API V2 migration.
+- **Contract Discovery System**: Hybrid automated contract discovery combining two approaches: (1) DeFiLlama integration for established protocols with TVL data, extracting 6,894+ protocol contracts across 20+ blockchains with metadata including social links and categories; (2) Etherscan web scraping for recently verified contracts (last 24-48 hours) across 7 high-priority chains (Ethereum, BSC, Polygon, Arbitrum, Optimism, Base, Avalanche). Runs hourly background job with sequential chain scraping and retry logic to avoid rate limiting. This hybrid approach ensures discovery of both established protocols AND fresh contracts within their first 24 hours of verification.
 - **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with comprehensive drainer intelligence, supporting Ethereum and Solana addresses, known drainer databases, and transaction pattern detection. Includes vanity address analysis, address poisoning detection, educational content, risk scoring, drainer intelligence alerts, and blacklist integration.
 - **Security Statistics Dashboard**: Comprehensive real-time statistics page displaying total protocols, scan coverage, severity breakdown, 2025 Advanced Drainer Detection counts, and top highest risk protocols.
 - **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details with severity badges, detailed threat cards, and per-threat user advice.
@@ -57,6 +57,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.
+- **Blockchain Explorer Web Scraping**: Cheerio-based HTML parsing of Etherscan contractsVerified pages to discover recently verified contracts across multiple chains.
 - **GoPlus Security API**: Real-time smart contract code analysis.
 - **Twitter API v2 Filtered Stream**: Real-time monitoring of crypto threats.
 - **CertiK Skynet**: Public security score scraping and audit verification.
@@ -64,6 +65,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Shadcn UI**: UI component library.
 - **TanStack Query (React Query)**: For server state management and data fetching.
 - **Zod**: Schema declaration and validation.
+- **Cheerio**: Fast, flexible HTML parsing library for web scraping.
 - **YouTube**: Integration for embedding tutorial videos.
 - **Bitmedia**: Primary crypto advertising network.
 - **Coinzilla**: Fallback crypto advertising network.

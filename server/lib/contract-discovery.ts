@@ -1,15 +1,22 @@
 /**
- * Contract Discovery Service
+ * Contract Discovery Service - Hybrid Approach
  * 
- * Extracts smart contracts from DeFiLlama protocols (hybrid approach)
- * Supports 40+ blockchains with contract metadata
+ * Combines two discovery methods for comprehensive coverage:
+ * 1. DeFiLlama: Extracts established protocols with TVL data
+ * 2. Etherscan Scraping: Recently verified contracts (last 24-48 hours)
  * 
- * Note: Direct blockchain explorer API scanning is pending migration to Etherscan API V2
- * Current approach: Extract contracts from known DeFi protocols with TVL data
+ * This hybrid approach ensures we discover both established protocols AND fresh contracts
  */
 
 import type { DiscoveredContract } from '@shared/schema';
 import { EXPLORER_APIS, ChainKey, getMainnetChains, getHighPriorityChains } from './blockchain-apis';
+import { 
+  scrapeMultipleChains, 
+  scrapeVerifiedContracts, 
+  filterByRecency,
+  getHighPriorityScrapingChains,
+  type ScrapedContract 
+} from './etherscan-scraper';
 
 export type Chain = ChainKey;
 
@@ -78,7 +85,7 @@ export async function fetchContractsFromDeFiLlama(): Promise<Partial<DiscoveredC
           contractName: protocol.name,
           chain: chainKey,
           contractType: protocol.category || 'defi',
-          discoveredAt: new Date(),
+          discoveredAt: new Date().toISOString(),
           status: 'pending',
           metadata: {
             hasLiquidity: true,
@@ -384,4 +391,157 @@ export function filterDeFiContracts(contracts: Partial<DiscoveredContract>[]): P
            contract.contractType?.toLowerCase().includes('stake') ||
            contract.contractType?.toLowerCase().includes('vault');
   });
+}
+
+/**
+ * Convert scraped contract to DiscoveredContract format
+ */
+function convertScrapedToDiscovered(scraped: ScrapedContract): Partial<DiscoveredContract> {
+  return {
+    contractAddress: scraped.address,
+    contractName: scraped.name,
+    chain: scraped.chain,
+    contractType: null, // Will be analyzed later
+    verifiedAt: scraped.verifiedDate,
+    compilerVersion: `${scraped.compiler} ${scraped.version}`,
+    explorerUrl: scraped.explorerUrl,
+    status: 'pending',
+    discoveredAt: new Date().toISOString(),
+    metadata: {
+      license: scraped.license || undefined,
+      txCount: scraped.txCount,
+      balance: scraped.balance,
+      source: 'etherscan-scraper',
+    },
+  };
+}
+
+/**
+ * Fetch recently verified contracts from Etherscan scraping
+ * 
+ * @param chains - Chains to scrape (defaults to high-priority chains)
+ * @param maxPerChain - Max contracts per chain (default: 100)
+ * @param recentHours - Only include contracts verified within this many hours (default: 48)
+ * @returns Array of discovered contracts
+ */
+export async function fetchRecentlyVerifiedContractsFromScraping(
+  chains: ChainKey[] = getHighPriorityScrapingChains(),
+  maxPerChain: number = 100,
+  recentHours: number = 48
+): Promise<Partial<DiscoveredContract>[]> {
+  console.log(`[CONTRACT-DISCOVERY] Scraping recently verified contracts from ${chains.length} chains...`);
+  
+  try {
+    // Scrape contracts from multiple chains in parallel
+    const scrapedContracts = await scrapeMultipleChains(chains, maxPerChain);
+    
+    // Filter by recency (default: last 48 hours)
+    const recentContracts = filterByRecency(scrapedContracts, recentHours);
+    
+    // Convert to DiscoveredContract format
+    const discoveredContracts = recentContracts.map(convertScrapedToDiscovered);
+    
+    console.log(`[CONTRACT-DISCOVERY] ✓ Scraped ${discoveredContracts.length} recently verified contracts`);
+    return discoveredContracts;
+  } catch (error) {
+    console.error('[CONTRACT-DISCOVERY] Error scraping contracts:', error);
+    return [];
+  }
+}
+
+/**
+ * Hybrid Contract Discovery - Combines DeFiLlama + Etherscan Scraping
+ * 
+ * This function implements the hybrid approach:
+ * 1. Fetches established protocols from DeFiLlama
+ * 2. Scrapes recently verified contracts from Etherscan
+ * 3. Deduplicates and returns combined results
+ * 
+ * @param options - Discovery options
+ * @returns Combined array of discovered contracts
+ */
+export async function discoverContractsHybrid(options?: {
+  includeDeFiLlama?: boolean;
+  includeEtherscanScraping?: boolean;
+  chains?: ChainKey[];
+  maxScrapedPerChain?: number;
+  recentHoursOnly?: number;
+}): Promise<Partial<DiscoveredContract>[]> {
+  const {
+    includeDeFiLlama = true,
+    includeEtherscanScraping = true,
+    chains,
+    maxScrapedPerChain = 100,
+    recentHoursOnly = 48,
+  } = options || {};
+
+  console.log('[CONTRACT-DISCOVERY] Starting hybrid discovery...');
+  
+  const allContracts: Partial<DiscoveredContract>[] = [];
+
+  // 1. Fetch from DeFiLlama (established protocols)
+  if (includeDeFiLlama) {
+    console.log('[CONTRACT-DISCOVERY] Phase 1: Fetching from DeFiLlama...');
+    const defiLlamaContracts = await fetchContractsFromDeFiLlama();
+    
+    // Filter by chains if specified
+    if (chains && chains.length > 0) {
+      const filtered = defiLlamaContracts.filter(c => chains.includes(c.chain as ChainKey));
+      allContracts.push(...filtered);
+      console.log(`[CONTRACT-DISCOVERY] ✓ DeFiLlama: ${filtered.length} contracts (filtered)`);
+    } else {
+      allContracts.push(...defiLlamaContracts);
+      console.log(`[CONTRACT-DISCOVERY] ✓ DeFiLlama: ${defiLlamaContracts.length} contracts`);
+    }
+  }
+
+  // 2. Scrape from Etherscan (recently verified contracts)
+  if (includeEtherscanScraping) {
+    console.log('[CONTRACT-DISCOVERY] Phase 2: Scraping Etherscan...');
+    const scrapingChains = chains || getHighPriorityScrapingChains();
+    const scrapedContracts = await fetchRecentlyVerifiedContractsFromScraping(
+      scrapingChains,
+      maxScrapedPerChain,
+      recentHoursOnly
+    );
+    
+    allContracts.push(...scrapedContracts);
+    console.log(`[CONTRACT-DISCOVERY] ✓ Etherscan Scraping: ${scrapedContracts.length} contracts`);
+  }
+
+  // 3. Deduplicate by contract address + chain combination
+  const uniqueContracts = deduplicateContracts(allContracts);
+  
+  console.log(`[CONTRACT-DISCOVERY] ✓ Hybrid Discovery Complete: ${uniqueContracts.length} unique contracts`);
+  console.log(`[CONTRACT-DISCOVERY]   - DeFiLlama: ${includeDeFiLlama ? 'enabled' : 'disabled'}`);
+  console.log(`[CONTRACT-DISCOVERY]   - Etherscan Scraping: ${includeEtherscanScraping ? 'enabled' : 'disabled'}`);
+  
+  return uniqueContracts;
+}
+
+/**
+ * Deduplicate contracts by address + chain combination
+ * Prefers contracts with more complete metadata
+ */
+function deduplicateContracts(contracts: Partial<DiscoveredContract>[]): Partial<DiscoveredContract>[] {
+  const seen = new Map<string, Partial<DiscoveredContract>>();
+  
+  for (const contract of contracts) {
+    const key = `${contract.chain}:${contract.contractAddress}`.toLowerCase();
+    
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, contract);
+    } else {
+      // Keep the one with more metadata
+      const existingMetadataCount = Object.keys(existing.metadata || {}).length;
+      const currentMetadataCount = Object.keys(contract.metadata || {}).length;
+      
+      if (currentMetadataCount > existingMetadataCount) {
+        seen.set(key, contract);
+      }
+    }
+  }
+  
+  return Array.from(seen.values());
 }

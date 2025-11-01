@@ -1,13 +1,17 @@
 /**
- * Contract Discovery Background Job
+ * Contract Discovery Background Job - Hybrid Approach
  * 
- * Automatically discovers recently verified contracts across all supported blockchains
+ * Automatically discovers contracts using a hybrid approach:
+ * 1. DeFiLlama: Established protocols with TVL data
+ * 2. Etherscan Scraping: Recently verified contracts (last 24-48 hours)
+ * 
  * Runs periodically (default: every hour) to keep the database up to date
  */
 
-import { discoverContractsMultiChain, filterDeFiContracts } from '../lib/contract-discovery';
+import { discoverContractsHybrid, filterDeFiContracts } from '../lib/contract-discovery';
 import { storage } from '../storage';
 import { getHighPriorityChains, getChainStats } from '../lib/blockchain-apis';
+import { getHighPriorityScrapingChains } from '../lib/etherscan-scraper';
 
 export class ContractDiscoveryJob {
   private isRunning: boolean = false;
@@ -45,18 +49,17 @@ export class ContractDiscoveryJob {
     console.log(`[CONTRACT-JOB] Time: ${new Date().toISOString()}`);
     
     try {
-      // Discover contracts from high-priority chains (Ethereum, BSC, Polygon, etc.)
-      console.log('[CONTRACT-JOB] Fetching from high-priority chains...');
-      const allContracts = await discoverContractsMultiChain(
-        undefined,
-        { 
-          page: 1,
-          offset: 20, // Get 20 most recent contracts per chain
-          filter: 'priority'
-        }
-      );
+      // Hybrid discovery: DeFiLlama + Etherscan scraping
+      console.log('[CONTRACT-JOB] Starting hybrid discovery...');
+      const allContracts = await discoverContractsHybrid({
+        includeDeFiLlama: true,
+        includeEtherscanScraping: true,
+        chains: getHighPriorityScrapingChains(),
+        maxScrapedPerChain: 50, // Get 50 most recent verified contracts per chain
+        recentHoursOnly: 48, // Only contracts verified in last 48 hours
+      });
       
-      console.log(`[CONTRACT-JOB] Total contracts fetched: ${allContracts.length}`);
+      console.log(`[CONTRACT-JOB] Total contracts discovered: ${allContracts.length}`);
       
       // Filter for DeFi-related contracts
       const defiContracts = filterDeFiContracts(allContracts);

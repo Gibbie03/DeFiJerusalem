@@ -172,6 +172,10 @@ export const discoveredContracts = pgTable('discovered_contracts', {
     hasLiquidity?: boolean;
     estimatedTVL?: number;
     socialLinks?: { website?: string; twitter?: string; github?: string };
+    license?: string;
+    txCount?: number;
+    balance?: string;
+    source?: 'defillama' | 'etherscan-scraper';
   }>(),
 }, (table) => ({
   chainIdx: index('discovered_contracts_chain_idx').on(table.chain),
