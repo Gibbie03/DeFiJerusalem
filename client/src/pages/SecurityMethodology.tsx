@@ -122,28 +122,28 @@ export default function SecurityMethodology() {
                     <TableRow>
                       <TableCell className="font-semibold" rowSpan={3}>Protocol Age</TableCell>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+50</Badge></TableCell>
-                      <TableCell>Protocol exists &gt; 365 days</TableCell>
+                      <TableCell>Protocol exists {'>'} 365 days</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+30</Badge></TableCell>
-                      <TableCell>Protocol exists &gt; 180 days</TableCell>
+                      <TableCell>Protocol exists {'>'} 180 days</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+15</Badge></TableCell>
-                      <TableCell>Protocol exists &gt; 90 days</TableCell>
+                      <TableCell>Protocol exists {'>'} 90 days</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
                       <TableCell className="font-semibold" rowSpan={3}>TVL (Total Value Locked)</TableCell>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+40</Badge></TableCell>
-                      <TableCell>TVL &gt; $100M</TableCell>
+                      <TableCell>TVL {'>'} $100M</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+25</Badge></TableCell>
-                      <TableCell>TVL &gt; $10M</TableCell>
+                      <TableCell>TVL {'>'} $10M</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+10</Badge></TableCell>
-                      <TableCell>TVL &gt; $1M</TableCell>
+                      <TableCell>TVL {'>'} $1M</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
                       <TableCell className="font-semibold" rowSpan={3}>Security Audits</TableCell>
@@ -161,7 +161,7 @@ export default function SecurityMethodology() {
                     <TableRow className="border-t">
                       <TableCell className="font-semibold">Trading Volume</TableCell>
                       <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+30</Badge></TableCell>
-                      <TableCell>24h volume &gt; $10M</TableCell>
+                      <TableCell>24h volume {'>'} $10M</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
                       <TableCell className="font-semibold">User Base</TableCell>
@@ -285,7 +285,7 @@ export default function SecurityMethodology() {
                       <TableCell>No known team members or public identities</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell className="font-semibold">Domain Age &lt; 30 days</TableCell>
+                      <TableCell className="font-semibold">Domain Age {'<'} 30 days</TableCell>
                       <TableCell><Badge className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">+30</Badge></TableCell>
                       <TableCell>Newly registered domain (common for scams)</TableCell>
                     </TableRow>
@@ -415,7 +415,7 @@ export default function SecurityMethodology() {
                 <AlertTriangle className="h-4 w-4 text-destructive" />
                 <AlertTitle>Automatic Blacklisting</AlertTitle>
                 <AlertDescription>
-                  Protocols with Security Score &lt; 20 (CRITICAL severity) are automatically added to our blacklist and flagged for users.
+                  Protocols with Security Score {'<'} 20 (CRITICAL severity) are automatically added to our blacklist and flagged for users.
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -445,8 +445,8 @@ export default function SecurityMethodology() {
                   <div className="space-y-2">
                     <p className="text-sm font-semibold text-green-600 dark:text-green-400">Trust Score: +215</p>
                     <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>✓ Protocol age &gt; 365 days (+50)</li>
-                      <li>✓ TVL &gt; $100M (+40)</li>
+                      <li>✓ Protocol age {'>'} 365 days (+50)</li>
+                      <li>✓ TVL {'>'} $100M (+40)</li>
                       <li>✓ 3+ professional audits (+60)</li>
                       <li>✓ High volume (+30)</li>
                       <li>✓ Large user base (+20)</li>
@@ -491,7 +491,7 @@ export default function SecurityMethodology() {
                     <ul className="text-sm space-y-1 text-muted-foreground">
                       <li>⚠ No audit (+40)</li>
                       <li>⚠ Anonymous team (+35)</li>
-                      <li>⚠ New domain (&lt;30 days) (+30)</li>
+                      <li>⚠ New domain ({'<'}30 days) (+30)</li>
                     </ul>
                   </div>
                 </div>
