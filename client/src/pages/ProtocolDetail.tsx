@@ -13,18 +13,18 @@ export default function ProtocolDetail() {
   const [, params] = useRoute("/protocol/:id");
   const protocolId = params?.id;
 
-  const { data: protocols, isLoading: protocolsLoading } = useQuery<Protocol[]>({
-    queryKey: ['/api/protocols'],
+  const { data: protocol, isLoading: protocolLoading, error: protocolError } = useQuery<Protocol>({
+    queryKey: ['/api/protocols', protocolId],
+    enabled: !!protocolId,
   });
 
   const { data: securityScans, isLoading: scansLoading } = useQuery<Record<string, any>>({
     queryKey: ['/api/scans'],
   });
 
-  const protocol = protocols?.find((p) => p.id === protocolId);
   const securityScan = protocolId && securityScans ? securityScans[protocolId] : null;
 
-  if (protocolsLoading || scansLoading) {
+  if (protocolLoading || scansLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <Skeleton className="h-20 w-full" />

@@ -5,6 +5,7 @@ import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
 export interface IStorage {
   getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]>;
+  getProtocol(id: string): Promise<Protocol | null>;
   addProtocol(protocol: InsertProtocol): Promise<Protocol>;
   bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void>;
   getBlacklist(): Promise<BlacklistEntry[]>;
@@ -190,6 +191,20 @@ export class DatabaseStorage implements IStorage {
     
     const result = await query.orderBy(desc(protocols.tvl));
     return result.map(p => this.mapProtocol(p));
+  }
+
+  async getProtocol(id: string): Promise<Protocol | null> {
+    const result = await db
+      .select()
+      .from(protocols)
+      .where(eq(protocols.id, id))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    return this.mapProtocol(result[0]);
   }
 
   async addProtocol(protocol: InsertProtocol): Promise<Protocol> {
