@@ -17,6 +17,19 @@ JERUSALEM DeFi Security Scanner (defijerusalem.com) is a full-stack JavaScript a
 - **Data Persistence**: All data stored in PostgreSQL database for reliability and scalability
 - **Scanner Organization**: Wallet and website scanners unified on single page with tabs for easy switching
 
+## Company Valuation (2025)
+- **Assigned Valuation Range**: $8M - $18M
+- **Central Estimate**: $12.5M
+- **Methodology**: Blended approach combining VC method, comparable transactions, Berkus method, scorecard method, and forward ARR projections
+- **Stage**: Pre-Revenue, MVP Complete
+- **Key Comparables**: CertiK ($2B at $100-200M ARR), GoPlus ($150M at $10-15M ARR)
+- **Market TAM**: $5-7.5B DeFi security platform market (2025)
+- **Revenue Projections**: $102k Year 1 → $468k Year 2 → $1.53M Year 3 ARR
+- **Primary Value Drivers**: 126+ chain coverage, 38+ threat categories, AI threat learning, community network effects, sponsorship ad inventory
+- **Key Risks**: Solo founder dependency, pre-revenue uncertainty, crypto market volatility, competitive pressure
+- **Strategic Exit Potential**: CertiK, Binance/Coinbase, CoinGecko/CMC, traditional cybersecurity firms at 1.5-5x revenue multiples
+- **Documentation**: Full valuation analysis in DEFIJERUSALEM_VALUATION_2025.md (50+ pages)
+
 ## System Architecture
 
 ### UI/UX Decisions
