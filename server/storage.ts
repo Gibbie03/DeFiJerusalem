@@ -802,7 +802,7 @@ export class DatabaseStorage implements IStorage {
           contractType: contract.contractType,
           compilerVersion: contract.compilerVersion,
           optimization: contract.optimization,
-          metadata: contract.metadata,
+          metadata: contract.metadata as any,
         }
       })
       .returning();
@@ -880,7 +880,7 @@ export class DatabaseStorage implements IStorage {
     const id = `wl_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const [result] = await db
       .insert(protocolWhitelist)
-      .values({ ...entry, id })
+      .values({ ...entry as any, id })
       .onConflictDoUpdate({
         target: protocolWhitelist.protocolId,
         set: {
@@ -889,7 +889,7 @@ export class DatabaseStorage implements IStorage {
           certikScore: entry.certikScore,
           defiSafetyScore: entry.defiSafetyScore,
           minTvl: entry.minTvl,
-          exchangeListings: entry.exchangeListings,
+          exchangeListings: entry.exchangeListings as any,
           lastVerified: new Date(),
         }
       })
@@ -969,7 +969,7 @@ export class DatabaseStorage implements IStorage {
     const id = `tw_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const [result] = await db
       .insert(twitterAlerts)
-      .values({ ...alert, id })
+      .values({ ...alert as any, id })
       .returning();
     
     return this.mapTwitterAlert(result);
@@ -1047,7 +1047,7 @@ export class DatabaseStorage implements IStorage {
     const id = `ca_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const [result] = await db
       .insert(certikAudits)
-      .values({ ...audit, id })
+      .values({ ...audit as any, id })
       .onConflictDoUpdate({
         target: certikAudits.protocolId,
         set: {
@@ -1060,8 +1060,8 @@ export class DatabaseStorage implements IStorage {
           auditDate: audit.auditDate,
           auditStatus: audit.auditStatus,
           auditReportUrl: audit.auditReportUrl,
-          vulnerabilities: audit.vulnerabilities,
-          riskCategories: audit.riskCategories,
+          vulnerabilities: audit.vulnerabilities as any,
+          riskCategories: audit.riskCategories as any,
           onChainMonitoring: audit.onChainMonitoring,
           kycVerified: audit.kycVerified,
           bugBountyProgram: audit.bugBountyProgram,
@@ -1172,7 +1172,7 @@ export class DatabaseStorage implements IStorage {
     const id = `sub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const [result] = await db
       .insert(protocolSubmissions)
-      .values({ ...submission, id })
+      .values({ ...submission as any, id })
       .returning();
     
     return this.mapProtocolSubmission(result);
@@ -1192,7 +1192,7 @@ export class DatabaseStorage implements IStorage {
   async updateProtocolSubmission(id: string, updates: Partial<ProtocolSubmission>): Promise<ProtocolSubmission | undefined> {
     const [result] = await db
       .update(protocolSubmissions)
-      .set(updates)
+      .set(updates as any)
       .where(eq(protocolSubmissions.id, id))
       .returning();
     
@@ -1202,10 +1202,10 @@ export class DatabaseStorage implements IStorage {
   async createProtocol(protocol: InsertProtocol): Promise<Protocol> {
     const [result] = await db
       .insert(protocols)
-      .values(protocol)
+      .values(protocol as any)
       .onConflictDoUpdate({
         target: protocols.id,
-        set: protocol,
+        set: protocol as any,
       })
       .returning();
     
@@ -1357,7 +1357,7 @@ export class DatabaseStorage implements IStorage {
     
     const [created] = await db
       .insert(userReports)
-      .values({ id, ...report })
+      .values({ id, ...report as any })
       .returning();
     
     return created;
@@ -1549,7 +1549,7 @@ export class DatabaseStorage implements IStorage {
     
     const [created] = await db
       .insert(scammerAddresses)
-      .values({ id, ...address })
+      .values({ id, ...address as any })
       .returning();
     
     return created;
@@ -1608,7 +1608,7 @@ export class DatabaseStorage implements IStorage {
     
     const [created] = await db
       .insert(alertSubscriptions)
-      .values({ id, ...subscription })
+      .values({ id, ...subscription as any })
       .returning();
     
     return created;
@@ -1644,7 +1644,7 @@ export class DatabaseStorage implements IStorage {
     
     const [created] = await db
       .insert(webhookEndpoints)
-      .values({ id, ...webhook })
+      .values({ id, ...webhook as any })
       .returning();
     
     return created;
