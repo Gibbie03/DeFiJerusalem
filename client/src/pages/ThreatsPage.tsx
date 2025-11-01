@@ -372,6 +372,16 @@ export default function ThreatsPage() {
                               View Details
                             </Button>
                           </Link>
+                        ) : entry.type === 'blacklisted_dapp' ? (
+                          <Link href={`/blacklist/${entry.id}`}>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              data-testid={`button-view-${entry.id}`}
+                            >
+                              View Details
+                            </Button>
+                          </Link>
                         ) : (
                           <Button 
                             size="sm" 
