@@ -2650,7 +2650,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.send(cached.serialized);
       }
 
-      const protocols = await storage.getProtocolsByDiscoveryDate(50);
+      // Get newly discovered protocols and filter out test/scam protocols
+      const allNewProtocols = await storage.getProtocolsByDiscoveryDate(100);
+      
+      // Filter: Only show auto-discovered protocols OR manually added ones with decent TVL
+      // This excludes test scam protocols (manually added with $0 TVL)
+      const protocols = allNewProtocols
+        .filter(p => p.autoDiscovered || (p.tvl > 100000)) // $100k+ TVL for manual entries
+        .slice(0, 50); // Limit to 50
+      
       setCache('new', protocols, 2 * 60 * 1000); // 2 minutes
       
       // Get the cached entry with ETag
