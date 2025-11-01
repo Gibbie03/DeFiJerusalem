@@ -437,6 +437,79 @@ export default function WalletScannerContent() {
             </Card>
           )}
 
+          {/* Solana Token Approval Education */}
+          {scanResult.chain === 'SOLANA' && (
+            <Card className="border-green-500/20 bg-green-500/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <div>
+                    <CardTitle>Solana Token Approval Security</CardTitle>
+                    <CardDescription>
+                      Why Solana wallets are safer from approval attacks
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert className="border-green-500/50 bg-green-500/10">
+                  <Shield className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    <p className="font-semibold mb-2">Good News: Token Approval Scanning Not Needed</p>
+                    <p className="text-sm">
+                      Solana's SPL Token program uses a fundamentally safer approval model than Ethereum's ERC-20 standard. 
+                      The "unlimited approval" vulnerability that plagues Ethereum wallets doesn't exist on Solana.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <XCircle className="w-4 h-4 text-red-500" />
+                      Ethereum's Problem: Unlimited Allowances
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-6">
+                      <li>• ERC-20 tokens allow contracts to spend unlimited amounts</li>
+                      <li>• Once approved, a malicious contract can drain your entire token balance</li>
+                      <li>• Approvals persist indefinitely until manually revoked</li>
+                      <li>• Thousands of users lose funds to approval scams every year</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Solana's Solution: Delegate Authorities
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-6">
+                      <li>• SPL tokens use temporary delegate authorities with specific amounts</li>
+                      <li>• Delegates can only spend the exact amount you authorize</li>
+                      <li>• Delegation is account-specific, not wallet-wide</li>
+                      <li>• Much harder for scammers to exploit this safer model</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 bg-muted rounded-lg">
+                    <h4 className="font-semibold text-sm mb-2">What This Means for You</h4>
+                    <p className="text-sm text-muted-foreground">
+                      While Solana wallets still face risks from malicious transactions and drainer attacks (which we actively scan for), 
+                      you don't need to worry about the "unlimited token approval" attack vector that costs Ethereum users millions annually.
+                    </p>
+                  </div>
+
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      <span className="font-semibold">Still Stay Vigilant:</span> While approval risks are lower, Solana wallets can still be compromised through 
+                      malicious transaction signatures, fake airdrops, and phishing attacks. Always verify what you're signing.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Token Approvals Section */}
           {scanResult.tokenApprovals && scanResult.tokenApprovals.approvals.length > 0 && (
             <Card className={scanResult.tokenApprovals.summary?.hasRiskyApprovals ? 'border-destructive/50' : ''}>

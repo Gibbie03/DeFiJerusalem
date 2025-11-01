@@ -47,6 +47,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Public Scammer Address Database**: Searchable database of verified scammer addresses with multi-chain support, verification status tracking, evidence linking, and public API for lookups.
 - **Community Reporting & Threat Intelligence**: Includes a community scam reporting system, voting & reputation system, and public scammer address database.
 - **Token Approval Security Scanner**: Integrated GoPlus Approval Management API to detect risky ERC20 token approvals in Ethereum wallets. Features cross-referencing with DeFiJerusalem's scammer database and blacklisted protocols, risk-based revocation advice (CRITICAL/HIGH/MEDIUM/LOW), detection of unlimited approvals to unknown contracts, and Revoke.cash integration for safe approval management.
+- **Solana Security Education**: Educational content explaining why Solana's SPL token delegate authority model is safer than Ethereum's unlimited ERC-20 allowances, helping users understand the reduced approval attack surface on Solana.
 
 ### System Design Choices
 - **Database Schema**: PostgreSQL with Drizzle ORM, optimized with indexing and UPSERT-based persistence.
