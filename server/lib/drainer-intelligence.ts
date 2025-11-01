@@ -7,6 +7,7 @@
 
 export interface DrainerWallet {
   address: string;
+  chain: 'ETHEREUM' | 'SOLANA' | 'MULTI_CHAIN';
   operation: string;
   confidence: 'CONFIRMED' | 'SUSPECTED' | 'ASSOCIATED';
   lastActive?: string;
@@ -24,12 +25,14 @@ export interface DrainerPattern {
 
 /**
  * Known Drainer Wallet Addresses
- * Sources: Etherscan labels, blockchain forensics, security research
+ * Sources: Etherscan labels, blockchain forensics, security research, Twitter intelligence
  */
 export const KNOWN_DRAINER_WALLETS: DrainerWallet[] = [
+  // ETHEREUM DRAINERS
   // PINK DRAINER
   {
     address: '0x63605e53d422c4f1ac0e01390ac59aaf84c44a51',
+    chain: 'ETHEREUM',
     operation: 'Pink Drainer',
     confidence: 'CONFIRMED',
     lastActive: '2024-05',
@@ -39,6 +42,7 @@ export const KNOWN_DRAINER_WALLETS: DrainerWallet[] = [
   },
   {
     address: '0x8980ab6d185af9bcc10292d4e91ae4c0b4f14213',
+    chain: 'ETHEREUM',
     operation: 'Pink Drainer',
     confidence: 'CONFIRMED',
     notes: 'Pink Drainer wallet that lost 10 ETH to address poisoning (June 2024)',
@@ -48,12 +52,54 @@ export const KNOWN_DRAINER_WALLETS: DrainerWallet[] = [
   // INFERNO DRAINER
   {
     address: '0x000012e3c4039ec46b89309d2117654ef7c20000',
+    chain: 'ETHEREUM',
     operation: 'Inferno Drainer',
     confidence: 'CONFIRMED',
     lastActive: '2025-05',
     totalStolen: '$80M+',
     notes: 'Sample receiver address, still active with EIP-7702 exploits',
     source: 'Check Point Research + Medium analysis'
+  },
+  
+  // SOLANA DRAINERS
+  // CLINKSINK DRAINER
+  {
+    address: 'B8Y1dERnVNoUUXeXA4NaCHiB9htcukMSkfHrFsTMHA7h',
+    chain: 'SOLANA',
+    operation: 'CLINKSINK Drainer',
+    confidence: 'CONFIRMED',
+    lastActive: '2024-12',
+    totalStolen: '$900K+',
+    notes: 'Primary CLINKSINK operator wallet - DaaS model with 35+ affiliates, 20% commission',
+    source: 'Google Mandiant + Google Cloud Threat Intelligence'
+  },
+  {
+    address: 'MszS2N8CT1MV9byX8FKFnrUpkmASSeR5Fmji19ushw1',
+    chain: 'SOLANA',
+    operation: 'CLINKSINK Drainer',
+    confidence: 'CONFIRMED',
+    lastActive: '2024-12',
+    totalStolen: '$900K+',
+    notes: 'CLINKSINK operator alternate wallet',
+    source: 'Google Mandiant + Google Cloud Threat Intelligence'
+  },
+  
+  // USER-REPORTED DRAINER WALLETS (from Twitter intelligence)
+  {
+    address: 'CTWh8bm452CkAkpCoXti36Yiz7WMruRdKvSq98oseJ5c',
+    chain: 'SOLANA',
+    operation: 'Unknown Drainer',
+    confidence: 'SUSPECTED',
+    notes: 'Reported via Twitter @0xQuit (Oct 2022) - requires verification',
+    source: 'Twitter intelligence report'
+  },
+  {
+    address: 'D15nRe91neBhMR7mAJuFcm3kTymD1vrtM83ef9PqSMv',
+    chain: 'SOLANA',
+    operation: 'Unknown Drainer',
+    confidence: 'SUSPECTED',
+    notes: 'Reported via Twitter @0xmiir (July 2024) - requires verification',
+    source: 'Twitter intelligence report'
   },
   
   // COMMON CASHOUT PATTERNS
@@ -137,6 +183,7 @@ export function detectAddressPoisoning(address: string, knownAddresses: string[]
  * Detect drainer-like transaction signatures
  */
 export const DRAINER_TRANSACTION_PATTERNS: DrainerPattern[] = [
+  // ETHEREUM PATTERNS
   {
     type: 'UNLIMITED_APPROVAL',
     signature: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
@@ -166,6 +213,32 @@ export const DRAINER_TRANSACTION_PATTERNS: DrainerPattern[] = [
     signature: '0x095ea7b3', // approve(address,uint256)
     description: 'Standard ERC-20 approval - check spender address and amount',
     severity: 'MEDIUM'
+  },
+  
+  // SOLANA PATTERNS
+  {
+    type: 'SOLANA_DIRECT_TRANSFER',
+    signature: 'solanaWeb3.SystemProgram.transfer',
+    description: 'Direct SOL transfer attack - drainer modifies transaction after signature but before execution',
+    severity: 'CRITICAL'
+  },
+  {
+    type: 'SOLANA_AUTHORITY_TRANSFER',
+    signature: 'createSetAuthorityInstruction',
+    description: 'SPL Token authority transfer - changes token account ownership to attacker',
+    severity: 'CRITICAL'
+  },
+  {
+    type: 'SOLANA_TOCTOU_ATTACK',
+    signature: 'TOCTOU (Time-of-Check-Time-of-Use)',
+    description: 'Bit-flip attack: modifies transaction conditionals after signature - used in $3K theft in 7 blocks',
+    severity: 'CRITICAL'
+  },
+  {
+    type: 'SOLANA_SIMULATION_BYPASS',
+    signature: 'Empty simulation result',
+    description: 'Anti-simulation bypass - hides malicious intent from Phantom/Solflare wallet warnings',
+    severity: 'HIGH'
   }
 ];
 
@@ -327,6 +400,44 @@ export function assessWalletRisk(address: string, associatedWithBlacklist: boole
 }
 
 /**
+ * Address Format Detection and Validation
+ */
+export function detectAddressFormat(address: string): {
+  isValid: boolean;
+  chain: 'ETHEREUM' | 'SOLANA' | 'UNKNOWN';
+  format: string;
+} {
+  // Ethereum address: 0x + 40 hex characters
+  const ethRegex = /^0x[a-fA-F0-9]{40}$/;
+  if (ethRegex.test(address)) {
+    return {
+      isValid: true,
+      chain: 'ETHEREUM',
+      format: 'Ethereum (EVM-compatible)'
+    };
+  }
+  
+  // Solana address: base58 encoded, typically 32-44 characters
+  // Base58 alphabet: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz (no 0, O, I, l)
+  const solanaRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  if (solanaRegex.test(address)) {
+    // Additional validation: Solana addresses typically don't contain certain patterns
+    // Most common length is 44 characters but can be 32-44
+    return {
+      isValid: true,
+      chain: 'SOLANA',
+      format: 'Solana (base58)'
+    };
+  }
+  
+  return {
+    isValid: false,
+    chain: 'UNKNOWN',
+    format: 'Unknown format'
+  };
+}
+
+/**
  * Generate educational content about drainer operations
  */
 export function getDrainerEducation() {
@@ -334,32 +445,40 @@ export function getDrainerEducation() {
     howDrainersWork: [
       '1. Phishing Setup: Fake websites impersonating legitimate DeFi platforms',
       '2. Victim Connection: User connects wallet to malicious site',
-      '3. Signature Request: Drainer requests Permit signature or approval',
+      '3. Signature Request: Drainer requests Permit signature or approval (Ethereum) or direct transfer (Solana)',
       '4. Instant Drain: Automated bot drains wallet within seconds of approval',
       '5. Laundering: Funds moved through mixers (Tornado Cash) or converted to stablecoins',
     ],
     commonAttackVectors: [
-      'EIP-2612 Permit Signatures (56.7% of attacks) - Gasless approvals via off-chain signatures',
+      'EIP-2612 Permit Signatures (56.7% of Ethereum attacks) - Gasless approvals via off-chain signatures',
       'setApprovalForAll - Grants control over entire NFT collections',
       'Unlimited Approvals - type(uint256).max allowing access to all tokens',
       'increaseAllowance - Stealth approval increases',
       'Address Poisoning - Fake addresses matching first/last characters of real ones',
+      'Solana TOCTOU Attacks - Bit-flip attacks modifying transactions after signature',
+      'Solana Authority Transfer - Changes SPL token account ownership',
     ],
     protectionMeasures: [
       '✅ Use hardware wallets for significant holdings',
       '✅ Never sign messages from unknown/unverified sites',
       '✅ Verify URLs character-by-character (beware typosquatting)',
-      '✅ Use transaction simulation tools (Blockaid, Tenderly)',
+      '✅ Use transaction simulation tools (Blockaid, Tenderly, Wallet Guard)',
       '✅ Regularly audit token approvals (revoke.cash, Etherscan)',
-      '✅ Enable wallet security features (MetaMask phishing warnings)',
+      '✅ Enable wallet security features (MetaMask/Phantom phishing warnings)',
       '✅ Double-check recipient addresses before sending',
     ],
     statistics2024: {
-      totalStolen: '$494M',
-      victims: '332,000 addresses',
-      permitAttacks: '56.7%',
+      totalStolen: '$494M (Ethereum) + $4M+ (Solana)',
+      victims: '332,000 addresses (Ethereum) + 5,706 (Solana)',
+      permitAttacks: '56.7% (Ethereum)',
       averageLoss: '$1,490 per victim',
       largestHeist: '$55.5M (August 2024)',
+    },
+    solanaStatistics: {
+      clinksink: '$900K+ stolen',
+      rainbowNode: '$4.17M stolen from 3,947 victims',
+      nodeOnly: '$2.02M stolen from 1,759 victims',
+      drainerCommunity: '6,000+ members (largest group)',
     }
   };
 }

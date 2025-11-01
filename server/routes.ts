@@ -1323,20 +1323,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const normalizedAddress = address.trim();
       
-      // Basic Ethereum address validation
-      const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-      const isValid = ethAddressRegex.test(normalizedAddress);
+      // Import drainer intelligence
+      const { 
+        detectAddressFormat,
+        checkKnownDrainerAddress,
+        checkVanityPatterns,
+        assessWalletRisk,
+        getDrainerEducation,
+        DRAINER_TRANSACTION_PATTERNS
+      } = await import('./lib/drainer-intelligence');
 
-      if (!isValid) {
+      // Multi-chain address validation
+      const addressInfo = detectAddressFormat(normalizedAddress);
+      
+      if (!addressInfo.isValid) {
         return res.json({
           address: normalizedAddress,
           isValid: false,
           isDangerous: false,
           severity: 'SAFE',
+          chain: 'UNKNOWN',
           findings: [{
             type: 'INVALID_ADDRESS',
             severity: 'LOW',
-            message: 'Invalid wallet address format. Please provide a valid Ethereum-compatible address (0x...)'
+            message: `Invalid wallet address format. Please provide a valid Ethereum (0x...) or Solana (base58) address`
           }],
           associatedProtocols: [],
           riskScore: 0,
@@ -1344,15 +1354,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           drainerIntelligence: null
         });
       }
-
-      // Import drainer intelligence
-      const { 
-        checkKnownDrainerAddress,
-        checkVanityPatterns,
-        assessWalletRisk,
-        getDrainerEducation,
-        DRAINER_TRANSACTION_PATTERNS
-      } = await import('./lib/drainer-intelligence');
 
       const findings: any[] = [];
       const associatedProtocols: any[] = [];
@@ -1451,6 +1452,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         address: normalizedAddress,
         isValid: true,
+        chain: addressInfo.chain,
+        chainFormat: addressInfo.format,
         isDangerous,
         severity: finalSeverity,
         findings: combinedFindings,
@@ -1459,8 +1462,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recommendations,
         drainerIntelligence,
         education: {
-          transactionPatterns: DRAINER_TRANSACTION_PATTERNS,
+          transactionPatterns: DRAINER_TRANSACTION_PATTERNS.filter(p => 
+            // Show chain-specific patterns
+            addressInfo.chain === 'SOLANA' 
+              ? p.type.includes('SOLANA') || p.type.includes('UNLIMITED') // Show Solana + universal patterns
+              : !p.type.includes('SOLANA') // Show Ethereum patterns
+          ),
           statistics: drainerEducation.statistics2024,
+          solanaStatistics: addressInfo.chain === 'SOLANA' ? drainerEducation.solanaStatistics : undefined,
           protectionTips: drainerEducation.protectionMeasures.slice(0, 3) // Top 3 tips
         }
       });

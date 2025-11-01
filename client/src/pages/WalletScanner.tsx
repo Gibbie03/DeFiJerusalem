@@ -9,6 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface WalletScanResult {
   address: string;
   isValid: boolean;
+  chain?: 'ETHEREUM' | 'SOLANA' | 'UNKNOWN';
+  chainFormat?: string;
   isDangerous: boolean;
   severity: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   findings: {
@@ -47,6 +49,12 @@ interface WalletScanResult {
       permitAttacks: string;
       averageLoss: string;
       largestHeist: string;
+    };
+    solanaStatistics?: {
+      clinksink: string;
+      rainbowNode: string;
+      nodeOnly: string;
+      drainerCommunity: string;
     };
     protectionTips: string[];
   };
@@ -180,35 +188,52 @@ export default function WalletScanner() {
           {/* Example Addresses */}
           <div className="text-sm text-muted-foreground">
             <p className="font-semibold mb-2">Example addresses to test:</p>
-            <div className="space-y-1">
-              <button
-                onClick={() => setWalletAddress('0x63605e53d422c4f1ac0e01390ac59aaf84c44a51')}
-                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-destructive hover:underline"
-                data-testid="example-pink-drainer"
-              >
-                ⚠️ DRAINER: 0x6360...4a51 (Pink Drainer - $85.3M stolen)
-              </button>
-              <button
-                onClick={() => setWalletAddress('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')}
-                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-primary hover:underline"
-                data-testid="example-safe-address"
-              >
-                Safe: 0xd8dA...6045 (Vitalik Buterin)
-              </button>
-              <button
-                onClick={() => setWalletAddress('0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')}
-                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-orange-500 hover:underline"
-                data-testid="example-vanity-address"
-              >
-                Suspicious: 0xdead...beef (Vanity pattern)
-              </button>
-              <button
-                onClick={() => setWalletAddress('0x0000000000000000000000000000000000000000')}
-                className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-muted-foreground hover:underline"
-                data-testid="example-null-address"
-              >
-                Test: 0x0000...0000 (Null/Burn address)
-              </button>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold mb-1">Ethereum Addresses:</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => setWalletAddress('0x63605e53d422c4f1ac0e01390ac59aaf84c44a51')}
+                    className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-destructive hover:underline"
+                    data-testid="example-pink-drainer"
+                  >
+                    ⚠️ DRAINER: 0x6360...4a51 (Pink Drainer - $85.3M)
+                  </button>
+                  <button
+                    onClick={() => setWalletAddress('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')}
+                    className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-primary hover:underline"
+                    data-testid="example-safe-address"
+                  >
+                    Safe: 0xd8dA...6045 (Vitalik Buterin)
+                  </button>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold mb-1">Solana Addresses:</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => setWalletAddress('B8Y1dERnVNoUUXeXA4NaCHiB9htcukMSkfHrFsTMHA7h')}
+                    className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-destructive hover:underline"
+                    data-testid="example-clinksink-drainer"
+                  >
+                    ⚠️ DRAINER: B8Y1...HA7h (CLINKSINK - $900K+)
+                  </button>
+                  <button
+                    onClick={() => setWalletAddress('CTWh8bm452CkAkpCoXti36Yiz7WMruRdKvSq98oseJ5c')}
+                    className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-orange-500 hover:underline"
+                    data-testid="example-suspected-drainer1"
+                  >
+                    Suspected: CTWh...eJ5c (Twitter report @0xQuit)
+                  </button>
+                  <button
+                    onClick={() => setWalletAddress('D15nRe91neBhMR7mAJuFcm3kTymD1vrtM83ef9PqSMv')}
+                    className="block hover-elevate px-2 py-1 rounded text-xs font-mono text-orange-500 hover:underline"
+                    data-testid="example-suspected-drainer2"
+                  >
+                    Suspected: D15n...SMv (Twitter report @0xmiir)
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -225,10 +250,18 @@ export default function WalletScanner() {
                   <div className="flex items-center gap-2 mb-2">
                     {getSeverityIcon(scanResult.severity)}
                     <CardTitle>Scan Results</CardTitle>
+                    {scanResult.chain && (
+                      <Badge variant="outline" className="text-xs">
+                        {scanResult.chain === 'ETHEREUM' ? '⟠ Ethereum' : '◎ Solana'}
+                      </Badge>
+                    )}
                   </div>
                   <code className="text-xs bg-muted px-2 py-1 rounded font-mono block break-all">
                     {scanResult.address}
                   </code>
+                  {scanResult.chainFormat && (
+                    <p className="text-xs text-muted-foreground mt-1">Format: {scanResult.chainFormat}</p>
+                  )}
                 </div>
                 <Badge variant={getSeverityColor(scanResult.severity) as any}>
                   {scanResult.severity}
