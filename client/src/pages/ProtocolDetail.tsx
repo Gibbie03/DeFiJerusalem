@@ -14,7 +14,7 @@ export default function ProtocolDetail() {
   const protocolId = params?.id;
 
   const { data: protocol, isLoading: protocolLoading, error: protocolError } = useQuery<Protocol>({
-    queryKey: ['/api/protocols', protocolId],
+    queryKey: [`/api/protocols/${protocolId}`],
     enabled: !!protocolId,
   });
 
@@ -54,7 +54,8 @@ export default function ProtocolDetail() {
     return <Badge variant="outline" className="border-green-600 text-green-600" data-testid="badge-severity-safe">SAFE</Badge>;
   };
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | null | undefined) => {
+    if (num === null || num === undefined || isNaN(num)) return 'N/A';
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
     if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
     if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
@@ -136,7 +137,7 @@ export default function ProtocolDetail() {
                 <div className="text-2xl font-bold" data-testid="text-tvl">
                   {formatNumber(protocol.tvl)}
                 </div>
-                {protocol.change24h !== null && (
+                {protocol.change24h !== null && protocol.change24h !== undefined && !isNaN(protocol.change24h) && (
                   <p className={`text-sm ${protocol.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}% (24h)
                   </p>
