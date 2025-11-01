@@ -64,6 +64,7 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Threat Detection Coverage**: Protects against various threats across 126+ blockchain chains, including advanced drainer detection (2025).
 - **False Positive Prevention**: Context-aware scam patterns, exclusions for legitimate entities, and TVL-based filtering.
 - **Context-Aware IMPOSTER Detection**: Intelligent heuristics to distinguish legitimate integrations from scams, with whitelist overrides.
+- **Trust Score Consistency**: Frontend components prioritize real-time `securityScan.score` data with fallback to cached `protocol.securityScore`. Backend automatically syncs protocol cache during scan completion to prevent score drift.
 
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
