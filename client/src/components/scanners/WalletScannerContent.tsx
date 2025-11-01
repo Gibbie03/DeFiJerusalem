@@ -150,6 +150,12 @@ export default function WalletScannerContent() {
     }
   }
 
+  function getApprovalRiskVariant(riskLevel: string): "destructive" | "default" | "secondary" {
+    if (riskLevel === 'CRITICAL' || riskLevel === 'HIGH') return 'destructive';
+    if (riskLevel === 'MEDIUM') return 'default';
+    return 'secondary';
+  }
+
   return (
     <div className="space-y-6" data-testid="wallet-scanner-content">
       {/* Scan Input */}
@@ -492,12 +498,7 @@ export default function WalletScannerContent() {
                             Token: {approval.tokenAddress}
                           </code>
                         </div>
-                        <Badge variant={
-                          approval.riskLevel === 'CRITICAL' ? 'destructive' :
-                          approval.riskLevel === 'HIGH' ? 'destructive' :
-                          approval.riskLevel === 'MEDIUM' ? 'default' :
-                          'secondary'
-                        } as any}>
+                        <Badge variant={getApprovalRiskVariant(approval.riskLevel)}>
                           {approval.riskLevel}
                         </Badge>
                       </div>
