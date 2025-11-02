@@ -44,8 +44,8 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Wallet Address Scanner**: Real-time multi-chain wallet address analysis with drainer intelligence, supporting Ethereum and Solana, known drainer databases, transaction pattern detection, vanity address analysis, address poisoning detection, risk scoring, and token approval security scanning.
 - **Security Statistics Dashboard**: Comprehensive real-time statistics displaying total protocols, scan coverage, severity breakdown, 2025 Advanced Drainer Detection counts, and top highest risk protocols.
 - **Protocol Security Flagging System**: Visual security warnings and comprehensive threat details with severity badges, detailed threat cards, and per-threat user advice.
-- **Triple-Layer Security Analysis**: Includes metadata-based scanning (38+ threat categories), GoPlus Security API for smart contract code analysis, and advanced 2025 drainer detection.
-- **Automatic Blacklisting**: DApps with CRITICAL severity scores are automatically blacklisted.
+- **Unified Security Scoring System**: Single comprehensive 0-100 risk score (lower is safer) that combines all detection methods into one consistent metric. Integrates metadata-based scanning (38+ threat categories), GoPlus Security API for smart contract code analysis, advanced 2025 drainer detection, AI learning patterns, and legitimacy indicators (audits, TVL, age). Scoring ranges: 0-19 SAFE, 20-39 LOW, 40-59 MEDIUM, 60-79 HIGH, 80-100 CRITICAL. Replaces previous conflicting dual-scoring systems.
+- **Automatic Blacklisting**: DApps with CRITICAL severity scores (80+) are automatically blacklisted.
 - **3-Tier Audit System**: Integrates DeFiLlama audit data and allows manual entries.
 - **Blacklist Management**: Dedicated page for admin management of blacklisted protocols.
 - **Scanning Mechanism**: Supports manual "Scan All" with parallel execution and automated background re-scanning triggered by AI learning for new threat patterns.
