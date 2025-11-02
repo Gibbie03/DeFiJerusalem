@@ -510,6 +510,145 @@ export default function WalletScannerContent() {
             </Card>
           )}
 
+          {/* Solana-Specific Attack Methods */}
+          {scanResult.chain === 'SOLANA' && (
+            <Card className="border-orange-500/20 bg-orange-500/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  <div>
+                    <CardTitle>Solana-Specific Drainer Attacks</CardTitle>
+                    <CardDescription>
+                      Understanding how Solana wallets are targeted (2025)
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Critical Notice:</strong> $4.17M+ stolen from 3,947 Solana users in 2024-2025 through 4 major drainer operations. 
+                    All attacks required users to sign malicious transactions.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Active Operations */}
+                  <div className="border rounded-lg p-4 bg-muted/50">
+                    <h4 className="font-semibold text-sm mb-3">Active Drainer Operations</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start gap-2">
+                        <Badge variant="destructive" className="text-xs mt-0.5">CLINKSINK</Badge>
+                        <span className="text-muted-foreground">$900K+, 35 affiliates</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Badge variant="destructive" className="text-xs mt-0.5">Rainbow</Badge>
+                        <span className="text-muted-foreground">$4M+ from victims</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Badge variant="destructive" className="text-xs mt-0.5">Node</Badge>
+                        <span className="text-muted-foreground">Active attacks</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Badge variant="destructive" className="text-xs mt-0.5">Perpetual</Badge>
+                        <span className="text-muted-foreground">XSS exploits</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attack Methods */}
+                  <div className="border rounded-lg p-4 bg-muted/50">
+                    <h4 className="font-semibold text-sm mb-3">Common Attack Vectors</h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>• Fake airdrop announcements</li>
+                      <li>• Compromised Twitter accounts</li>
+                      <li>• Phishing NFTs with links</li>
+                      <li>• Address poisoning</li>
+                      <li>• Fake support DMs</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* SetAuthority Attack */}
+                <div className="border-l-4 border-destructive pl-4 py-2 bg-destructive/5 rounded-r">
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-destructive" />
+                    SetAuthority Instruction Attack (CRITICAL)
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Attackers trick users into signing transactions with <code className="bg-muted px-1 py-0.5 rounded text-xs">createSetAuthorityInstruction</code>. 
+                    This transfers your token account ownership to the attacker. Tokens remain visible in your wallet but become frozen and unmovable.
+                  </p>
+                  <p className="text-sm font-semibold">
+                    Protection: Modern wallets (Phantom, Backpack) warn about authority changes. Never bypass these warnings.
+                  </p>
+                </div>
+
+                {/* TOCTOU Attack */}
+                <div className="border-l-4 border-orange-500 pl-4 py-2 bg-orange-500/5 rounded-r">
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Search className="w-4 h-4 text-orange-500" />
+                    TOCTOU (Time-of-Check-Time-of-Use) Attack
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Exploits the gap between wallet simulation and execution. You sign what appears safe, but the attacker changes the contract state 
+                    between check and execution. On Solana's fast network, this can happen within seconds (7 blocks).
+                  </p>
+                  <p className="text-sm font-semibold">
+                    Protection: Only interact with audited, verified contracts. Beware of new/unknown dApps.
+                  </p>
+                </div>
+
+                {/* Durable Nonce Attack */}
+                <div className="border-l-4 border-yellow-500 pl-4 py-2 bg-yellow-500/5 rounded-r">
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-yellow-500" />
+                    Durable Nonce Signature Deception
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Sign now, drain later. Attackers get you to sign transactions that don't execute immediately. The signature is stored offline 
+                    and broadcast days/weeks later, often after the contract upgrades to become malicious.
+                  </p>
+                  <p className="text-sm font-semibold">
+                    Protection: Only sign transactions that execute immediately. Be wary of "pre-approval" or "batch signing" requests.
+                  </p>
+                </div>
+
+                {/* Blind Signing */}
+                <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-500/5 rounded-r">
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Search className="w-4 h-4 text-blue-500" />
+                    Blind Signing Exploits
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Hardware wallets (Ledger) can't decode custom programs, requiring "blind signing" for DeFi/NFTs. May 2025: $1.5M stolen 
+                    from 80 victims via Phantom wallet blind signing phishing.
+                  </p>
+                  <p className="text-sm font-semibold">
+                    Protection: Use Ledger Live's Clear Signing. Disable blind signing when not actively using DeFi.
+                  </p>
+                </div>
+
+                {/* Learn More */}
+                <Alert className="bg-primary/10 border-primary">
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">Want to learn more about Solana security?</span>
+                    <a 
+                      href="/solana-security" 
+                      className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                      data-testid="link-solana-guide"
+                    >
+                      Read our comprehensive guide
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Token Approvals Section */}
           {scanResult.tokenApprovals && scanResult.tokenApprovals.approvals.length > 0 && (
             <Card className={scanResult.tokenApprovals.summary?.hasRiskyApprovals ? 'border-destructive/50' : ''}>

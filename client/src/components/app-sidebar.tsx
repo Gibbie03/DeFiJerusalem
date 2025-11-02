@@ -45,6 +45,7 @@ const menuGroups = [
     icon: BookOpen,
     items: [
       { title: "Our Methodology", url: "/security-methodology", icon: BookOpen },
+      { title: "Solana Security", url: "/solana-security", icon: Shield },
       { title: "Tutorials", url: "/tutorials", icon: Video },
     ]
   },

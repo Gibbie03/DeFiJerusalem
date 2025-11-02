@@ -19,6 +19,7 @@ import ThreatDetail from "@/pages/ThreatDetail";
 import ScamHallOfShame from "@/pages/ScamHallOfShame";
 import SecurityMethodology from "@/pages/SecurityMethodology";
 import SecurityScanner from "@/pages/SecurityScanner";
+import SolanaSecurityGuide from "@/pages/SolanaSecurityGuide";
 import SubmitProtocol from "@/pages/SubmitProtocol";
 import ProtocolDetail from "@/pages/ProtocolDetail";
 import Tutorials from "@/pages/Tutorials";
@@ -95,6 +96,7 @@ function Router() {
                 <Route path="/scam-hall-of-shame" component={ScamHallOfShame} />
                 <Route path="/security-methodology" component={SecurityMethodology} />
                 <Route path="/security-scanner" component={SecurityScanner} />
+                <Route path="/solana-security" component={SolanaSecurityGuide} />
                 <Route path="/scan-website">{() => { window.location.href = '/security-scanner'; return null; }}</Route>
                 <Route path="/scan-wallet">{() => { window.location.href = '/security-scanner'; return null; }}</Route>
                 <Route path="/submit-protocol" component={SubmitProtocol} />
