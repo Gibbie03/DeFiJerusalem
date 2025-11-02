@@ -569,21 +569,76 @@ const SCAM_PATTERNS = {
     /russian.*drainer.*community/i, // Geographic concentration
   ],
 
-  // Solana-specific wallet draining threats
+  // Solana-specific wallet draining threats (2025 advanced detection)
   solanaDrainerPatterns: [
+    // === CORE DRAINER OPERATIONS ===
+    /clinksink/i, // $900K+ stolen, 35+ affiliates, DaaS model
+    /rainbow.*drainer/i, // $4M+ stolen from 3,947 victims
+    /node.*drainer/i, // Active alongside Rainbow drainer
+    /perpetual.*drainer/i, // XSS exploit-based drainer
+    
+    // === SPL TOKEN DELEGATION ATTACKS ===
     /spl.*token.*delegation/i,
     /solana.*delegate/i,
+    /token.*delegate.*authority/i,
+    /single.*delegate.*limit/i, // Exploits Solana's one-delegate-at-a-time rule
+    /delegate.*overwrite/i, // Silent delegation overwrites
+    
+    // === ACCOUNT OWNERSHIP TRANSFER ===
+    /setauthority.*instruction/i, // SetAuthority instruction - critical attack vector
+    /transfer.*token.*account.*owner/i,
+    /change.*account.*authority/i,
+    /token.*account.*ownership/i,
+    /freeze.*authority.*transfer/i,
+    
+    // === BLIND SIGNING EXPLOITS ===
+    /blind.*signing.*solana/i,
+    /ledger.*blind.*sign/i,
+    /hardware.*wallet.*blind/i,
+    /unclear.*transaction.*details/i,
+    /phantom.*wallet.*drainer/i,
+    
+    // === DURABLE NONCE ATTACKS ===
+    /durable.*nonce/i,
+    /offline.*signature/i,
+    /delayed.*transaction.*broadcast/i,
+    /pre.*signed.*transaction/i,
+    /stored.*signature/i,
+    
+    // === TOCTOU (Time-of-Check-Time-of-Use) ATTACKS ===
+    /toctou.*attack/i,
+    /simulation.*vs.*execution/i,
+    /simulation.*bypass/i,
+    /fake.*simulation/i,
+    /anti.*simulation/i,
+    /solana.*400ms.*exploit/i, // Block time exploitation (7 blocks between check and execution)
+    
+    // === TRANSACTION OBFUSCATION ===
+    /base64.*transaction/i,
+    /encoded.*instruction/i,
+    /merged.*transaction/i,
+    /instruction.*hiding/i,
+    
+    // === PROGRAM DERIVED ADDRESS (PDA) MANIPULATION ===
     /program.*derived.*address/i,
     /pda.*manipulation/i,
-    /blind.*signing.*solana/i,
-    /phantom.*wallet.*drainer/i,
-    /base64.*transaction/i,
-    /toctou.*attack/i, // Time-of-check-time-of-use
-    /simulation.*vs.*execution/i,
-    /solana.*400ms.*exploit/i, // Block time exploitation
     /invoke_signed/i, // PDA signing function
-    /spl.*single.*delegate/i,
-    /ledger.*blind.*sign/i,
+    /cross.*program.*invocation/i,
+    /arbitrary.*cpi/i, // Arbitrary CPI attack
+    
+    // === PHISHING SIGNATURES ===
+    /malicious.*signature.*request/i,
+    /phishing.*signature/i,
+    /fake.*airdrop.*sign/i,
+    /nft.*mint.*drain/i,
+    /claim.*signature.*exploit/i,
+    
+    // === INFRASTRUCTURE & DETECTION EVASION ===
+    /solana.*drainer.*kit/i,
+    /sol.*drainer.*service/i,
+    /bypass.*wallet.*warning/i,
+    /evade.*phantom.*detection/i,
+    /solflare.*bypass/i,
   ],
 
   // Dormant approval attack patterns (458-day case: $908K stolen)
