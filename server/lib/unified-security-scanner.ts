@@ -21,7 +21,7 @@ import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 import type { IStorage } from '../storage';
 import { WalletDrainerDetector } from './wallet-drainer-detector';
 import { calculateLegitimacyScore, type SecurityIndicators } from './security-verification';
-import { GoPlusScanner } from './goplus-scanner';
+import { scanContractWithGoPlus } from './goplus-scanner';
 import { threatLearner } from './threat-pattern-learner';
 
 export interface UnifiedSecurityResult {
@@ -67,11 +67,9 @@ export interface UnifiedSecurityResult {
 
 export class UnifiedSecurityScanner {
   private drainerDetector: WalletDrainerDetector;
-  private goPlusScanner: GoPlusScanner;
   
   constructor(private storage: IStorage) {
     this.drainerDetector = new WalletDrainerDetector(storage);
-    this.goPlusScanner = new GoPlusScanner();
   }
   
   /**
@@ -109,7 +107,7 @@ export class UnifiedSecurityScanner {
         const chain = this.mapChainToGoPlusId(protocol.chains[0] || 'ethereum');
         
         if (chain) {
-          const goPlusResult = await this.goPlusScanner.scanContract(contract.address, chain);
+          const goPlusResult = await scanContractWithGoPlus(contract.address, chain);
           
           if (goPlusResult) {
             // Convert GoPlus results to threat score
