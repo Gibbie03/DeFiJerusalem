@@ -292,7 +292,14 @@ export default function Dashboard() {
     if (sortBy === 'tvl') {
       sorted.sort((a, b) => b.tvl - a.tvl);
     } else if (sortBy === 'security') {
-      sorted.sort((a, b) => b.securityScore - a.securityScore);
+      // Use real-time scan scores when available, otherwise use cached securityScore
+      // Unified scoring system: 0 = SAFE (best), 100 = CRITICAL (worst)
+      // Sort ASCENDING to show safest protocols first
+      sorted.sort((a, b) => {
+        const scoreA = securityScans[a.id]?.score ?? a.securityScore;
+        const scoreB = securityScans[b.id]?.score ?? b.securityScore;
+        return scoreA - scoreB; // Ascending: lower scores (safer) first
+      });
     }
     
     // Apply tab-specific sorting as secondary sort
@@ -301,7 +308,7 @@ export default function Dashboard() {
     }
     
     return sorted;
-  }, [filteredProtocols, activeTab, sortBy]);
+  }, [filteredProtocols, activeTab, sortBy, securityScans]);
 
   const stats = useMemo(() => ({
     total: initialData?.total || protocols.length,
