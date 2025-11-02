@@ -9,6 +9,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useToast } from '@/hooks/use-toast';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import ProtocolTable from '@/components/ProtocolTable';
@@ -48,6 +49,9 @@ export default function Dashboard() {
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedSearch = useDebounce(searchValue, 300);
+  
+  // Restore scroll position when returning from detail pages
+  useScrollRestoration('dashboard');
 
   // Fetch initial protocols from API with pagination
   const { data: initialData, isLoading, refetch } = useQuery<PaginatedResponse & { totalTVL?: number }>({
