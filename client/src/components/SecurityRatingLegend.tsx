@@ -5,34 +5,34 @@ import { Badge } from '@/components/ui/badge';
 export default function SecurityRatingLegend() {
   const ratings = [
     {
-      range: '90-100',
-      label: 'Excellent',
+      range: '0-19',
+      label: 'Safe',
       color: 'bg-green-500/10 text-green-500 border-green-500/20',
       description: 'Highly secure, audited, no threats detected',
     },
     {
-      range: '70-89',
-      label: 'Good',
+      range: '20-39',
+      label: 'Low Risk',
       color: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-      description: 'Secure with minor concerns',
+      description: 'Generally secure with minor concerns',
     },
     {
-      range: '50-69',
-      label: 'Moderate',
+      range: '40-59',
+      label: 'Medium Risk',
       color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
       description: 'Some security risks identified',
     },
     {
-      range: '30-49',
-      label: 'Low',
+      range: '60-79',
+      label: 'High Risk',
       color: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-      description: 'Multiple security concerns',
+      description: 'Multiple security concerns detected',
     },
     {
-      range: '0-29',
-      label: 'Critical',
+      range: '80-100',
+      label: 'Critical Risk',
       color: 'bg-red-500/10 text-red-500 border-red-500/20',
-      description: 'Severe threats detected, high risk',
+      description: 'Severe threats detected, avoid completely',
     },
   ];
 
@@ -61,7 +61,7 @@ export default function SecurityRatingLegend() {
           <div className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
             <p>
-              Scores are based on security audits, threat detection, contract analysis, and historical data.
+              Lower scores = safer protocols. Scores based on security audits, threat detection, contract analysis, and historical data across 126+ blockchains.
             </p>
           </div>
         </div>

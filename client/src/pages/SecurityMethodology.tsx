@@ -10,26 +10,26 @@ import { Progress } from '@/components/ui/progress';
 export default function SecurityMethodology() {
   // SEO meta tags
   useEffect(() => {
-    document.title = 'Security Score Methodology - Multi-Layer Threat Analysis System - DeFiJerusalem';
+    document.title = 'Security Score Methodology - Unified 0-100 Scoring System - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s triple-layer security analysis system. Learn how we calculate trust scores, detect 38+ threat categories, and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.');
+      metaDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s unified security scoring system (0-100, lower is safer). Learn how we detect 38+ threat categories and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'Full transparency into DeFiJerusalem\'s triple-layer security analysis system. Learn how we calculate trust scores, detect 38+ threat categories, and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.';
+      meta.content = 'Full transparency into DeFiJerusalem\'s unified security scoring system (0-100, lower is safer). Learn how we detect 38+ threat categories and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.';
       document.head.appendChild(meta);
     }
 
     const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
     ogTitle.setAttribute('property', 'og:title');
-    ogTitle.setAttribute('content', 'Security Methodology - Triple-Layer Threat Analysis - DeFiJerusalem');
+    ogTitle.setAttribute('content', 'Security Methodology - Unified Scoring (Lower = Safer) - DeFiJerusalem');
     if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
 
     const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
     ogDescription.setAttribute('property', 'og:description');
-    ogDescription.setAttribute('content', 'Full transparency into how DeFiJerusalem calculates security scores for DeFi protocols using triple-layer analysis: metadata scanning, GoPlus API integration, and AI threat detection across 126+ blockchains.');
+    ogDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s unified 0-100 security scoring system where lower scores = safer protocols. Multi-layer analysis: metadata scanning, GoPlus API integration, and AI threat detection across 126+ blockchains.');
     if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
   }, []);
 
@@ -44,7 +44,7 @@ export default function SecurityMethodology() {
           Security Score Methodology
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          Full transparency into our dual-scoring security system that protects you from crypto scams while avoiding false positives on legitimate protocols.
+          Full transparency into our unified security scoring system that protects you from crypto scams across 126+ blockchains. Lower scores = safer protocols.
         </p>
       </div>
 
@@ -53,9 +53,9 @@ export default function SecurityMethodology() {
         <Info className="h-5 w-5 text-primary" />
         <AlertTitle className="text-lg font-semibold">The Core Concept</AlertTitle>
         <AlertDescription className="text-base mt-2">
-          JERUSALEM uses a <strong>dual-scoring system</strong> that calculates both a <strong>Trust Score</strong> (how legitimate a protocol is) 
-          and a <strong>Scam Score</strong> (how many red flags it has), then combines them to determine safety. This prevents false alarms on 
-          established protocols while catching new scams instantly.
+          JERUSALEM uses a <strong>unified scoring system (0-100)</strong> where <strong>lower scores indicate safer protocols</strong>. 
+          We start at 100 (baseline risk) and subtract points for positive indicators like audits, high TVL, verified teams, and GitHub presence. 
+          This approach prevents false positives on legitimate protocols while instantly flagging suspicious new projects with scores of 80+.
         </AlertDescription>
       </Alert>
 
@@ -64,11 +64,11 @@ export default function SecurityMethodology() {
         <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 h-auto p-2 gap-2 bg-card border">
           <TabsTrigger 
             value="trust-score" 
-            data-testid="tab-trust-score"
+            data-testid="tab-positive-indicators"
             className="py-4 text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover-elevate"
           >
             <CheckCircle className="w-5 h-5 mr-2" />
-            Trust Score
+            Positive Indicators
           </TabsTrigger>
           <TabsTrigger 
             value="scam-score" 
@@ -102,10 +102,10 @@ export default function SecurityMethodology() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-green-500" />
-                Trust Score (Verification Score)
+                Positive Indicators (Score Reductions)
               </CardTitle>
               <CardDescription>
-                Measures how legitimate and established a protocol is. Higher = More Trustworthy
+                Legitimate characteristics that reduce the security risk score. Each indicator subtracts points from the baseline 100.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -120,71 +120,37 @@ export default function SecurityMethodology() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="font-semibold" rowSpan={3}>Protocol Age</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+50</Badge></TableCell>
-                      <TableCell>Protocol exists {'>'} 365 days</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+30</Badge></TableCell>
-                      <TableCell>Protocol exists {'>'} 180 days</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+15</Badge></TableCell>
-                      <TableCell>Protocol exists {'>'} 90 days</TableCell>
+                      <TableCell className="font-semibold">Security Audits</TableCell>
+                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">-25</Badge></TableCell>
+                      <TableCell>1+ professional audits from top firms (CertiK, Trail of Bits, etc.)</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
-                      <TableCell className="font-semibold" rowSpan={3}>TVL (Total Value Locked)</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+40</Badge></TableCell>
-                      <TableCell>TVL {'>'} $100M</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+25</Badge></TableCell>
-                      <TableCell>TVL {'>'} $10M</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+10</Badge></TableCell>
-                      <TableCell>TVL {'>'} $1M</TableCell>
+                      <TableCell className="font-semibold">High TVL</TableCell>
+                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">-25</Badge></TableCell>
+                      <TableCell>TVL {'>'} $10M indicates real user trust</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
-                      <TableCell className="font-semibold" rowSpan={3}>Security Audits</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+60</Badge></TableCell>
-                      <TableCell>3+ professional audits from top firms (CertiK, Trail of Bits, etc.)</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+40</Badge></TableCell>
-                      <TableCell>2 professional audits</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+20</Badge></TableCell>
-                      <TableCell>1 professional audit</TableCell>
+                      <TableCell className="font-semibold">Verified Team</TableCell>
+                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">-25</Badge></TableCell>
+                      <TableCell>Active Twitter/Discord with verified identity</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
-                      <TableCell className="font-semibold">Trading Volume</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+30</Badge></TableCell>
-                      <TableCell>24h volume {'>'} $10M</TableCell>
+                      <TableCell className="font-semibold">GitHub Verified</TableCell>
+                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">-15</Badge></TableCell>
+                      <TableCell>Open-source code on GitHub</TableCell>
                     </TableRow>
                     <TableRow className="border-t">
-                      <TableCell className="font-semibold">User Base</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+20</Badge></TableCell>
-                      <TableCell>10,000+ unique users</TableCell>
-                    </TableRow>
-                    <TableRow className="border-t">
-                      <TableCell className="font-semibold">Verified Contracts</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+15</Badge></TableCell>
-                      <TableCell>All contracts verified on blockchain explorer</TableCell>
-                    </TableRow>
-                    <TableRow className="border-t">
-                      <TableCell className="font-semibold">Social Presence</TableCell>
-                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">+10</Badge></TableCell>
-                      <TableCell>Active Twitter/Discord with 10K+ followers</TableCell>
+                      <TableCell className="font-semibold">Established Protocol</TableCell>
+                      <TableCell><Badge className="bg-green-500/20 text-green-700 dark:text-green-400">-10</Badge></TableCell>
+                      <TableCell>Protocol exists {'>'} 1 year</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
               <div className="bg-muted/50 p-4 rounded-lg">
-                <p className="text-sm font-semibold mb-2">Maximum Trust Score: 245 points</p>
+                <p className="text-sm font-semibold mb-2">Maximum Score Reduction: -100 points</p>
                 <p className="text-sm text-muted-foreground">
-                  Protocols like Uniswap, Aave, and Curve typically score 200+ on Trust Score due to their age, audits, TVL, and proven track record.
+                  Protocols like Uniswap, Aave, Lido, and Curve typically achieve a score of 0-5 (SAFE) due to having all positive indicators: audits, high TVL, verified teams, and proven track record.
                 </p>
               </div>
             </CardContent>
@@ -366,28 +332,28 @@ export default function SecurityMethodology() {
 
               <Card className="border-primary/20">
                 <CardHeader>
-                  <CardTitle className="text-lg">Severity Classification</CardTitle>
+                  <CardTitle className="text-lg">Severity Classification (Lower = Safer)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg">
                     <div>
                       <p className="font-semibold text-green-700 dark:text-green-400">SAFE</p>
-                      <p className="text-sm text-muted-foreground">Score: 80-100</p>
+                      <p className="text-sm text-muted-foreground">Score: 0-19</p>
                     </div>
-                    <Progress value={95} className="w-24 h-2" />
+                    <Progress value={10} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-blue-500/10 rounded-lg">
                     <div>
-                      <p className="font-semibold text-blue-700 dark:text-blue-400">LOW</p>
-                      <p className="text-sm text-muted-foreground">Score: 60-79</p>
+                      <p className="font-semibold text-blue-700 dark:text-blue-400">LOW RISK</p>
+                      <p className="text-sm text-muted-foreground">Score: 20-39</p>
                     </div>
-                    <Progress value={70} className="w-24 h-2" />
+                    <Progress value={30} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg">
                     <div>
-                      <p className="font-semibold text-yellow-700 dark:text-yellow-400">MEDIUM</p>
+                      <p className="font-semibold text-yellow-700 dark:text-yellow-400">MEDIUM RISK</p>
                       <p className="text-sm text-muted-foreground">Score: 40-59</p>
                     </div>
                     <Progress value={50} className="w-24 h-2" />
@@ -395,18 +361,18 @@ export default function SecurityMethodology() {
 
                   <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg">
                     <div>
-                      <p className="font-semibold text-orange-700 dark:text-orange-400">HIGH</p>
-                      <p className="text-sm text-muted-foreground">Score: 20-39</p>
+                      <p className="font-semibold text-orange-700 dark:text-orange-400">HIGH RISK</p>
+                      <p className="text-sm text-muted-foreground">Score: 60-79</p>
                     </div>
-                    <Progress value={30} className="w-24 h-2" />
+                    <Progress value={70} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg">
                     <div>
-                      <p className="font-semibold text-red-700 dark:text-red-400">CRITICAL</p>
-                      <p className="text-sm text-muted-foreground">Score: 0-19</p>
+                      <p className="font-semibold text-red-700 dark:text-red-400">CRITICAL RISK</p>
+                      <p className="text-sm text-muted-foreground">Score: 80-100</p>
                     </div>
-                    <Progress value={10} className="w-24 h-2" />
+                    <Progress value={95} className="w-24 h-2" />
                   </div>
                 </CardContent>
               </Card>
@@ -415,7 +381,7 @@ export default function SecurityMethodology() {
                 <AlertTriangle className="h-4 w-4 text-destructive" />
                 <AlertTitle>Automatic Blacklisting</AlertTitle>
                 <AlertDescription>
-                  Protocols with Security Score {'<'} 20 (CRITICAL severity) are automatically added to our blacklist and flagged for users.
+                  Protocols with Security Score ≥ 80 (CRITICAL RISK) are automatically added to our blacklist and flagged for users.
                 </AlertDescription>
               </Alert>
             </CardContent>

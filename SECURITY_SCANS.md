@@ -227,34 +227,40 @@ The JERUSALEM DeFi Security Scanner automatically detects and flags **ALL major 
 
 ---
 
-## 📊 COMPREHENSIVE RISK SCORING SYSTEM
+## 📊 UNIFIED SECURITY SCORING SYSTEM
+
+**Lower Scores = Safer Protocols** (0 = Best, 100 = Worst)
 
 ### Score Ranges:
-- **0-24**: **LOW RISK** ✅ (Safe with normal caution - like Uniswap, Aave)
-- **25-49**: **MEDIUM RISK** ⚠️ (Exercise caution, research thoroughly)
-- **50-79**: **HIGH RISK** 🔶 (Only if you fully understand and accept risks)
-- **80+**: **CRITICAL RISK** ⛔ (Auto-blacklisted, AVOID completely)
+- **0-19**: **SAFE** ✅ (Highly secure, audited, no threats - like Uniswap, Aave, Lido)
+- **20-39**: **LOW RISK** 🔵 (Generally secure with minor concerns)
+- **40-59**: **MEDIUM RISK** ⚠️ (Some security risks identified, research thoroughly)
+- **60-79**: **HIGH RISK** 🔶 (Multiple concerns detected, only if you accept risks)
+- **80-100**: **CRITICAL RISK** ⛔ (Severe threats detected, AUTO-BLACKLISTED, AVOID)
 
 ### Score Calculation Examples:
 
-**Example 1: Legitimate Protocol (Uniswap)**
-- Age: >1000 days: 0 points
-- Multiple audits: 0 points
-- Public team (Twitter/GitHub): 0 points
-- High TVL ($5B+): 0 points
-- **Total: 0 points = LOW RISK** ✅
+**Example 1: Legitimate Protocol (Lido)**
+- Starting score: 100 (baseline)
+- Has audits: -25 points
+- High TVL ($20B+): -25 points
+- Public team (Twitter verified): -25 points
+- GitHub verified: -15 points
+- Established (>1000 days): -10 points
+- **Total: 0 points = SAFE** ✅
 
-**Example 2: Suspicious New Token**
-- Age: 3 days: +40 points
-- No audit: +30 points
-- Anonymous team: +25 points
-- Low liquidity ($25k): +20 points
-- **Total: 115 points = CRITICAL RISK** ⛔ AUTO-BLACKLISTED
+**Example 2: Unaudited New Protocol**
+- Starting score: 100 (baseline)
+- No audit: +0 (no deduction)
+- Low TVL ($100k): +0 (no deduction)
+- Some social presence: -10 points
+- **Total: 90 points = CRITICAL RISK** ⛔
 
 **Example 3: Wallet Drainer Site**
-- Contains "claim airdrop": +100 points
-- Asks for seed phrase: +100 points
-- **Total: 200 points = CRITICAL RISK** ⛔ IMMEDIATE BLACKLIST
+- Starting score: 100 (baseline)
+- Contains drainer patterns: +0 (already at max)
+- No legitimate indicators: +0 (no deductions)
+- **Total: 100 points = CRITICAL RISK** ⛔ IMMEDIATE BLACKLIST
 
 ---
 
