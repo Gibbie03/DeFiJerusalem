@@ -122,8 +122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[AI-LEARNING] Triggering automatic re-scan of ${protocolsToRescan.length} protocols based on new patterns`);
           
           // Trigger re-scan in background (don't await to avoid blocking)
-          const { scanContractWithGoPlus, mergeContractAndMetadataThreats } = 
-            await import('./lib/goplus-scanner');
+          const { UnifiedSecurityScanner } = await import('./lib/unified-security-scanner');
+          const unifiedScanner = new UnifiedSecurityScanner(storage);
           
           const protocols = await storage.getProtocols();
           const limitedRescan = protocolsToRescan.slice(0, 50); // Limit to 50 for performance
@@ -133,33 +133,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!protocol) continue;
             
             try {
-              // Re-scan with both metadata and contract analysis
-              const [metadataScanResult, contractScan] = await Promise.all([
-                detector.scanDApp(protocol),
-                protocol.contractAddress && protocol.contractChain
-                  ? scanContractWithGoPlus(protocol.contractAddress, protocol.contractChain)
-                  : Promise.resolve(null)
-              ]);
-              
-              const { threats, totalScore, severity } = mergeContractAndMetadataThreats(
-                metadataScanResult.threats,
-                metadataScanResult.score,
-                contractScan
-              );
+              // Re-scan with unified security scanner
+              const unifiedResult = await unifiedScanner.scanProtocol(protocol);
               
               const combinedScanResult = {
-                isBlacklisted: severity === 'CRITICAL',
-                severity,
-                threats,
-                score: totalScore,
+                isBlacklisted: unifiedResult.isBlacklisted,
+                severity: unifiedResult.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+                threats: unifiedResult.threats,
+                score: unifiedResult.score,
+                scannedAt: unifiedResult.scannedAt,
               };
               
               // Store updated scan
               await storage.addSecurityScan(protocolId, combinedScanResult);
               
               // Learn from this re-scan
-              const scanWithContract = { ...combinedScanResult, contractScan };
-              await threatLearner.learnFromScan(scanWithContract, protocol);
+              await threatLearner.learnFromScan(combinedScanResult, protocol);
               
             } catch (error) {
               console.error(`[AI-LEARNING] Error re-scanning ${protocol.name}:`, error);
@@ -727,14 +716,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "protocolIds must be an array" });
       }
 
-      const { scanContractWithGoPlus, mergeContractAndMetadataThreats } = 
-        await import('./lib/goplus-scanner');
+      const { UnifiedSecurityScanner } = await import('./lib/unified-security-scanner');
+      const unifiedScanner = new UnifiedSecurityScanner(storage);
 
       const protocols = await storage.getProtocols();
       const scanResults: Record<string, any> = {};
       const newBlacklistEntries: any[] = [];
       const scansToStore: Array<{ protocolId: string; scan: any }> = [];
-      const contractScansToStore: any[] = [];
 
       // Parallel scan with controlled concurrency (20 at a time for speed)
       const batchSize = 20;
@@ -749,49 +737,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const protocol = protocols.find(p => p.id === id);
             if (!protocol) return null;
 
-            // Perform BOTH metadata scan AND contract scan in parallel
-            const [metadataScanResult, contractScan] = await Promise.all([
-              detector.scanDApp(protocol),
-              // Only scan contract if address is available
-              protocol.contractAddress && protocol.contractChain
-                ? scanContractWithGoPlus(protocol.contractAddress, protocol.contractChain)
-                : Promise.resolve(null)
-            ]);
+            // Perform comprehensive unified security scan
+            const unifiedResult = await unifiedScanner.scanProtocol(protocol);
 
-            // Merge contract-level threats with metadata threats
-            const { threats, totalScore, severity } = mergeContractAndMetadataThreats(
-              metadataScanResult.threats,
-              metadataScanResult.score,
-              contractScan
-            );
-
-            // Create combined scan result
-            const combinedScanResult = {
-              isBlacklisted: severity === 'CRITICAL',
-              severity,
-              threats,
-              score: totalScore,
+            // Convert unified result to legacy format for storage compatibility
+            const scanResult = {
+              isBlacklisted: unifiedResult.isBlacklisted,
+              severity: unifiedResult.severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+              threats: unifiedResult.threats,
+              score: unifiedResult.score,
+              scannedAt: unifiedResult.scannedAt,
             };
 
-            return { id, protocol, scanResult: combinedScanResult, contractScan };
+            return { id, protocol, scanResult, unifiedResult };
           })
         );
 
         // Process successful scans
         for (const result of results) {
           if (result.status === 'fulfilled' && result.value) {
-            const { id, protocol, scanResult, contractScan } = result.value;
-            scanResults[id] = scanResult;
+            const { id, protocol, scanResult, unifiedResult } = result.value;
+            scanResults[id] = {
+              ...scanResult,
+              breakdown: unifiedResult.breakdown,
+              recommendations: unifiedResult.recommendations,
+              scanDuration: unifiedResult.scanDuration
+            };
             scansToStore.push({ protocolId: id, scan: scanResult });
 
-            // Store contract scan if available
-            if (contractScan) {
-              contractScansToStore.push({ ...contractScan, protocolId: id });
-            }
-
-            // AI LEARNING: Learn from this scan (includes contract scan data)
-            const scanWithContract = { ...scanResult, contractScan };
-            await threatLearner.learnFromScan(scanWithContract, protocol);
+            // AI LEARNING: Learn from this scan
+            await threatLearner.learnFromScan(scanResult, protocol);
 
             // AI-ENHANCED BLACKLISTING: Get AI recommendation
             const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);
@@ -822,10 +797,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Promise.all(scansToStore.map(({ protocolId, scan }) => 
           storage.addSecurityScan(protocolId, scan)
         )),
-        // Batch store all contract scans
-        Promise.all(contractScansToStore.map(contractScan => 
-          storage.addContractScan(contractScan)
-        )),
         // Batch store all blacklist entries
         newBlacklistEntries.length > 0 
           ? Promise.all(newBlacklistEntries.map(entry => storage.addToBlacklist(entry)))
@@ -841,8 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         scanResults,
         newBlacklistEntries,
-        scannedCount: Object.keys(scanResults).length,
-        contractScansCount: contractScansToStore.length
+        scannedCount: Object.keys(scanResults).length
       });
     } catch (error) {
       console.error("Error scanning protocols:", error);
