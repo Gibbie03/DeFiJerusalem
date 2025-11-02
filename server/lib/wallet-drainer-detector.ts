@@ -638,7 +638,7 @@ export class WalletDrainerDetector {
 
     try {
       // Get all protocols and search for the legitimate name
-      const allProtocols = await this.storage.getAllProtocols();
+      const allProtocols = await this.storage.getProtocols();
       
       // Find exact or close match
       const originalProtocol = allProtocols.find((p: Protocol) => 
