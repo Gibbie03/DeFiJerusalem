@@ -96,16 +96,23 @@ const ProtocolRow = memo(({
   };
 
   const getSecurityBadge = (score: number) => {
-    if (score >= 90) {
-      return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">{score}</Badge>;
-    } else if (score >= 70) {
-      return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">{score}</Badge>;
-    } else if (score >= 50) {
-      return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">{score}</Badge>;
-    } else if (score >= 30) {
+    // UNIFIED SCORING: 0 = SAFE (best), 100 = CRITICAL (worst)
+    // Lower scores = safer (green), Higher scores = riskier (red)
+    if (score >= 80) {
+      // CRITICAL: 80-100
+      return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">{score}</Badge>;
+    } else if (score >= 60) {
+      // HIGH: 60-79
       return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">{score}</Badge>;
+    } else if (score >= 40) {
+      // MEDIUM: 40-59
+      return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">{score}</Badge>;
+    } else if (score >= 20) {
+      // LOW: 20-39
+      return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">{score}</Badge>;
     }
-    return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">{score}</Badge>;
+    // SAFE: 0-19
+    return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">{score}</Badge>;
   };
 
   const getSeverityBadge = (severity: string) => {
