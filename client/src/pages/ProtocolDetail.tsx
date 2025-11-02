@@ -234,16 +234,22 @@ export default function ProtocolDetail() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Security Score</CardTitle>
-                  <CardDescription>Comprehensive security analysis results</CardDescription>
+                  <CardTitle>Unified Security Score</CardTitle>
+                  <CardDescription>
+                    Comprehensive analysis combining metadata threats, smart contract security (GoPlus), AI learning, and legitimacy indicators
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-medium">Overall Security Score</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-lg font-medium">Risk Score</span>
+                      <span className="text-xs text-muted-foreground">Lower is safer (0 = perfect, 100 = critical)</span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-3xl font-bold" data-testid="text-security-score">
-                        {securityScan.score}/100
+                        {securityScan.score}
                       </span>
+                      <span className="text-muted-foreground">/100</span>
                       {getSeverityBadge(securityScan.score)}
                     </div>
                   </div>
@@ -256,6 +262,33 @@ export default function ProtocolDetail() {
                       </AlertDescription>
                     </Alert>
                   )}
+
+                  {/* Score Explanation */}
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium mb-2">What this score means:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                      <div className="p-2 rounded border border-green-600/20 bg-green-600/5">
+                        <div className="font-medium text-green-600">0-19: SAFE</div>
+                        <div className="text-muted-foreground mt-1">Excellent security</div>
+                      </div>
+                      <div className="p-2 rounded border border-blue-600/20 bg-blue-600/5">
+                        <div className="font-medium text-blue-600">20-39: LOW</div>
+                        <div className="text-muted-foreground mt-1">Minor concerns</div>
+                      </div>
+                      <div className="p-2 rounded border border-yellow-600/20 bg-yellow-600/5">
+                        <div className="font-medium text-yellow-600">40-59: MEDIUM</div>
+                        <div className="text-muted-foreground mt-1">Exercise caution</div>
+                      </div>
+                      <div className="p-2 rounded border border-orange-600/20 bg-orange-600/5">
+                        <div className="font-medium text-orange-600">60-79: HIGH</div>
+                        <div className="text-muted-foreground mt-1">Significant risks</div>
+                      </div>
+                      <div className="p-2 rounded border border-red-600/20 bg-red-600/5">
+                        <div className="font-medium text-red-600">80-100: CRITICAL</div>
+                        <div className="text-muted-foreground mt-1">Do not interact</div>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -263,6 +296,7 @@ export default function ProtocolDetail() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Detected Threats ({securityScan.threats.length})</CardTitle>
+                    <CardDescription>Security issues identified across all detection systems</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -270,11 +304,11 @@ export default function ProtocolDetail() {
                         <div key={idx} className="border-l-4 border-l-destructive pl-4 py-2" data-testid={`threat-item-${idx}`}>
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-semibold">{threat.type}</span>
-                            <Badge variant={threat.severity === 'HIGH' ? 'destructive' : 'outline'}>
+                            <Badge variant={threat.severity === 'CRITICAL' || threat.severity === 'HIGH' ? 'destructive' : 'outline'}>
                               {threat.severity}
                             </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground">{threat.description}</p>
+                          <p className="text-sm text-muted-foreground">{threat.message || threat.description}</p>
                         </div>
                       ))}
                     </div>
