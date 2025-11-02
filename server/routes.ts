@@ -1569,6 +1569,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AI LEARNING: Learn from wallet scan (every scan teaches the AI)
       await threatLearner.learnFromWalletScan(walletScanResult, normalizedAddress);
 
+      // AUTO-ADD DETECTED DRAINERS: Automatically add high-risk drainer addresses to database
+      if (drainerIntelligence || (finalSeverity === 'CRITICAL' && combinedFindings.some(f => 
+        f.type === 'KNOWN_DRAINER_WALLET' || 
+        f.type === 'DRAINER_OPERATION_FINGERPRINT' ||
+        f.type === 'SOLANA_DRAINER_OPERATION'
+      ))) {
+        try {
+          const { autoAddDrainerAddress } = await import('./lib/auto-add-drainer');
+          
+          // Determine confidence level
+          let confidence: 'CONFIRMED' | 'SUSPECTED' | 'HIGH' | 'MEDIUM' | 'LOW' = 'SUSPECTED';
+          if (drainerIntelligence?.confidence === 'CONFIRMED') {
+            confidence = 'CONFIRMED';
+          } else if (finalSeverity === 'CRITICAL') {
+            confidence = 'HIGH';
+          } else if (finalSeverity === 'HIGH') {
+            confidence = 'MEDIUM';
+          }
+
+          // Determine detection method
+          const detectionMethods: string[] = [];
+          if (combinedFindings.some(f => f.type === 'KNOWN_DRAINER_WALLET')) {
+            detectionMethods.push('Known drainer database match');
+          }
+          if (combinedFindings.some(f => f.type === 'SUSPICIOUS_VANITY_PATTERN')) {
+            detectionMethods.push('Suspicious vanity pattern');
+          }
+          if (combinedFindings.some(f => f.type === 'DRAINER_OPERATION_FINGERPRINT')) {
+            detectionMethods.push('Drainer operation fingerprint');
+          }
+          if (combinedFindings.some(f => f.type === 'SOLANA_DRAINER_OPERATION')) {
+            detectionMethods.push('Solana drainer operation');
+          }
+          if (isAssociatedWithBlacklist) {
+            detectionMethods.push('Blacklisted protocol association');
+          }
+
+          const addResult = await autoAddDrainerAddress(storage, {
+            address: normalizedAddress,
+            chain: addressInfo.chain,
+            operation: drainerIntelligence?.operation,
+            confidence,
+            severity: finalSeverity === 'SAFE' ? 'LOW' : finalSeverity, // Map SAFE to LOW for database
+            totalStolen: drainerIntelligence?.totalStolen,
+            notes: drainerIntelligence?.notes,
+            source: 'Wallet Scanner',
+            detectionMethod: detectionMethods.join(', '),
+            evidenceLinks: []
+          });
+
+          if (addResult.added) {
+            console.log(`[AUTO-ADD] ✅ Added drainer address to database: ${normalizedAddress}`);
+          } else {
+            console.log(`[AUTO-ADD] ℹ️ ${addResult.reason}`);
+          }
+        } catch (error) {
+          console.error('[AUTO-ADD] Failed to auto-add drainer address:', error);
+          // Don't fail the request if auto-add fails
+        }
+      }
+
       res.json(walletScanResult);
 
     } catch (error) {
