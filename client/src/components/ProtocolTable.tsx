@@ -111,15 +111,15 @@ const ProtocolRow = memo(({
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case 'CRITICAL':
-        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0">CRITICAL</Badge>;
+        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0">Risk: Critical</Badge>;
       case 'HIGH':
-        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 text-[10px] px-1.5 py-0">HIGH</Badge>;
+        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 text-[10px] px-1.5 py-0">Risk: High</Badge>;
       case 'MEDIUM':
-        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">MEDIUM</Badge>;
+        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">Risk: Medium</Badge>;
       case 'LOW':
-        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0">LOW</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0">Risk: Low</Badge>;
       default:
-        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0">SAFE</Badge>;
+        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0">Risk: Safe</Badge>;
     }
   };
 
