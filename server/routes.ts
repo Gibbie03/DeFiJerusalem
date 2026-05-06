@@ -3832,6 +3832,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get report stats for the Report Scam page stats cards
+  app.get('/api/reports/stats', async (req: Request, res: Response) => {
+    try {
+      const allReports = await storage.getUserReports({ limit: 10000 });
+      const totalSubmitted = allReports.length;
+      const verifiedScams = allReports.filter(r => r.status === 'verified').length;
+      const pendingReports = allReports.filter(r => r.status === 'pending').length;
+      res.json({ totalSubmitted, verifiedScams, pendingReports });
+    } catch (error) {
+      console.error('[API] Error fetching report stats:', error);
+      res.status(500).json({ error: 'Failed to fetch report stats' });
+    }
+  });
+
   // Get all user reports with filtering
   app.get('/api/reports', async (req: Request, res: Response) => {
     try {

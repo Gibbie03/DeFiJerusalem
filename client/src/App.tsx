@@ -13,6 +13,7 @@ import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
 import Blacklist from "@/pages/Blacklist";
 import BlacklistDetails from "@/pages/BlacklistDetails";
+import BlacklistVerification from "@/pages/BlacklistVerification";
 import ThreatsPage from "@/pages/ThreatsPage";
 import ThreatEncyclopedia from "@/pages/ThreatEncyclopedia";
 import ThreatDetail from "@/pages/ThreatDetail";
@@ -86,6 +87,7 @@ function Router() {
                 <Route path="/new" component={NewDApps} />
                 <Route path="/trending" component={TrendingDApps} />
                 <Route path="/protocol/:id" component={ProtocolDetail} />
+                <Route path="/blacklist-verification" component={BlacklistVerification} />
                 <Route path="/blacklist/:id" component={BlacklistDetails} />
                 <Route path="/blacklist" component={Blacklist} />
                 <Route path="/security-stats">{() => { window.location.href = '/threats'; return null; }}</Route>
