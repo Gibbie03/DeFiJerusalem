@@ -6,3 +6,6 @@ vite.config.ts.*
 *.tar.gz
 .env
 .env.local
+local-dev.db
+local-dev.db-wal
+local-dev.db-shm
