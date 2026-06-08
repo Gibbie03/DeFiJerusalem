@@ -1284,6 +1284,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/scan-visual-content - Analyze screenshot/image of a website for visual scam patterns
+  app.post("/api/scan-visual-content", apiLimiter, async (req, res) => {
+    try {
+      const { image, mediaType, url } = req.body;
+
+      if (!image || typeof image !== 'string') {
+        return res.status(400).json({
+          error: "Image is required",
+          message: "Please provide a base64-encoded image"
+        });
+      }
+
+      const validMediaTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const imageMediaType = mediaType || 'image/png';
+      if (!validMediaTypes.includes(imageMediaType)) {
+        return res.status(400).json({
+          error: "Invalid media type",
+          message: "Supported formats: JPEG, PNG, GIF, WEBP"
+        });
+      }
+
+      // Limit image size to ~10MB base64
+      const MAX_IMAGE_SIZE = 14 * 1024 * 1024;
+      if (image.length > MAX_IMAGE_SIZE) {
+        return res.status(400).json({
+          error: "Image too large",
+          message: "Please use an image under 10MB"
+        });
+      }
+
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({
+          error: "Visual analysis unavailable",
+          message: "ANTHROPIC_API_KEY is not configured. Add it to your environment variables to enable screenshot analysis.",
+          requiresApiKey: true
+        });
+      }
+
+      console.log(`[SCAN-VISUAL] Analyzing screenshot${url ? ` for ${url}` : ''}`);
+
+      const Anthropic = (await import('@anthropic-ai/sdk')).default;
+      const client = new Anthropic({ apiKey });
+
+      const systemPrompt = `You are a DeFi security expert specializing in detecting visual scams, phishing sites, and fraudulent DApps.
+Analyze the provided screenshot and identify security threats. Focus on:
+- Wallet drainer UI patterns (fake "connect wallet" flows, approval popups)
+- Brand impersonation (slightly modified logos, color schemes of known protocols)
+- Fake token giveaways, airdrops, or urgency tactics
+- Suspicious wallet approval requests (unlimited approvals, unusual permissions)
+- Typosquatting or domain impersonation visible in UI
+- Fake support chat popups or "recovery" scams
+- Social engineering language ("Your wallet is at risk", "Claim now", "Limited time")
+- Cloned UI from legitimate DeFi protocols (Uniswap, MetaMask, Coinbase, OpenSea, etc.)
+
+Return a JSON response with this exact structure:
+{
+  "isScam": boolean,
+  "riskScore": number (0-100),
+  "severity": "SAFE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "summary": "One sentence overall assessment",
+  "visualIndicators": [
+    {
+      "type": "string (e.g., BRAND_IMPERSONATION, DRAINER_UI, URGENCY_TACTICS, etc.)",
+      "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+      "description": "What was detected",
+      "location": "Where in the image (e.g., header, popup, footer)"
+    }
+  ],
+  "detectedProtocols": ["list of DeFi protocols visible in the image"],
+  "recommendations": ["actionable advice for the user"]
+}`;
+
+      const response = await client.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: imageMediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                  data: image,
+                },
+              },
+              {
+                type: "text",
+                text: url
+                  ? `Analyze this screenshot from the website: ${url}\n\nReturn only valid JSON, no markdown.`
+                  : "Analyze this screenshot of a website or DApp for security threats.\n\nReturn only valid JSON, no markdown."
+              }
+            ],
+          }
+        ],
+      });
+
+      let analysisResult;
+      try {
+        const textContent = response.content.find(c => c.type === 'text');
+        const rawText = textContent ? (textContent as any).text.trim() : '{}';
+        const jsonText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+        analysisResult = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error('[SCAN-VISUAL] Failed to parse Claude response:', parseError);
+        analysisResult = {
+          isScam: false,
+          riskScore: 0,
+          severity: 'SAFE',
+          summary: 'Analysis completed but response format was unexpected.',
+          visualIndicators: [],
+          detectedProtocols: [],
+          recommendations: ['Manual review recommended']
+        };
+      }
+
+      res.json({
+        success: true,
+        url: url || null,
+        analysis: analysisResult,
+        scannedAt: new Date().toISOString(),
+      });
+
+    } catch (error: any) {
+      console.error("[SCAN-VISUAL] Error:", error);
+      if (error?.status === 400 && error?.message?.includes('Could not process image')) {
+        return res.status(400).json({
+          error: "Could not process image",
+          message: "The image could not be read. Please ensure it's a valid screenshot."
+        });
+      }
+      res.status(500).json({
+        error: "Failed to analyze visual content",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // POST /api/scan-wallet - Scan wallet address for drainer footprints
   app.post("/api/scan-wallet", apiLimiter, async (req, res) => {
     try {

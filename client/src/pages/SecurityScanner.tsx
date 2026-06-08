@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import WalletScannerContent from '@/components/scanners/WalletScannerContent';
 import WebsiteScannerContent from '@/components/scanners/WebsiteScannerContent';
+import VisualScannerContent from '@/components/scanners/VisualScannerContent';
 
 export default function SecurityScanner() {
   const [activeTab, setActiveTab] = useState('wallet');
@@ -41,12 +42,15 @@ export default function SecurityScanner() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="wallet" data-testid="tab-wallet-scanner">
-                Wallet Address Scanner
+                Wallet Scanner
               </TabsTrigger>
               <TabsTrigger value="website" data-testid="tab-website-scanner">
-                Website Security Scanner
+                Website Scanner
+              </TabsTrigger>
+              <TabsTrigger value="visual" data-testid="tab-visual-scanner">
+                Screenshot Analysis
               </TabsTrigger>
             </TabsList>
 
@@ -56,6 +60,10 @@ export default function SecurityScanner() {
 
             <TabsContent value="website" className="space-y-6">
               <WebsiteScannerContent />
+            </TabsContent>
+
+            <TabsContent value="visual" className="space-y-6">
+              <VisualScannerContent />
             </TabsContent>
           </Tabs>
         </CardContent>
