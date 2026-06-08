@@ -35,6 +35,7 @@ const menuGroups = [
     items: [
       { title: "Security Scanner", url: "/security-scanner", icon: Shield },
       { title: "Blacklisted", url: "/blacklist", icon: Lock },
+      { title: "Blacklist Verification", url: "/blacklist-verification", icon: AlertOctagon },
       { title: "Security & Threats", url: "/threats", icon: AlertTriangle },
       { title: "Threat Encyclopedia", url: "/threats/encyclopedia", icon: Library },
       { title: "Scam Hall of Shame", url: "/scam-hall-of-shame", icon: Skull },

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const reportFormSchema = z.object({
@@ -32,6 +32,10 @@ type ReportFormValues = z.infer<typeof reportFormSchema>;
 export default function ReportScam() {
   const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState<string>("protocol");
+
+  const { data: reportStats } = useQuery<{ totalSubmitted: number; verifiedScams: number; pendingReports: number }>({
+    queryKey: ['/api/reports/stats'],
+  });
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
@@ -98,7 +102,7 @@ export default function ReportScam() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Community Reports</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,247</div>
+            <div className="text-2xl font-bold">{reportStats?.totalSubmitted ?? '—'}</div>
             <p className="text-xs text-muted-foreground mt-1">Total submissions</p>
           </CardContent>
         </Card>
@@ -108,7 +112,7 @@ export default function ReportScam() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Verified Scams</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">892</div>
+            <div className="text-2xl font-bold text-destructive">{reportStats?.verifiedScams ?? '—'}</div>
             <p className="text-xs text-muted-foreground mt-1">Confirmed threats</p>
           </CardContent>
         </Card>
@@ -118,8 +122,8 @@ export default function ReportScam() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Avg Response Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24h</div>
-            <p className="text-xs text-muted-foreground mt-1">Review processing</p>
+            <div className="text-2xl font-bold">{reportStats?.pendingReports ?? '—'}</div>
+            <p className="text-xs text-muted-foreground mt-1">Pending review</p>
           </CardContent>
         </Card>
       </div>

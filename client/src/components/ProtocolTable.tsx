@@ -191,6 +191,31 @@ const ProtocolRow = memo(({
         </Tooltip>
       </td>
 
+      {/* Security Score */}
+      <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex flex-col items-center gap-1">
+              {getSecurityBadge(scan?.score ?? protocol.securityScore)}
+              {scan && getSeverityBadge(scan.severity)}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <p className="text-xs font-semibold mb-1">Security Score: {scan?.score ?? protocol.securityScore}/100</p>
+            {scan && (
+              <>
+                <p className="text-xs font-semibold mt-2 mb-1">Severity: {scan.severity}</p>
+                <p className="text-xs text-muted-foreground">{scan.threats.length} threat{scan.threats.length !== 1 ? 's' : ''} detected</p>
+              </>
+            )}
+            {scan?.isBlacklisted && <p className="text-xs text-destructive mt-2">⚠️ Flagged as High Risk</p>}
+            {protocol.auditCount > 0 && (
+              <p className="text-xs text-green-500 mt-2">✓ {protocol.auditCount} Audit{protocol.auditCount > 1 ? 's' : ''} Completed</p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </td>
+
       {/* Volume 24h */}
       <td className="px-3 py-4 text-right">
         <Tooltip>
@@ -226,31 +251,6 @@ const ProtocolRow = memo(({
         <div className="flex justify-end">
           <MiniSparkline data={sparklineData} width={100} height={40} />
         </div>
-      </td>
-      
-      {/* Security Score */}
-      <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex flex-col items-center gap-1">
-              {getSecurityBadge(scan?.score ?? protocol.securityScore)}
-              {scan && getSeverityBadge(scan.severity)}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-xs">
-            <p className="text-xs font-semibold mb-1">Security Score: {scan?.score ?? protocol.securityScore}/100</p>
-            {scan && (
-              <>
-                <p className="text-xs font-semibold mt-2 mb-1">Severity: {scan.severity}</p>
-                <p className="text-xs text-muted-foreground">{scan.threats.length} threat{scan.threats.length !== 1 ? 's' : ''} detected</p>
-              </>
-            )}
-            {scan?.isBlacklisted && <p className="text-xs text-destructive mt-2">⚠️ Flagged as High Risk</p>}
-            {protocol.auditCount > 0 && (
-              <p className="text-xs text-green-500 mt-2">✓ {protocol.auditCount} Audit{protocol.auditCount > 1 ? 's' : ''} Completed</p>
-            )}
-          </TooltipContent>
-        </Tooltip>
       </td>
 
       {/* Admin Actions */}
@@ -313,11 +313,11 @@ const ProtocolTable = memo(function ProtocolTable({
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">#</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Name</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">TVL</th>
+                <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Security</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Volume 24h</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">24h %</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">7d %</th>
                 <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Last 7 Days (TVL)</th>
-                <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Security</th>
                 {isAdmin && onBlacklist && (
                   <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Actions</th>
                 )}

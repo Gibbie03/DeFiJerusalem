@@ -134,12 +134,27 @@ export class DAppDiscovery {
 
         // Parse audit count (DeFiLlama returns it as a string!)
         const auditCount = parseInt(p.audits) || 0;
-        
+
         // Parse audit links if available
         let auditLinks: string[] | null = null;
         if (p.audit_links && Array.isArray(p.audit_links)) {
           auditLinks = p.audit_links.filter((link: any) => typeof link === 'string');
         }
+
+        // Build structured audit reports from audit_links + audit_note
+        let defiAuditReports: Array<{ auditor: string; date: string; reportUrl: string }> | null = null;
+        if (auditLinks && auditLinks.length > 0) {
+          defiAuditReports = auditLinks.map(url => ({
+            auditor: this.extractAuditFirmFromUrl(url),
+            date: '',
+            reportUrl: url,
+          }));
+        }
+
+        // Infer multisig/timelock from audit note and description text
+        const combinedText = `${p.audit_note || ''} ${p.description || ''}`.toLowerCase();
+        const defiHasMultisig = combinedText.includes('multisig') || combinedText.includes('multi-sig') || combinedText.includes('gnosis safe') ? true : null;
+        const defiHasTimelock = combinedText.includes('timelock') || combinedText.includes('time-lock') || combinedText.includes('timelocked') ? true : null;
 
         const tvl = typeof p.tvl === 'number' ? p.tvl : 0;
         const change24h = typeof p.change_1d === 'number' ? p.change_1d : 0;
@@ -240,10 +255,10 @@ export class DAppDiscovery {
           sponsorshipTier: 'free' as const,
           featuredPosition: null,
           defiSecurityScore: null,
-          defiAuditReports: null,
-          defiHasMultisig: null,
-          defiHasTimelock: null,
-          defiDataFetchedAt: null,
+          defiAuditReports: defiAuditReports,
+          defiHasMultisig: defiHasMultisig,
+          defiHasTimelock: defiHasTimelock,
+          defiDataFetchedAt: new Date(),
           contractAddress: contractAddress,
           contractChain: contractChain,
         } as any;
@@ -814,6 +829,49 @@ export class DAppDiscovery {
     ];
   }
 
+  private extractAuditFirmFromUrl(url: string): string {
+    const firmPatterns: Record<string, string> = {
+      'certik': 'CertiK',
+      'hacken': 'Hacken',
+      'consensys': 'ConsenSys Diligence',
+      'trailofbits': 'Trail of Bits',
+      'trail-of-bits': 'Trail of Bits',
+      'peckshield': 'PeckShield',
+      'openzeppelin': 'OpenZeppelin',
+      'slowmist': 'SlowMist',
+      'quantstamp': 'Quantstamp',
+      'sigma-prime': 'Sigma Prime',
+      'sigmap': 'Sigma Prime',
+      'dedaub': 'Dedaub',
+      'mixbytes': 'MixBytes',
+      'code4rena': 'Code4rena',
+      'sherlock': 'Sherlock',
+      'solidified': 'Solidified',
+      'ackee': 'Ackee Blockchain',
+      'chainsecurity': 'ChainSecurity',
+      'halborn': 'Halborn',
+      'veridise': 'Veridise',
+      'cyfrin': 'Cyfrin',
+      'spearbit': 'Spearbit',
+      'cantina': 'Cantina',
+      'zokyo': 'Zokyo',
+      'omniscia': 'Omniscia',
+      'pwning': 'Pwning',
+      'trust-security': 'Trust Security',
+    };
+    const urlLower = url.toLowerCase();
+    for (const [key, name] of Object.entries(firmPatterns)) {
+      if (urlLower.includes(key)) return name;
+    }
+    // Try to extract domain name as fallback
+    try {
+      const domain = new URL(url).hostname.replace('www.', '').split('.')[0];
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    } catch {
+      return 'Unknown Auditor';
+    }
+  }
+
   private classifyCategory(p: any): string {
     const name = (p.name || '').toLowerCase();
     const cat = (p.category || '').toLowerCase();
@@ -872,17 +930,32 @@ export class DAppDiscovery {
     // Start with medium risk (50) and reduce based on positive indicators
     let score = 50;
 
-    // Parse audit count (DeFiLlama returns it as a string!)
+    // Audit signals
     const auditCount = parseInt(p.audits) || 0;
-    if (auditCount > 0) score -= 25; // Audited = much safer
-    
-    // High TVL indicates community trust
-    if (typeof p.tvl === 'number' && p.tvl > 100000000) score -= 10;
-    if (typeof p.tvl === 'number' && p.tvl > 1000000000) score -= 5;
-    
-    // Open source and social presence = transparency
-    if (p.twitter) score -= 5;
+    if (auditCount >= 3) score -= 30;
+    else if (auditCount > 0) score -= 20;
+
+    // Reputable audit firm detected in links
+    const auditLinks: string[] = p.audit_links || [];
+    const reputableFirms = ['certik', 'hacken', 'trailofbits', 'trail-of-bits', 'openzeppelin', 'consensys', 'chainsecurity', 'sigma-prime', 'spearbit'];
+    const hasReputableAudit = auditLinks.some(url =>
+      reputableFirms.some(firm => url.toLowerCase().includes(firm))
+    );
+    if (hasReputableAudit) score -= 10;
+
+    // High TVL indicates community trust and battle-tested status
+    if (typeof p.tvl === 'number' && p.tvl > 1_000_000_000) score -= 15;
+    else if (typeof p.tvl === 'number' && p.tvl > 100_000_000) score -= 10;
+    else if (typeof p.tvl === 'number' && p.tvl > 10_000_000) score -= 5;
+
+    // Transparency signals
     if (p.github) score -= 5;
+    if (p.twitter) score -= 3;
+
+    // Multisig / timelock detected in text
+    const combinedText = `${p.audit_note || ''} ${p.description || ''}`.toLowerCase();
+    if (combinedText.includes('multisig') || combinedText.includes('gnosis safe')) score -= 5;
+    if (combinedText.includes('timelock') || combinedText.includes('time-lock')) score -= 5;
 
     return Math.max(0, Math.min(100, score));
   }
