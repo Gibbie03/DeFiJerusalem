@@ -244,13 +244,13 @@ export default function ProtocolDetail() {
               <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Risk Assessment</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Risk score</span>
-                  <span className="font-bold">{score.toFixed(0)} / 100</span>
+                  <span className="text-sm">DFJ Security Score</span>
+                  <span className="font-bold">{score.toFixed(0)} / 97</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all ${score >= 80 ? 'bg-destructive' : score >= 60 ? 'bg-orange-500' : score >= 40 ? 'bg-yellow-500' : score >= 20 ? 'bg-blue-500' : 'bg-green-500'}`}
-                    style={{ width: `${Math.min(score, 100)}%` }}
+                    className={`h-2 rounded-full transition-all ${score >= 80 ? 'bg-green-500' : score >= 65 ? 'bg-blue-500' : score >= 50 ? 'bg-yellow-500' : score >= 30 ? 'bg-orange-500' : 'bg-destructive'}`}
+                    style={{ width: `${Math.min((score / 97) * 100, 100)}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between">

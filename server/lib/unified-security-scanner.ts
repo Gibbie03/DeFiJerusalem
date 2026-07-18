@@ -1,442 +1,473 @@
 /**
- * Unified Security Scanner
- * 
- * Consolidates all security detection systems into ONE cohesive scoring system:
- * - Metadata threat detection (drainer patterns, typosquatting)
- * - GoPlus smart contract analysis
- * - AI learning patterns
- * - Legitimacy indicators (audits, TVL, age)
- * 
- * Scoring System (0-100):
- * - 0-19: SAFE (excellent security)
- * - 20-39: LOW risk
- * - 40-59: MEDIUM risk
- * - 60-79: HIGH risk
- * - 80-100: CRITICAL risk (auto-blacklist)
- * 
- * Direction: LOWER IS BETTER (0 = safe, 100 = dangerous)
+ * Unified Security Scanner — DFJ v2.3
+ *
+ * Implements the full DFJ v2.3 scoring model:
+ *   Foundation  (max 45)  — what they built
+ *   Active      (max 55)  — how they protect now
+ *   Penalties   (max -30) — deductions for detected threat patterns
+ *   ──────────────────────────────────────────────
+ *   Final Score  0–97     HIGHER IS BETTER
+ *
+ * Severity thresholds (higher = safer):
+ *   80–97 → SAFE
+ *   65–79 → LOW risk
+ *   50–64 → MEDIUM risk
+ *   30–49 → HIGH risk
+ *   0–29  → CRITICAL risk  (auto-blacklist candidate)
  */
 
 import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 import type { IStorage } from '../storage';
-import { calculateLegitimacyScore, type SecurityIndicators } from './security-verification';
+import {
+  calculateFoundationScore,
+  type SecurityIndicators,
+} from './security-verification';
 import { scanContractWithGoPlus } from './goplus-scanner';
 import { threatLearner } from './threat-pattern-learner';
 
-/**
- * Lightweight metadata-based risk check — replaces wallet-drainer-detector
- * for protocol-level security analysis.
- */
-function scanProtocolMetadata(protocol: { name: string; description?: string | null; website?: string | null; category?: string | null }): { score: number; threats: Threat[] } {
-  const threats: Threat[] = [];
-  let score = 0;
+// ─── Penalty Detection ────────────────────────────────────────────────────────
 
+interface Penalty {
+  reason: string;
+  deduction: number;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+}
+
+const CRITICAL_KEYWORDS = ['drainer', 'honeypot', 'rug', 'scam', 'ponzi', 'pyramid', 'fake'];
+const HIGH_KEYWORDS = ['clone', 'airdrop claim', 'giveaway', 'guaranteed profit', '1000x'];
+const MEDIUM_KEYWORDS = ['unaudited', 'anonymous team', 'no audit'];
+const MAJOR_PROTOCOLS = ['uniswap', 'aave', 'compound', 'curve', 'lido', 'maker', 'sushiswap', 'balancer', 'yearn', 'convex'];
+
+function detectMetadataPenalties(
+  protocol: { name: string; description?: string | null; website?: string | null }
+): { penalties: Penalty[]; threats: Threat[] } {
+  const penalties: Penalty[] = [];
+  const threats: Threat[] = [];
   const text = `${protocol.name} ${protocol.description ?? ''} ${protocol.website ?? ''}`.toLowerCase();
 
-  // High-risk name patterns
-  const criticalKeywords = ['drainer', 'honeypot', 'rug', 'scam', 'ponzi', 'pyramid', 'fake'];
-  const highKeywords = ['clone', 'fork copy', 'airdrop claim', 'giveaway', 'guaranteed profit', '1000x'];
-  const mediumKeywords = ['unaudited', 'anonymous team', 'no audit'];
-
-  for (const kw of criticalKeywords) {
+  for (const kw of CRITICAL_KEYWORDS) {
     if (text.includes(kw)) {
-      score += 80;
-      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'CRITICAL', message: `Protocol name/description contains high-risk keyword: "${kw}"` });
+      penalties.push({ reason: `Critical keyword "${kw}"`, deduction: 15, severity: 'CRITICAL' });
+      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'CRITICAL', message: `Protocol contains high-risk keyword: "${kw}"` });
     }
   }
-  for (const kw of highKeywords) {
+  for (const kw of HIGH_KEYWORDS) {
     if (text.includes(kw)) {
-      score += 50;
-      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'HIGH', message: `Protocol name/description contains suspicious phrase: "${kw}"` });
+      penalties.push({ reason: `Suspicious phrase "${kw}"`, deduction: 7, severity: 'HIGH' });
+      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'HIGH', message: `Protocol contains suspicious phrase: "${kw}"` });
     }
   }
-  for (const kw of mediumKeywords) {
+  for (const kw of MEDIUM_KEYWORDS) {
     if (text.includes(kw)) {
-      score += 25;
+      penalties.push({ reason: `Risk indicator "${kw}"`, deduction: 3, severity: 'MEDIUM' });
       threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'MEDIUM', message: `Protocol indicates: "${kw}"` });
     }
   }
 
-  // Typosquatting — known major protocol names with slight variations
-  const majorProtocols = ['uniswap', 'aave', 'compound', 'curve', 'lido', 'maker', 'sushiswap', 'balancer', 'yearn', 'convex'];
-  const nameLower = protocol.name.toLowerCase().replace(/[\s-_]/g, '');
-  for (const major of majorProtocols) {
-    if (nameLower !== major && nameLower.includes(major) && !text.includes(`${major}.fi`) && !text.includes(`${major} protocol`)) {
-      // name contains a major protocol's name but isn't the actual protocol — possible typosquat
-      score += 30;
+  // Typosquatting
+  const nameLower = protocol.name.toLowerCase().replace(/[\s\-_]/g, '');
+  for (const major of MAJOR_PROTOCOLS) {
+    if (nameLower !== major && nameLower.includes(major)) {
+      penalties.push({ reason: `Possible typosquat of "${major}"`, deduction: 5, severity: 'MEDIUM' });
       threats.push({ type: 'POTENTIAL_TYPOSQUAT', severity: 'MEDIUM', message: `Name may be impersonating "${major}" — verify authenticity` });
       break;
     }
   }
 
-  return { score: Math.min(score, 100), threats };
+  return { penalties, threats };
 }
 
+// ─── Active Scoring (max 55) ──────────────────────────────────────────────────
+
+interface ActiveBreakdown {
+  securityInfrastructure: number; // A1 max 22
+  incidentResponse: number;       // A2 max 15
+  proactiveMonitoring: number;    // A3 max  7
+  economicHealth: number;         // A4 max  6
+  liveGovernance: number;         // A5 max  3
+  ongoingVigilance: number;       // A6 max  2
+  total: number;                  // max 55
+}
+
+/** A1 — Security Infrastructure (22 pts): current operational security mechanisms */
+function scoreSecurityInfrastructure(protocol: Protocol): number {
+  let score = 0;
+  if (protocol.defiHasMultisig) score += 9;  // multisig = strong admin access control
+  if (protocol.defiHasTimelock) score += 8;  // timelock = protection against rushed changes
+  if (protocol.github) score += 3;           // open source = community review ongoing
+  if (protocol.audited) score += 2;          // reviewed deployment
+  return Math.min(score, 22);
+}
+
+/** A2 — Incident Response (15 pts): bug bounty + community responsiveness */
+function scoreIncidentResponse(protocol: Protocol): number {
+  let score = 0;
+
+  const auditText = (protocol.auditNote || '').toLowerCase();
+  const hasBugBounty = /bug\s*bounty|immunefi|hackerone/.test(auditText);
+
+  if (hasBugBounty) {
+    score += 7;
+    // Larger bug bounty proportional to TVL = more serious program
+    if (protocol.tvl > 10_000_000) score += 3;
+    else if (protocol.tvl > 1_000_000) score += 1;
+  }
+
+  // Community channels = responsive team, transparent incident comms
+  const socialChannels = [protocol.twitter, protocol.discord, protocol.telegram].filter(Boolean).length;
+  score += Math.min(socialChannels * 1, 3);
+
+  // Multiple audits = proactive incident-prevention posture
+  if (protocol.auditCount >= 2) score += 2;
+
+  return Math.min(score, 15);
+}
+
+/** A3 — Proactive Monitoring (7 pts): active tooling to catch threats early */
+function scoreProactiveMonitoring(protocol: Protocol, hasGoPlusData: boolean): number {
+  let score = 0;
+  if (protocol.audited) score += 2;     // code monitoring commitment
+  if (hasGoPlusData) score += 2;        // on-chain risk monitoring integrated
+  if (protocol.github) score += 2;      // open source = community watches the code
+  if (protocol.defiHasMultisig && protocol.defiHasTimelock) score += 1; // dual safeguards
+  return Math.min(score, 7);
+}
+
+/** A4 — Economic Health (6 pts): protocol sustainability indicators */
+function scoreEconomicHealth(protocol: Protocol): number {
+  let score = 0;
+
+  // TVL stability proxy
+  if (protocol.tvl > 100_000_000) score += 3;
+  else if (protocol.tvl > 10_000_000) score += 2;
+  else if (protocol.tvl > 1_000_000) score += 1;
+
+  // Chain diversity = broader adoption
+  const chainCount = protocol.chains?.length ?? 0;
+  if (chainCount > 3) score += 2;
+  else if (chainCount > 1) score += 1;
+
+  // Category established = known, real product
+  if (protocol.category && protocol.category !== 'Other') score += 1;
+
+  return Math.min(score, 6);
+}
+
+/** A5 — Live Governance (3 pts): active, transparent governance */
+function scoreLiveGovernance(protocol: Protocol): number {
+  let score = 0;
+  if (protocol.defiHasMultisig) score += 1; // active governance mechanism
+  if (protocol.twitter) score += 1;          // public transparency
+  if (protocol.website) score += 1;          // public presence
+  return Math.min(score, 3);
+}
+
+/** A6 — Ongoing Vigilance (2 pts): chain-level continuous monitoring */
+function scoreOngoingVigilance(protocol: Protocol): number {
+  let score = 0;
+  if (protocol.audited && protocol.defiHasMultisig) score += 1;
+  if (protocol.github && protocol.audited) score += 1;
+  return Math.min(score, 2);
+}
+
+function calculateActiveScore(protocol: Protocol, hasGoPlusData: boolean): ActiveBreakdown {
+  const a1 = scoreSecurityInfrastructure(protocol);
+  const a2 = scoreIncidentResponse(protocol);
+  const a3 = scoreProactiveMonitoring(protocol, hasGoPlusData);
+  const a4 = scoreEconomicHealth(protocol);
+  const a5 = scoreLiveGovernance(protocol);
+  const a6 = scoreOngoingVigilance(protocol);
+  const total = Math.min(a1 + a2 + a3 + a4 + a5 + a6, 55);
+  return { securityInfrastructure: a1, incidentResponse: a2, proactiveMonitoring: a3, economicHealth: a4, liveGovernance: a5, ongoingVigilance: a6, total };
+}
+
+// ─── Public Result Type ───────────────────────────────────────────────────────
+
 export interface UnifiedSecurityResult {
-  // Final unified score (0-100, lower is better)
+  /** DFJ v2.3 score — 0 to 97. HIGHER IS BETTER. */
   score: number;
   severity: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   isBlacklisted: boolean;
-  
-  // All detected threats
   threats: Threat[];
-  
-  // Breakdown of scoring components
   breakdown: {
-    // Threat-based scoring (0-100, threats add points)
-    threatScore: number;
-    threatCount: number;
-    
-    // Legitimacy-based scoring (0-100, positive indicators)
-    legitimacyScore: number;
+    // Foundation sub-scores
+    foundationTotal: number;     // max 45
+    auditVerification: number;   // F1 max 18
+    codeContractHistory: number; // F2 max 12
+    trackRecord: number;         // F3 max 10
+    documentation: number;       // F4 max  3
+    historicalGovernance: number;// F5 max  2
+
+    // Active sub-scores
+    activeTotal: number;              // max 55
+    securityInfrastructure: number;   // A1 max 22
+    incidentResponse: number;         // A2 max 15
+    proactiveMonitoring: number;      // A3 max  7
+    economicHealth: number;           // A4 max  6
+    liveGovernance: number;           // A5 max  3
+    ongoingVigilance: number;         // A6 max  2
+
+    // Gross before penalties
+    grossScore: number;          // max 100 (Foundation + Active)
+
+    // Penalties
+    totalPenalty: number;        // max 30
+    penalties: Penalty[];
+
+    // Legacy fields (kept for UI compatibility)
+    legitimacyScore: number;     // = foundationTotal (0–45, higher=better)
     legitimacyIndicators: SecurityIndicators;
-    
-    // GoPlus contract analysis
-    goPlusScore: number;
+    goPlusScore: number;         // goplus penalty contribution
     goPlusThreats: string[];
-    
-    // AI-learned patterns
     aiPatternMatches: number;
     aiConfidence: number;
-    
-    // Final adjustment factors
-    verificationBonus: number; // Reduces score for verified protocols
-    tvlBonus: number; // Reduces score for high TVL
-    auditBonus: number; // Reduces score for audited protocols
+    verificationBonus: number;   // unused (kept for schema compat, always 0)
+    tvlBonus: number;            // unused (kept for schema compat, always 0)
+    auditBonus: number;          // unused (kept for schema compat, always 0)
   };
-  
-  // Recommendations
   recommendations: string[];
-  
-  // Metadata
   scannedAt: string;
   scanDuration: number;
 }
 
+// ─── Main Scanner ─────────────────────────────────────────────────────────────
+
 export class UnifiedSecurityScanner {
   constructor(private storage: IStorage) {}
-  
-  /**
-   * Perform comprehensive security scan combining all detection methods
-   */
+
   async scanProtocol(protocol: Protocol): Promise<UnifiedSecurityResult> {
     const startTime = Date.now();
     const allThreats: Threat[] = [];
+    const allPenalties: Penalty[] = [];
     const recommendations: string[] = [];
-    
-    // ====================
-    // 1. METADATA THREAT DETECTION
-    // ====================
-    const metadataScan = scanProtocolMetadata(protocol);
-    allThreats.push(...metadataScan.threats);
-    const threatScore = metadataScan.score; // 0-100 (threats add points)
-    
-    // ====================
-    // 2. LEGITIMACY SCORING
-    // ====================
-    const legitimacyResult = calculateLegitimacyScore(protocol);
-    const legitimacyScore = legitimacyResult.score; // 0-100 (positive indicators)
-    const legitimacyIndicators = legitimacyResult.indicators;
-    
-    // ====================
-    // 3. GOPLUS CONTRACT ANALYSIS
-    // ====================
-    let goPlusScore = 0;
+
+    // ── 1. Foundation Score ────────────────────────────────────────────────
+    const { score: foundationScore, breakdown: foundationBreakdown, indicators } =
+      calculateFoundationScore(protocol);
+
+    // ── 2. Metadata Penalty Detection ─────────────────────────────────────
+    const { penalties: metaPenalties, threats: metaThreats } = detectMetadataPenalties(protocol);
+    allPenalties.push(...metaPenalties);
+    allThreats.push(...metaThreats);
+
+    // ── 3. GoPlus Contract Analysis (penalties only) ──────────────────────
+    let goPlusScore = 0; // penalty contribution from goplus
     const goPlusThreats: string[] = [];
-    
-    // Only scan if we have contracts
+    let hasGoPlusData = false;
+
     if (protocol.defiContracts && protocol.defiContracts.length > 0) {
       try {
-        const contract = protocol.defiContracts[0]; // Scan primary contract
-        const chain = this.mapChainToGoPlusId(protocol.chains[0] || 'ethereum');
-        
+        const contract = protocol.defiContracts[0];
+        const chain = this.mapChainToGoPlusId(protocol.chains?.[0] || 'ethereum');
         if (chain) {
           const goPlusResult = await scanContractWithGoPlus(contract.address, chain);
-          
           if (goPlusResult) {
-            // Convert GoPlus results to threat score
+            hasGoPlusData = true;
             if (goPlusResult.isHoneypot) {
-              goPlusScore += 95;
+              const d = 15;
+              goPlusScore += d;
+              allPenalties.push({ reason: 'Honeypot contract', deduction: d, severity: 'CRITICAL' });
               goPlusThreats.push('Honeypot contract detected');
-              allThreats.push({
-                type: 'HONEYPOT',
-                severity: 'CRITICAL',
-                message: 'GoPlus detected honeypot contract - users cannot sell tokens'
-              });
+              allThreats.push({ type: 'HONEYPOT', severity: 'CRITICAL', message: 'GoPlus detected honeypot — users cannot sell tokens' });
             }
-            
             if (goPlusResult.isProxy && !goPlusResult.isOpenSource) {
-              goPlusScore += 60;
-              goPlusThreats.push('Proxy contract without open source code');
-              allThreats.push({
-                type: 'PROXY_NO_SOURCE',
-                severity: 'HIGH',
-                message: 'Upgradeable proxy contract without verified source code'
-              });
+              const d = 8;
+              goPlusScore += d;
+              allPenalties.push({ reason: 'Proxy without open source', deduction: d, severity: 'HIGH' });
+              goPlusThreats.push('Upgradeable proxy without verified source');
+              allThreats.push({ type: 'PROXY_NO_SOURCE', severity: 'HIGH', message: 'Upgradeable proxy contract without verified source code' });
             }
-            
-            if (goPlusResult.isAntiWhale) {
-              goPlusScore += 30;
-              goPlusThreats.push('Anti-whale mechanism (could be used maliciously)');
-            }
-            
             if (!goPlusResult.isOpenSource) {
-              goPlusScore += 40;
-              goPlusThreats.push('Contract source code not verified');
-              allThreats.push({
-                type: 'UNVERIFIED_CONTRACT',
-                severity: 'MEDIUM',
-                message: 'Smart contract source code is not verified on block explorer'
-              });
+              const d = 5;
+              goPlusScore += d;
+              allPenalties.push({ reason: 'Unverified contract source', deduction: d, severity: 'MEDIUM' });
+              goPlusThreats.push('Contract source not verified');
+              allThreats.push({ type: 'UNVERIFIED_CONTRACT', severity: 'MEDIUM', message: 'Smart contract source is not verified on block explorer' });
+            }
+            if (goPlusResult.isAntiWhale) {
+              const d = 3;
+              goPlusScore += d;
+              allPenalties.push({ reason: 'Anti-whale mechanism', deduction: d, severity: 'MEDIUM' });
+              goPlusThreats.push('Anti-whale mechanism (potential misuse)');
             }
           }
         }
-      } catch (error) {
-        console.error('GoPlus scan error:', error);
-        // Don't fail the entire scan if GoPlus fails
+      } catch (err) {
+        console.error('GoPlus scan error:', err);
       }
     }
-    
-    // ====================
-    // 4. AI PATTERN LEARNING
-    // ====================
+
+    // ── 4. AI Pattern Penalties ────────────────────────────────────────────
     let aiPatternMatches = 0;
     let aiConfidence = 0;
-    
     try {
       const patterns = await threatLearner.getPatterns();
       const protocolText = `${protocol.name} ${protocol.description || ''} ${protocol.website || ''}`.toLowerCase();
-      
       for (const pattern of patterns) {
         if (protocolText.includes(pattern.pattern.toLowerCase())) {
           aiPatternMatches++;
           aiConfidence = Math.max(aiConfidence, pattern.confidence);
-          
-          // Add AI-learned threat
+          const d = Math.ceil(pattern.confidence * 5);
+          allPenalties.push({ reason: `AI pattern: "${pattern.pattern}"`, deduction: d, severity: 'MEDIUM' });
           allThreats.push({
             type: 'AI_LEARNED_PATTERN',
             severity: pattern.confidence > 0.8 ? 'HIGH' : 'MEDIUM',
-            message: `AI detected learned threat pattern: "${pattern.pattern}" (confidence: ${(pattern.confidence * 100).toFixed(0)}%)`
+            message: `AI detected threat pattern: "${pattern.pattern}" (${(pattern.confidence * 100).toFixed(0)}% confidence)`,
           });
         }
       }
-    } catch (error) {
-      console.error('AI pattern scan error:', error);
+    } catch (err) {
+      console.error('AI pattern scan error:', err);
     }
-    
-    const aiScore = aiPatternMatches * 50 * aiConfidence; // Each pattern adds weighted score
-    
-    // ====================
-    // 5. CALCULATE UNIFIED SCORE
-    // ====================
-    
-    // Start with threat-based scores (additive)
-    let rawScore = threatScore + goPlusScore + aiScore;
-    
-    // Apply legitimacy-based bonuses (subtractive)
-    // Legitimacy score of 100 = -50 points bonus
-    // This means a highly legitimate protocol needs VERY strong threat signals to be flagged
-    const legitimacyBonus = Math.floor(legitimacyScore / 2); // 0-50 points reduction
-    
-    // Additional verification bonuses
-    let verificationBonus = 0;
-    let tvlBonus = 0;
-    let auditBonus = 0;
-    
-    // High TVL = strong community trust
-    if (protocol.tvl > 100_000_000) {
-      tvlBonus = 30; // $100M+ TVL
-    } else if (protocol.tvl > 50_000_000) {
-      tvlBonus = 20; // $50M+ TVL
-    } else if (protocol.tvl > 10_000_000) {
-      tvlBonus = 10; // $10M+ TVL
-    }
-    
-    // Audits from reputable firms
-    if (legitimacyIndicators.reputableAuditFirm) {
-      auditBonus = 25;
-    } else if (legitimacyIndicators.hasAudit) {
-      auditBonus = 15;
-    }
-    
-    // Well-established protocol (age + GitHub)
-    if (protocol.age && protocol.age > 365 && legitimacyIndicators.hasOpenSource) {
-      verificationBonus = 20;
-    } else if (protocol.age && protocol.age > 180) {
-      verificationBonus = 10;
-    }
-    
-    // Apply all bonuses (reduce score)
-    const totalBonus = legitimacyBonus + verificationBonus + tvlBonus + auditBonus;
-    const finalScore = Math.max(0, Math.min(100, rawScore - totalBonus));
-    
-    // ====================
-    // 6. DETERMINE SEVERITY
-    // ====================
+
+    // ── 5. Active Score ────────────────────────────────────────────────────
+    const activeBreakdown = calculateActiveScore(protocol, hasGoPlusData);
+
+    // ── 6. Gross Score (Foundation + Active, max 100) ──────────────────────
+    const grossScore = Math.min(foundationScore + activeBreakdown.total, 100);
+
+    // ── 7. Apply Penalties (max -30) ───────────────────────────────────────
+    const totalPenalty = Math.min(
+      allPenalties.reduce((sum, p) => sum + p.deduction, 0),
+      30
+    );
+    const finalScore = Math.max(0, Math.min(97, grossScore - totalPenalty));
+
+    // ── 8. Severity (higher = safer) ────────────────────────────────────────
     let severity: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-    if (finalScore >= 80) severity = 'CRITICAL';
-    else if (finalScore >= 60) severity = 'HIGH';
-    else if (finalScore >= 40) severity = 'MEDIUM';
-    else if (finalScore >= 20) severity = 'LOW';
-    else severity = 'SAFE';
-    
-    // ====================
-    // 7. AUTO-BLACKLIST LOGIC
-    // ====================
+    if (finalScore >= 80) severity = 'SAFE';
+    else if (finalScore >= 65) severity = 'LOW';
+    else if (finalScore >= 50) severity = 'MEDIUM';
+    else if (finalScore >= 30) severity = 'HIGH';
+    else severity = 'CRITICAL';
+
+    // ── 9. Auto-blacklist (CRITICAL risk only) ─────────────────────────────
     const isBlacklisted = severity === 'CRITICAL';
-    
-    // ====================
-    // 8. GENERATE RECOMMENDATIONS
-    // ====================
-    if (finalScore === 0 && allThreats.length === 0) {
-      recommendations.push('Protocol shows no security concerns based on our analysis');
-    }
-    
-    if (finalScore > 0 && finalScore < 20) {
-      recommendations.push('Low risk detected - proceed with normal caution');
-    }
-    
-    if (!legitimacyIndicators.hasAudit) {
-      recommendations.push('Consider waiting for security audit before using');
-    }
-    
-    if (!legitimacyIndicators.hasOpenSource) {
-      recommendations.push('Contract source code is not verified - higher risk');
-    }
-    
-    if (protocol.tvl < 1_000_000) {
-      recommendations.push('Low TVL - limited community validation');
-    }
-    
-    if (finalScore >= 40) {
-      recommendations.push('CAUTION: Security concerns detected - research thoroughly before interacting');
-    }
-    
-    if (finalScore >= 60) {
-      recommendations.push('HIGH RISK: Multiple security red flags - avoid unless you understand the risks');
-    }
-    
+
+    // ── 10. Recommendations ────────────────────────────────────────────────
     if (finalScore >= 80) {
-      recommendations.push('CRITICAL: Do NOT interact with this protocol - high probability of scam');
+      recommendations.push('Strong security posture — meets most DFJ best practices');
+    } else if (finalScore >= 65) {
+      recommendations.push('Good security with minor gaps — proceed with normal diligence');
     }
-    
-    // ====================
-    // 9. RETURN UNIFIED RESULT
-    // ====================
-    const scanDuration = Date.now() - startTime;
-    
+    if (!indicators.hasAudit) {
+      recommendations.push('No security audit found — higher risk until independently reviewed');
+    }
+    if (!indicators.hasOpenSource) {
+      recommendations.push('Contract source code not verified — cannot assess code quality');
+    }
+    if (!indicators.hasMultisig) {
+      recommendations.push('No multi-sig detected — admin keys are a single point of failure');
+    }
+    if (!indicators.hasTimelock) {
+      recommendations.push('No timelock detected — contract changes can be applied instantly');
+    }
+    if (protocol.tvl < 1_000_000) {
+      recommendations.push('Low TVL — limited community validation of this protocol');
+    }
+    if (finalScore < 50) {
+      recommendations.push('CAUTION: Multiple security concerns — research thoroughly before interacting');
+    }
+    if (finalScore < 30) {
+      recommendations.push('HIGH RISK: Significant red flags — avoid unless you fully understand the risks');
+    }
+    if (finalScore < 15) {
+      recommendations.push('CRITICAL: Do NOT interact — high probability of loss or scam');
+    }
+
     return {
       score: finalScore,
       severity,
       isBlacklisted,
       threats: allThreats,
       breakdown: {
-        threatScore,
-        threatCount: metadataScan.threats.length + goPlusThreats.length,
-        legitimacyScore,
-        legitimacyIndicators,
+        foundationTotal: foundationBreakdown.total,
+        auditVerification: foundationBreakdown.auditVerification,
+        codeContractHistory: foundationBreakdown.codeContractHistory,
+        trackRecord: foundationBreakdown.trackRecord,
+        documentation: foundationBreakdown.documentation,
+        historicalGovernance: foundationBreakdown.historicalGovernance,
+        activeTotal: activeBreakdown.total,
+        securityInfrastructure: activeBreakdown.securityInfrastructure,
+        incidentResponse: activeBreakdown.incidentResponse,
+        proactiveMonitoring: activeBreakdown.proactiveMonitoring,
+        economicHealth: activeBreakdown.economicHealth,
+        liveGovernance: activeBreakdown.liveGovernance,
+        ongoingVigilance: activeBreakdown.ongoingVigilance,
+        grossScore,
+        totalPenalty,
+        penalties: allPenalties,
+        // Legacy compat
+        legitimacyScore: foundationBreakdown.total,
+        legitimacyIndicators: indicators,
         goPlusScore,
         goPlusThreats,
         aiPatternMatches,
         aiConfidence,
-        verificationBonus,
-        tvlBonus,
-        auditBonus
+        verificationBonus: 0,
+        tvlBonus: 0,
+        auditBonus: 0,
       },
       recommendations,
       scannedAt: new Date().toISOString(),
-      scanDuration
+      scanDuration: Date.now() - startTime,
     };
   }
-  
-  /**
-   * Map chain name to GoPlus chain ID
-   */
-  private mapChainToGoPlusId(chain: string): string | null {
-    const chainMap: Record<string, string> = {
-      'ethereum': '1',
-      'bsc': '56',
-      'polygon': '137',
-      'arbitrum': '42161',
-      'optimism': '10',
-      'avalanche': '43114',
-      'fantom': '250',
-      'base': '8453'
-    };
-    
-    const normalized = chain.toLowerCase();
-    return chainMap[normalized] || null;
-  }
-  
-  /**
-   * Batch scan multiple protocols
-   */
+
   async scanProtocols(protocols: Protocol[]): Promise<Map<string, UnifiedSecurityResult>> {
     const results = new Map<string, UnifiedSecurityResult>();
-    
-    // Scan in parallel batches of 5
     const batchSize = 5;
     for (let i = 0; i < protocols.length; i += batchSize) {
       const batch = protocols.slice(i, i + batchSize);
       const batchResults = await Promise.all(
-        batch.map(async (protocol) => {
+        batch.map(async p => {
           try {
-            const result = await this.scanProtocol(protocol);
-            return { id: protocol.id, result };
-          } catch (error) {
-            console.error(`Error scanning protocol ${protocol.id}:`, error);
-            return {
-              id: protocol.id,
-              result: this.getErrorResult(protocol, error)
-            };
+            return { id: p.id, result: await this.scanProtocol(p) };
+          } catch (err) {
+            console.error(`Error scanning ${p.id}:`, err);
+            return { id: p.id, result: this.getErrorResult(p) };
           }
         })
       );
-      
-      batchResults.forEach(({ id, result }) => {
-        results.set(id, result);
-      });
+      batchResults.forEach(({ id, result }) => results.set(id, result));
     }
-    
     return results;
   }
-  
-  /**
-   * Generate error result for failed scans
-   */
-  private getErrorResult(protocol: Protocol, error: unknown): UnifiedSecurityResult {
+
+  private mapChainToGoPlusId(chain: string): string | null {
+    const map: Record<string, string> = {
+      ethereum: '1', bsc: '56', polygon: '137', arbitrum: '42161',
+      optimism: '10', avalanche: '43114', fantom: '250', base: '8453',
+    };
+    return map[chain.toLowerCase()] || null;
+  }
+
+  private getErrorResult(protocol: Protocol): UnifiedSecurityResult {
     return {
       score: 0,
-      severity: 'LOW',
+      severity: 'CRITICAL',
       isBlacklisted: false,
       threats: [],
       breakdown: {
-        threatScore: 0,
-        threatCount: 0,
+        foundationTotal: 0, auditVerification: 0, codeContractHistory: 0,
+        trackRecord: 0, documentation: 0, historicalGovernance: 0,
+        activeTotal: 0, securityInfrastructure: 0, incidentResponse: 0,
+        proactiveMonitoring: 0, economicHealth: 0, liveGovernance: 0, ongoingVigilance: 0,
+        grossScore: 0, totalPenalty: 0, penalties: [],
         legitimacyScore: 0,
         legitimacyIndicators: {
-          hasAudit: false,
-          reputableAuditFirm: false,
-          tvlSignificant: false,
-          hasOpenSource: false,
-          hasMultisig: false,
-          hasTimelock: false,
-          hasBugBounty: false,
-          hasDoxxedTeam: false,
-          goodTokenDistribution: false,
-          activeCommunity: false
+          hasAudit: false, reputableAuditFirm: false, formalVerification: false,
+          tvlSignificant: false, hasOpenSource: false, hasMultisig: false,
+          hasTimelock: false, hasBugBounty: false, hasDoxxedTeam: false,
+          goodTokenDistribution: false, activeCommunity: false,
         },
-        goPlusScore: 0,
-        goPlusThreats: [],
-        aiPatternMatches: 0,
-        aiConfidence: 0,
-        verificationBonus: 0,
-        tvlBonus: 0,
-        auditBonus: 0
+        goPlusScore: 0, goPlusThreats: [],
+        aiPatternMatches: 0, aiConfidence: 0,
+        verificationBonus: 0, tvlBonus: 0, auditBonus: 0,
       },
-      recommendations: ['Scan failed - unable to analyze protocol security'],
+      recommendations: ['Scan failed — unable to analyze protocol security'],
       scannedAt: new Date().toISOString(),
-      scanDuration: 0
+      scanDuration: 0,
     };
   }
 }

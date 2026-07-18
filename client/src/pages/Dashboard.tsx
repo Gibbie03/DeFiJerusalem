@@ -297,12 +297,11 @@ export default function Dashboard() {
       sorted.sort((a, b) => b.tvl - a.tvl);
     } else if (sortBy === 'security') {
       // Use real-time scan scores when available, otherwise use cached securityScore
-      // Unified scoring system: 0 = SAFE (best), 100 = CRITICAL (worst)
-      // Sort ASCENDING to show safest protocols first
+      // DFJ v2.3: higher score = safer. Sort DESCENDING to show safest first.
       sorted.sort((a, b) => {
         const scoreA = securityScans[a.id]?.score ?? a.securityScore;
         const scoreB = securityScans[b.id]?.score ?? b.securityScore;
-        return scoreA - scoreB; // Ascending: lower scores (safer) first
+        return scoreB - scoreA; // Descending: higher scores (safer) first
       });
     }
     

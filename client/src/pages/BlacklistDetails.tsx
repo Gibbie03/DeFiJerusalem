@@ -79,10 +79,11 @@ export default function BlacklistDetails() {
   };
 
   const getLegitimacyRating = (score: number) => {
-    if (score >= 90) {
-      return { label: 'HIGHLY LEGITIMATE', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: CheckCircle2 };
-    } else if (score >= 70) {
-      return { label: 'LEGITIMATE', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: CheckCircle2 };
+    // DFJ v2.3: higher = safer
+    if (score >= 80) {
+      return { label: 'EXCELLENT', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: CheckCircle2 };
+    } else if (score >= 65) {
+      return { label: 'GOOD', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: CheckCircle2 };
     } else if (score >= 50) {
       return { label: 'MODERATE RISK', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: AlertTriangle };
     } else if (score >= 30) {

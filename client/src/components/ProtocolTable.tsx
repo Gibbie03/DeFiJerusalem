@@ -96,37 +96,31 @@ const ProtocolRow = memo(({
   };
 
   const getSecurityBadge = (score: number) => {
-    // UNIFIED SCORING: 0 = SAFE (best), 100 = CRITICAL (worst)
-    // Lower scores = safer (green), Higher scores = riskier (red)
+    // DFJ v2.3: HIGHER IS BETTER (97 = safest, 0 = most dangerous)
     if (score >= 80) {
-      // CRITICAL: 80-100
-      return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">{score}</Badge>;
-    } else if (score >= 60) {
-      // HIGH: 60-79
-      return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">{score}</Badge>;
-    } else if (score >= 40) {
-      // MEDIUM: 40-59
-      return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">{score}</Badge>;
-    } else if (score >= 20) {
-      // LOW: 20-39
+      return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">{score}</Badge>;
+    } else if (score >= 65) {
       return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">{score}</Badge>;
+    } else if (score >= 50) {
+      return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">{score}</Badge>;
+    } else if (score >= 30) {
+      return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">{score}</Badge>;
     }
-    // SAFE: 0-19
-    return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">{score}</Badge>;
+    return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">{score}</Badge>;
   };
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case 'CRITICAL':
-        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0">Risk: Critical</Badge>;
+        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0">Critical Risk</Badge>;
       case 'HIGH':
-        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 text-[10px] px-1.5 py-0">Risk: High</Badge>;
+        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 text-[10px] px-1.5 py-0">High Risk</Badge>;
       case 'MEDIUM':
-        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">Risk: Medium</Badge>;
+        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">Moderate</Badge>;
       case 'LOW':
-        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0">Risk: Low</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0">Low Risk</Badge>;
       default:
-        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0">Risk: Safe</Badge>;
+        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0">Safe</Badge>;
     }
   };
 

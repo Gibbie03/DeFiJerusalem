@@ -1234,7 +1234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Top threats (protocols with highest risk scores)
       const topThreats = securityScansData
-        .filter((scan: any) => scan.score >= 60)
+        .filter((scan: any) => scan.score <= 40)
         .map((scan: any) => {
           const protocol = protocolsData.find((p: any) => p.id === scan.protocolId);
           return {

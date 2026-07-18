@@ -1,24 +1,36 @@
 import { Protocol, SecurityMetrics } from '@shared/schema';
 
 /**
- * Security Verification Utility
- * Scores protocols against 10 key security indicators based on 2025 DeFi security best practices
+ * DFJ Security Scoring — Foundation Component (v2.3)
+ *
+ * Implements the Foundation layer (max 45 pts) of the DFJ v2.3 methodology.
+ * Direction: HIGHER IS BETTER (100 = safest, 0 = most dangerous).
+ *
+ * Sub-components:
+ *   F1 — Audit & Verification       18 pts
+ *   F2 — Code & Contract History    12 pts
+ *   F3 — Track Record               10 pts
+ *   F4 — Documentation               3 pts
+ *   F5 — Historical Governance       2 pts
+ *   ──────────────────────────────────────
+ *   Foundation total                45 pts
  */
 
 export interface SecurityIndicators {
-  hasAudit: boolean;                    // 15 points - Critical (94% fewer hacks with audits)
-  reputableAuditFirm: boolean;          // 10 points - CertiK, Hacken, ConsenSys, PeckShield
-  tvlSignificant: boolean;              // 10 points - TVL > $1M indicates trust
-  hasOpenSource: boolean;               // 10 points - Code transparency
-  hasMultisig: boolean;                 // 10 points - Only 19% of hacked protocols used multi-sig
-  hasTimelock: boolean;                 // 10 points - Critical function protection
-  hasBugBounty: boolean;                // 10 points - Active security program
-  hasDoxxedTeam: boolean;               // 10 points - Team transparency
-  goodTokenDistribution: boolean;       // 10 points - No whale control (< 40% by top holders)
-  activeCommunity: boolean;             // 5 points - Social media presence
+  hasAudit: boolean;
+  reputableAuditFirm: boolean;
+  formalVerification: boolean;
+  tvlSignificant: boolean;
+  hasOpenSource: boolean;
+  hasMultisig: boolean;
+  hasTimelock: boolean;
+  hasBugBounty: boolean;
+  hasDoxxedTeam: boolean;
+  goodTokenDistribution: boolean;
+  activeCommunity: boolean;
 }
 
-const REPUTABLE_AUDITORS = [
+export const REPUTABLE_AUDITORS = [
   'certik',
   'hacken',
   'consensys',
@@ -28,194 +40,243 @@ const REPUTABLE_AUDITORS = [
   'quantstamp',
   'slowmist',
   'immunefi',
-  'dedaub'
+  'dedaub',
+  'chainsecurity',
+  'sigma prime',
+  'abdk',
+  'spearbit',
+  'sherlock',
+  'code4rena',
 ];
 
-/**
- * Calculate legitimacy score (0-100) based on security indicators
- */
-export function calculateLegitimacyScore(
-  protocol: Protocol,
-  securityMetrics?: SecurityMetrics
-): { score: number; indicators: SecurityIndicators; metrics: SecurityMetrics } {
-  const metrics: SecurityMetrics = securityMetrics || extractSecurityMetrics(protocol);
-  
-  const indicators: SecurityIndicators = {
-    // 1. Has Security Audit (15 points)
-    hasAudit: protocol.audited || protocol.auditCount > 0,
-    
-    // 2. Reputable Audit Firm (10 points)
-    reputableAuditFirm: hasReputableAudit(protocol),
-    
-    // 3. Significant TVL (10 points) - $1M+ indicates community trust
-    tvlSignificant: protocol.tvl >= 1_000_000,
-    
-    // 4. Open Source Code (10 points)
-    hasOpenSource: !!protocol.github || metrics.hasOpenSource,
-    
-    // 5. Multi-signature Wallet (10 points)
-    hasMultisig: protocol.defiHasMultisig || metrics.hasMultisig,
-    
-    // 6. Timelock Mechanism (10 points)
-    hasTimelock: protocol.defiHasTimelock || metrics.hasTimelock,
-    
-    // 7. Bug Bounty Program (10 points)
-    hasBugBounty: metrics.hasBugBounty,
-    
-    // 8. Doxxed Team (10 points)
-    hasDoxxedTeam: metrics.hasDoxxedTeam,
-    
-    // 9. Good Token Distribution (10 points) - Estimated from holder count
-    goodTokenDistribution: estimateGoodDistribution(metrics.holderCount),
-    
-    // 10. Active Community (5 points)
-    activeCommunity: hasActiveCommunity(protocol, metrics.communitySize)
-  };
+const FORMAL_VERIFICATION_TERMS = [
+  'certora',
+  'runtime verification',
+  'formal verification',
+  'formally verified',
+  'mutation testing',
+];
 
-  // Calculate total score
+// ─── F1: Audit & Verification (18 pts) ───────────────────────────────────────
+
+function scoreAuditVerification(protocol: Protocol): number {
   let score = 0;
-  if (indicators.hasAudit) score += 15;
-  if (indicators.reputableAuditFirm) score += 10;
-  if (indicators.tvlSignificant) score += 10;
-  if (indicators.hasOpenSource) score += 10;
-  if (indicators.hasMultisig) score += 10;
-  if (indicators.hasTimelock) score += 10;
-  if (indicators.hasBugBounty) score += 10;
-  if (indicators.hasDoxxedTeam) score += 10;
-  if (indicators.goodTokenDistribution) score += 10;
-  if (indicators.activeCommunity) score += 5;
 
-  return { score, indicators, metrics };
-}
+  const hasAudit = protocol.audited || protocol.auditCount > 0;
+  if (!hasAudit) return 0;
 
-/**
- * Check if protocol has audit from reputable firm
- */
-function hasReputableAudit(protocol: Protocol): boolean {
-  if (!protocol.auditNote && !protocol.defiAuditReports) return false;
-  
+  // Base credit for having any audit
+  score += 6;
+
+  // Reputable audit firm
   const auditText = (protocol.auditNote || '').toLowerCase();
   const auditReports = protocol.defiAuditReports || [];
-  
-  // Check audit note for reputable firm names
-  const hasReputableInNote = REPUTABLE_AUDITORS.some(auditor => 
-    auditText.includes(auditor)
+  const isReputable = REPUTABLE_AUDITORS.some(
+    a => auditText.includes(a) || auditReports.some(r => r.auditor.toLowerCase().includes(a))
   );
-  
-  // Check audit reports for reputable firm names
-  const hasReputableInReports = auditReports.some(report => 
-    REPUTABLE_AUDITORS.some(auditor => 
-      report.auditor.toLowerCase().includes(auditor)
-    )
-  );
-  
-  return hasReputableInNote || hasReputableInReports;
+  if (isReputable) score += 4;
+
+  // Multiple audits
+  const count = protocol.auditCount || (protocol.audited ? 1 : 0);
+  if (count >= 5) score += 5;
+  else if (count >= 3) score += 4;
+  else if (count >= 2) score += 2;
+
+  // Formal verification (highest tier)
+  if (FORMAL_VERIFICATION_TERMS.some(t => auditText.includes(t))) score += 3;
+
+  return Math.min(score, 18);
 }
 
-/**
- * Estimate good token distribution from holder count
- * More holders = better distribution (heuristic)
- */
-function estimateGoodDistribution(holderCount: number | null): boolean {
-  if (!holderCount) return false;
-  // If >1000 holders, likely good distribution
-  // This is a heuristic - ideally we'd check actual top holder percentages
-  return holderCount > 1000;
+// ─── F2: Code & Contract History (12 pts) ────────────────────────────────────
+
+function scoreCodeContractHistory(protocol: Protocol): number {
+  let score = 0;
+
+  // Open source
+  if (protocol.github) score += 4;
+
+  // Verified on-chain contracts
+  if (protocol.defiContracts && protocol.defiContracts.length > 0) score += 3;
+
+  // Age-based code maturity (time-tested without major incidents)
+  const age = protocol.age ?? 0;
+  if (age > 730) score += 3;        // 2+ years
+  else if (age > 365) score += 2;   // 1+ year
+  else if (age > 180) score += 1;   // 6+ months
+
+  // Reviewed deployment (had at least one audit before go-live)
+  if (protocol.audited) score += 2;
+
+  return Math.min(score, 12);
 }
 
-/**
- * Check if protocol has active community
- */
-function hasActiveCommunity(protocol: Protocol, communitySize: number | null): boolean {
-  const hasSocials = !!(protocol.twitter || protocol.github || protocol.website);
-  const hasLargeCommunity = communitySize && communitySize > 1000;
-  
-  return hasSocials && (hasLargeCommunity || protocol.tvl > 10_000_000);
+// ─── F3: Track Record (10 pts) ───────────────────────────────────────────────
+
+function scoreTrackRecord(protocol: Protocol): number {
+  let score = 0;
+
+  // TVL as community-validated trust signal
+  if (protocol.tvl > 100_000_000) score += 4;
+  else if (protocol.tvl > 10_000_000) score += 3;
+  else if (protocol.tvl > 1_000_000) score += 2;
+  else if (protocol.tvl > 100_000) score += 1;
+
+  // Protocol age (survived = track record)
+  const age = protocol.age ?? 0;
+  if (age > 730) score += 4;        // 2+ years operating
+  else if (age > 365) score += 3;   // 1+ year
+  else if (age > 180) score += 2;   // 6+ months
+  else if (age > 90) score += 1;    // 3+ months
+
+  // Longevity + scale bonus: old protocol with meaningful TVL → proven survivor
+  if (age > 365 && protocol.tvl > 1_000_000) score += 2;
+
+  return Math.min(score, 10);
 }
 
-/**
- * Extract security metrics from protocol data
- */
-export function extractSecurityMetrics(protocol: Protocol): SecurityMetrics {
-  const auditFirms: string[] = [];
-  
-  // Extract audit firms from audit note
-  if (protocol.auditNote) {
-    REPUTABLE_AUDITORS.forEach(auditor => {
-      if (protocol.auditNote!.toLowerCase().includes(auditor)) {
-        auditFirms.push(auditor);
-      }
-    });
-  }
-  
-  // Extract audit firms from audit reports
-  if (protocol.defiAuditReports) {
-    protocol.defiAuditReports.forEach(report => {
-      if (!auditFirms.includes(report.auditor)) {
-        auditFirms.push(report.auditor);
-      }
-    });
-  }
-  
-  return {
+// ─── F4: Documentation (3 pts) ───────────────────────────────────────────────
+
+function scoreDocumentation(protocol: Protocol): number {
+  let score = 0;
+  if (protocol.website) score += 1;
+  if (protocol.description && protocol.description.length > 50) score += 1;
+  if (protocol.github) score += 1;
+  return Math.min(score, 3);
+}
+
+// ─── F5: Historical Governance (2 pts) ───────────────────────────────────────
+
+function scoreHistoricalGovernance(protocol: Protocol): number {
+  let score = 0;
+  if (protocol.defiHasTimelock) score += 1;
+  if (protocol.defiHasMultisig) score += 1;
+  return Math.min(score, 2);
+}
+
+// ─── Public: calculateFoundationScore ────────────────────────────────────────
+
+export interface FoundationBreakdown {
+  auditVerification: number;   // F1 (max 18)
+  codeContractHistory: number; // F2 (max 12)
+  trackRecord: number;         // F3 (max 10)
+  documentation: number;       // F4 (max 3)
+  historicalGovernance: number;// F5 (max 2)
+  total: number;               // max 45
+}
+
+export function calculateFoundationScore(
+  protocol: Protocol
+): { score: number; breakdown: FoundationBreakdown; indicators: SecurityIndicators } {
+  const f1 = scoreAuditVerification(protocol);
+  const f2 = scoreCodeContractHistory(protocol);
+  const f3 = scoreTrackRecord(protocol);
+  const f4 = scoreDocumentation(protocol);
+  const f5 = scoreHistoricalGovernance(protocol);
+
+  const total = Math.min(f1 + f2 + f3 + f4 + f5, 45);
+
+  const auditText = (protocol.auditNote || '').toLowerCase();
+  const auditReports = protocol.defiAuditReports || [];
+  const indicators: SecurityIndicators = {
     hasAudit: protocol.audited || protocol.auditCount > 0,
-    auditFirms,
-    tvl: protocol.tvl,
-    holderCount: null, // Would need blockchain API to get real data
+    reputableAuditFirm: REPUTABLE_AUDITORS.some(
+      a => auditText.includes(a) || auditReports.some(r => r.auditor.toLowerCase().includes(a))
+    ),
+    formalVerification: FORMAL_VERIFICATION_TERMS.some(t => auditText.includes(t)),
+    tvlSignificant: protocol.tvl >= 1_000_000,
     hasOpenSource: !!protocol.github,
-    hasMultisig: protocol.defiHasMultisig || false,
-    hasTimelock: protocol.defiHasTimelock || false,
-    hasBugBounty: false, // Would need to check Immunefi/HackerOne
-    hasDoxxedTeam: false, // Conservative default - would need manual verification
-    communitySize: null // Would need to check Twitter/Discord APIs
+    hasMultisig: !!protocol.defiHasMultisig,
+    hasTimelock: !!protocol.defiHasTimelock,
+    hasBugBounty: /bug\s*bounty|immunefi|hackerone/.test(auditText),
+    hasDoxxedTeam: false, // Conservative default — requires manual verification
+    goodTokenDistribution: false, // Requires on-chain holder data
+    activeCommunity: !!(protocol.twitter || protocol.github) && protocol.tvl > 1_000_000,
+  };
+
+  return {
+    score: total,
+    breakdown: {
+      auditVerification: f1,
+      codeContractHistory: f2,
+      trackRecord: f3,
+      documentation: f4,
+      historicalGovernance: f5,
+      total,
+    },
+    indicators,
+  };
+}
+
+// Backwards-compat alias used by blacklist-manager.ts
+export function calculateLegitimacyScore(
+  protocol: Protocol,
+  _securityMetrics?: SecurityMetrics
+): { score: number; indicators: SecurityIndicators; metrics: SecurityMetrics } {
+  const { score, indicators } = calculateFoundationScore(protocol);
+  return {
+    score,
+    indicators,
+    metrics: extractSecurityMetrics(protocol),
   };
 }
 
 /**
- * Determine if protocol should be removed from blacklist
- * Threshold: 70% legitimacy score (70+ points out of 100)
+ * Protocols with a DFJ score below 30 are flagged for blacklist removal review.
+ * (Old threshold was legitimacyScore >= 70 in the lower-is-better system.)
  */
-export function shouldRemoveFromBlacklist(legitimacyScore: number): boolean {
-  return legitimacyScore >= 70;
+export function shouldRemoveFromBlacklist(dfjScore: number): boolean {
+  return dfjScore >= 60;
 }
 
 /**
- * Get human-readable legitimacy rating
+ * Human-readable DFJ rating (higher = safer).
  */
-export function getLegitimacyRating(score: number): {
+export function getDFJRating(score: number): {
   rating: string;
   color: string;
   description: string;
 } {
-  if (score >= 90) {
-    return {
-      rating: 'HIGHLY LEGITIMATE',
-      color: 'green',
-      description: 'Meets nearly all security best practices'
-    };
-  } else if (score >= 70) {
-    return {
-      rating: 'LEGITIMATE',
-      color: 'blue',
-      description: 'Meets most security criteria - likely safe'
-    };
+  if (score >= 80) {
+    return { rating: 'EXCELLENT', color: 'green', description: 'Meets nearly all DFJ security best practices' };
+  } else if (score >= 65) {
+    return { rating: 'GOOD', color: 'blue', description: 'Strong security posture with minor gaps' };
   } else if (score >= 50) {
-    return {
-      rating: 'MODERATE RISK',
-      color: 'yellow',
-      description: 'Some security measures in place but gaps remain'
-    };
+    return { rating: 'MODERATE', color: 'yellow', description: 'Some security measures in place but notable gaps remain' };
   } else if (score >= 30) {
-    return {
-      rating: 'HIGH RISK',
-      color: 'orange',
-      description: 'Insufficient security measures - exercise caution'
-    };
+    return { rating: 'HIGH RISK', color: 'orange', description: 'Insufficient security measures — exercise caution' };
   } else {
-    return {
-      rating: 'CRITICAL RISK',
-      color: 'red',
-      description: 'Fails most security checks - likely scam'
-    };
+    return { rating: 'CRITICAL RISK', color: 'red', description: 'Fails most DFJ security checks — likely dangerous' };
   }
+}
+
+// Backwards-compat alias
+export function getLegitimacyRating(score: number) {
+  return getDFJRating(score);
+}
+
+export function extractSecurityMetrics(protocol: Protocol): SecurityMetrics {
+  const auditFirms: string[] = [];
+  if (protocol.auditNote) {
+    REPUTABLE_AUDITORS.forEach(a => {
+      if (protocol.auditNote!.toLowerCase().includes(a)) auditFirms.push(a);
+    });
+  }
+  if (protocol.defiAuditReports) {
+    protocol.defiAuditReports.forEach(r => {
+      if (!auditFirms.includes(r.auditor)) auditFirms.push(r.auditor);
+    });
+  }
+  return {
+    hasAudit: protocol.audited || protocol.auditCount > 0,
+    auditFirms,
+    tvl: protocol.tvl,
+    holderCount: null,
+    hasOpenSource: !!protocol.github,
+    hasMultisig: protocol.defiHasMultisig || false,
+    hasTimelock: protocol.defiHasTimelock || false,
+    hasBugBounty: /bug\s*bounty|immunefi|hackerone/.test((protocol.auditNote || '').toLowerCase()),
+    hasDoxxedTeam: false,
+    communitySize: null,
+  };
 }

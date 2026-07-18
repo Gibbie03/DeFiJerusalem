@@ -869,22 +869,23 @@ export class DAppDiscovery {
   }
 
   private calculateSecurityScore(p: any): number {
-    // UNIFIED SCORING SYSTEM: 0 = SAFE (best), 100 = CRITICAL (worst)
-    // Start with medium risk (50) and reduce based on positive indicators
-    let score = 50;
+    // DFJ v2.3: HIGHER IS BETTER (97 = safest, 0 = most dangerous)
+    // Start from 0 and add points for positive security indicators
+    let score = 0;
 
     // Parse audit count (DeFiLlama returns it as a string!)
     const auditCount = parseInt(p.audits) || 0;
-    if (auditCount > 0) score -= 25; // Audited = much safer
-    
-    // High TVL indicates community trust
-    if (typeof p.tvl === 'number' && p.tvl > 100000000) score -= 10;
-    if (typeof p.tvl === 'number' && p.tvl > 1000000000) score -= 5;
-    
-    // Open source and social presence = transparency
-    if (p.twitter) score -= 5;
-    if (p.github) score -= 5;
+    if (auditCount > 0) score += 25; // Audited = strong positive signal
+    if (auditCount >= 3) score += 10; // Multiple audits = higher confidence
 
-    return Math.max(0, Math.min(100, score));
+    // High TVL indicates community trust
+    if (typeof p.tvl === 'number' && p.tvl > 100_000_000) score += 10;
+    else if (typeof p.tvl === 'number' && p.tvl > 10_000_000) score += 5;
+
+    // Open source and social presence = transparency
+    if (p.twitter) score += 5;
+    if (p.github) score += 5;
+
+    return Math.max(0, Math.min(97, score));
   }
 }

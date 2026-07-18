@@ -68,7 +68,8 @@ async function testAllProtocols() {
             case 'SAFE':     results.safeProtocols++;   break;
           }
 
-          if (scanResult.score >= 40) {
+          // DFJ v2.3: lower score = more dangerous (flag anything below 40)
+          if (scanResult.score <= 40) {
             results.topThreats.push({
               name: protocol.name,
               score: scanResult.score,
