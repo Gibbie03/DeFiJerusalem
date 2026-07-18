@@ -35,7 +35,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Allow embedding for ads
 }));
 
-// Cookie parser for CSRF tokens
+// Cookie parser for reading request cookies
 app.use(cookieParser());
 
 // Session configuration - Use PostgreSQL in production, MemoryStore in development
