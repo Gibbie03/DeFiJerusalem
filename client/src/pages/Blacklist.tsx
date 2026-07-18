@@ -199,7 +199,7 @@ export default function Blacklist() {
   }, [setLocation]);
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading blacklisted DApps..." />;
+    return <LoadingSpinner message="Loading risk-flagged protocols..." />;
   }
 
   return (
@@ -211,17 +211,17 @@ export default function Blacklist() {
       <main className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-            <Shield className="w-8 h-8 text-red-500" />
-            Blacklisted DApps
+            <Shield className="w-8 h-8 text-orange-500" />
+            Risk-Flagged Protocols
           </h1>
           <p className="text-muted-foreground">
-            Protocols flagged for critical security threats and suspicious activity
+            Protocols manually flagged by admins for elevated security risk — not blocked, but approach with caution
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
-            label="Total Blacklisted"
+            label="Total Flagged"
             value={stats.total.toLocaleString()}
             icon={Shield}
             data-testid="stat-total-blacklisted"
@@ -358,7 +358,7 @@ export default function Blacklist() {
                   >
                     <CardTitle className="flex items-center gap-2">
                       <Shield className="w-5 h-5 text-accent" />
-                      Admin: Blacklist Verification
+                      Admin: Risk Flag Review
                     </CardTitle>
                     {isVerificationOpen ? (
                       <ChevronUp className="w-5 h-5" />
@@ -368,7 +368,7 @@ export default function Blacklist() {
                   </Button>
                 </CollapsibleTrigger>
                 <CardDescription>
-                  Analyze blacklisted protocols and identify potential false positives
+                  Review risk-flagged protocols and identify entries that may no longer apply
                 </CardDescription>
               </CardHeader>
               <CollapsibleContent>
@@ -411,7 +411,7 @@ export default function Blacklist() {
                       <AlertTitle>Analysis Results</AlertTitle>
                       <AlertDescription>
                         Found <strong>{analysisResults.stats.potentialFalsePositives}</strong> potential false positives 
-                        from <strong>{analysisResults.stats.total}</strong> blacklisted entries.
+                        from <strong>{analysisResults.stats.total}</strong> flagged entries.
                         Estimated <strong>{analysisResults.stats.estimatedScans}</strong> GoPlus scans needed (99.6% reduction).
                       </AlertDescription>
                     </Alert>
@@ -424,7 +424,7 @@ export default function Blacklist() {
                           <div className="text-2xl font-bold text-green-500">
                             {verificationResults.summary.removeFromBlacklist}
                           </div>
-                          <div className="text-sm text-muted-foreground">Remove from Blacklist</div>
+                          <div className="text-sm text-muted-foreground">Remove Risk Flag</div>
                         </CardContent>
                       </Card>
                       <Card className="border-destructive/20 bg-destructive/5">

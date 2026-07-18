@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, TrendingUp, AlertTriangle, CheckCircle2, XCircle, Globe, Twitter, Github, ExternalLink, Bug, Siren, Activity } from "lucide-react";
+import { Shield, TrendingUp, AlertTriangle, CheckCircle2, XCircle, Globe, Twitter, Github, ExternalLink, Bug, Siren, Activity, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Protocol } from "@shared/schema";
 
@@ -42,6 +43,8 @@ export default function ProtocolDetail() {
   const { data: protocol, isLoading: protocolLoading } = useQuery<Protocol>({
     queryKey: [`/api/protocols/${protocolId}`],
     enabled: !!protocolId,
+    staleTime: 0,        // always fetch fresh — score changes on scan
+    refetchOnMount: true,
   });
 
   const { data: securityScans } = useQuery<Record<string, any>>({
@@ -79,12 +82,17 @@ export default function ProtocolDetail() {
 
   const score = securityScan?.score ?? protocol.securityScore ?? 0;
 
+  // DFJ v2.3: higher = safer
   const getSeverityBadge = (s: number) => {
-    if (s >= 80) return <Badge variant="destructive">CRITICAL</Badge>;
-    if (s >= 60) return <Badge variant="destructive" className="bg-orange-600">HIGH</Badge>;
-    if (s >= 40) return <Badge variant="outline" className="border-yellow-500 text-yellow-500">MEDIUM</Badge>;
-    if (s >= 20) return <Badge variant="outline" className="border-blue-500 text-blue-500">LOW</Badge>;
-    return <Badge variant="outline" className="border-green-500 text-green-500">SAFE</Badge>;
+    if (s >= 80) return <Badge variant="outline" className="border-green-500 text-green-500">SAFE</Badge>;
+    if (s >= 65) return <Badge variant="outline" className="border-blue-500 text-blue-500">LOW RISK</Badge>;
+    if (s >= 50) return <Badge variant="outline" className="border-yellow-500 text-yellow-500">MODERATE</Badge>;
+    if (s >= 30) return <Badge variant="destructive" className="bg-orange-600">HIGH RISK</Badge>;
+    return <Badge variant="destructive">CRITICAL RISK</Badge>;
+  };
+
+  const handleDownloadReport = () => {
+    window.open(`/api/protocols/${protocolId}/score-report.pdf`, '_blank');
   };
 
   const fmt = (n: number | null | undefined) => {
@@ -132,9 +140,9 @@ export default function ProtocolDetail() {
                 <div className="text-2xl font-bold text-primary">{fmt(protocol.tvl)}</div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-muted-foreground uppercase tracking-wide">Security</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">DFJ Score</div>
                 <div className="mt-1">{getSeverityBadge(score)}</div>
-                <div className="text-xs text-muted-foreground mt-1">Score: {(100 - score).toFixed(0)}/100</div>
+                <div className="text-xs text-muted-foreground mt-1">{score.toFixed(0)} / 97</div>
               </div>
               {securityAgg?.hasBugBounty && (
                 <div className="text-right">
@@ -157,26 +165,32 @@ export default function ProtocolDetail() {
             <p className="text-sm text-muted-foreground mt-3">{protocol.description}</p>
           )}
 
-          {/* Links */}
-          <div className="flex gap-3 mt-3 flex-wrap">
-            {protocol.website && (
-              <a href={protocol.website} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Globe className="w-4 h-4" /> Website
-              </a>
-            )}
-            {protocol.twitter && (
-              <a href={`https://twitter.com/${protocol.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Twitter className="w-4 h-4" /> Twitter
-              </a>
-            )}
-            {protocol.github && (
-              <a href={protocol.github} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Github className="w-4 h-4" /> GitHub
-              </a>
-            )}
+          {/* Links + Download */}
+          <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+            <div className="flex gap-3 flex-wrap">
+              {protocol.website && (
+                <a href={protocol.website} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Globe className="w-4 h-4" /> Website
+                </a>
+              )}
+              {protocol.twitter && (
+                <a href={`https://twitter.com/${protocol.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Twitter className="w-4 h-4" /> Twitter
+                </a>
+              )}
+              {protocol.github && (
+                <a href={protocol.github} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Github className="w-4 h-4" /> GitHub
+                </a>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={handleDownloadReport} className="gap-2 shrink-0">
+              <Download className="w-4 h-4" />
+              Score Report
+            </Button>
           </div>
         </CardHeader>
       </Card>

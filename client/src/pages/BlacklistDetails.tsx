@@ -36,14 +36,14 @@ export default function BlacklistDetails() {
       queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
       toast({
         title: "Entry Removed",
-        description: "Blacklist entry has been successfully removed",
+        description: "Risk flag has been successfully removed",
       });
       setLocation('/blacklist');
     },
     onError: (error) => {
       toast({
         title: "Deletion Failed",
-        description: error instanceof Error ? error.message : "Failed to delete blacklist entry",
+        description: error instanceof Error ? error.message : "Failed to remove risk flag",
         variant: "destructive",
       });
     },
@@ -98,11 +98,11 @@ export default function BlacklistDetails() {
       <div className="max-w-screen-2xl mx-auto px-6 py-8">
         <div className="text-center py-12">
           <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Blacklist Entry Not Found</h3>
+          <h3 className="text-xl font-semibold mb-2">Risk Flag Not Found</h3>
           <p className="text-muted-foreground mb-4">The requested entry could not be found.</p>
           <Button onClick={() => setLocation('/blacklist')} data-testid="button-back-to-blacklist">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Blacklist
+            Back to Flagged Protocols
           </Button>
         </div>
       </div>
@@ -133,7 +133,7 @@ export default function BlacklistDetails() {
               data-testid="button-back"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Blacklist
+              Back to Flagged Protocols
             </Button>
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-8 h-8 text-red-500 shrink-0 mt-1" />
@@ -285,7 +285,7 @@ export default function BlacklistDetails() {
               </InfoRow>
 
               {entry.reason && (
-                <InfoRow label="Blacklist Reason" dataTestId="row-reason">
+                <InfoRow label="Risk Flag Reason" dataTestId="row-reason">
                   <p className="text-muted-foreground">{entry.reason}</p>
                 </InfoRow>
               )}

@@ -768,21 +768,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // AI LEARNING: Learn from this scan
             await threatLearner.learnFromScan(scanResult, protocol);
-
-            // AI-ENHANCED BLACKLISTING: Get AI recommendation
-            const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);
-            
-            // Collect blacklist entries (CRITICAL severity or AI recommendation)
-            if (scanResult.severity === 'CRITICAL' || aiRecommendation.shouldBlacklist) {
-              const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
-              
-              // Add AI learning insights to blacklist entry
-              if (aiRecommendation.shouldBlacklist && scanResult.severity !== 'CRITICAL') {
-                entry.reason = `${entry.reason} | AI Detection: ${aiRecommendation.reason}`;
-              }
-              
-              newBlacklistEntries.push(entry);
-            }
           }
         }
 
@@ -798,10 +783,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Promise.all(scansToStore.map(({ protocolId, scan }) => 
           storage.addSecurityScan(protocolId, scan)
         )),
-        // Batch store all blacklist entries
-        newBlacklistEntries.length > 0 
-          ? Promise.all(newBlacklistEntries.map(entry => storage.addToBlacklist(entry)))
-          : Promise.resolve()
       ]);
 
       // Invalidate cache after scanning
@@ -812,7 +793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         scanResults,
-        newBlacklistEntries,
+        newBlacklistEntries: [],
         scannedCount: Object.keys(scanResults).length
       });
     } catch (error) {
@@ -2528,21 +2509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // AI LEARNING: Learn from this scan to identify future exploits
             await threatLearner.learnFromScan(scanResult, protocol);
 
-            // AI-ENHANCED BLACKLISTING: Get AI recommendation
-            const aiRecommendation = threatLearner.getBlacklistRecommendations(scanResult);
-            
-            // Blacklist if CRITICAL or if AI strongly recommends it
-            if (scanResult.severity === 'CRITICAL' || aiRecommendation.shouldBlacklist) {
-              const { entry } = blacklistManager.addToBlacklist(protocol, scanResult);
-              
-              // Add AI learning insights to blacklist entry
-              if (aiRecommendation.shouldBlacklist && scanResult.severity !== 'CRITICAL') {
-                entry.reason = `${entry.reason} | AI Detection: ${aiRecommendation.reason}`;
-              }
-              
-              blacklistEntries.push(entry);
-              console.log(`[AI-BLACKLIST] ${protocol.name}: ${aiRecommendation.reason}`);
-            }
+            // Auto-flagging disabled: protocols are flagged manually by admins only
           }
         }
 
@@ -2557,9 +2524,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Promise.all(scansToStore.map(({ protocolId, scan }) => 
           storage.addSecurityScan(protocolId, scan)
         )),
-        blacklistEntries.length > 0 
-          ? Promise.all(blacklistEntries.map(entry => storage.addToBlacklist(entry)))
-          : Promise.resolve()
       ]);
       
       // Clear caches
@@ -2950,6 +2914,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("[SECURITY-AGG] Error:", error);
       res.status(500).json({ message: "Failed to fetch security data" });
+    }
+  });
+
+  // GET /api/protocols/:id/score-report.pdf — Downloadable DFJ scoring breakdown
+  app.get("/api/protocols/:id/score-report.pdf", apiLimiter, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const protocol = await storage.getProtocol(id);
+      if (!protocol) return res.status(404).json({ message: "Protocol not found" });
+
+      const { calculateFoundationScore } = await import('./lib/security-verification');
+      const { UnifiedSecurityScanner } = await import('./lib/unified-security-scanner');
+      const PDFDocument = (await import('pdfkit')).default;
+
+      // Compute DFJ breakdown
+      const { score: foundationScore, breakdown: fb, indicators } = calculateFoundationScore(protocol);
+      const scanner = new UnifiedSecurityScanner(storage);
+      const result = await scanner.scanProtocol(protocol as any);
+      const { breakdown: ab, score, severity, threats, recommendations } = result;
+
+      const doc = new PDFDocument({ size: 'A4', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="DFJ-Score-${protocol.name.replace(/[^a-z0-9]/gi, '-')}.pdf"`);
+      doc.pipe(res);
+
+      const GOLD = '#F59E0B';
+      const DARK = '#111827';
+      const MUTED = '#6B7280';
+      const GREEN = '#10B981';
+      const RED = '#EF4444';
+      const ORANGE = '#F97316';
+      const YELLOW = '#EAB308';
+      const BLUE = '#3B82F6';
+
+      const severityColor = severity === 'SAFE' ? GREEN : severity === 'LOW' ? BLUE : severity === 'MEDIUM' ? YELLOW : severity === 'HIGH' ? ORANGE : RED;
+      const fmtTVL = (n: number) => n >= 1e9 ? `${(n/1e9).toFixed(2)}B` : n >= 1e6 ? `${(n/1e6).toFixed(2)}M` : n >= 1e3 ? `${(n/1e3).toFixed(2)}K` : `${n}`;
+
+      // ── Header ──────────────────────────────────────────────────────────
+      doc.rect(0, 0, doc.page.width, 80).fill(DARK);
+      doc.fontSize(20).font('Helvetica-Bold').fillColor(GOLD).text('DeFiJerusalem', 50, 22);
+      doc.fontSize(9).font('Helvetica').fillColor(MUTED).text('DFJ Security Score Report · v2.3 Methodology', 50, 48);
+      doc.fontSize(9).fillColor(MUTED).text(new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }), 50, 60);
+
+      // ── Protocol identity ────────────────────────────────────────────────
+      let y = 100;
+      doc.fontSize(22).font('Helvetica-Bold').fillColor(DARK).text(protocol.name, 50, y);
+      y += 30;
+      doc.fontSize(10).font('Helvetica').fillColor(MUTED).text(`${protocol.category}  ·  TVL ${fmtTVL(protocol.tvl)}  ·  ${(protocol.chains ?? []).slice(0,5).join(', ')}`, 50, y);
+      y += 15;
+      if (protocol.website) doc.fontSize(9).fillColor(BLUE).text(protocol.website, 50, y, { link: protocol.website });
+      y += 25;
+
+      // ── Score hero ───────────────────────────────────────────────────────
+      doc.roundedRect(50, y, doc.page.width - 100, 70, 8).fill('#F9FAFB').stroke('#E5E7EB');
+      doc.fontSize(42).font('Helvetica-Bold').fillColor(severityColor).text(score.toFixed(0), 70, y + 10);
+      doc.fontSize(14).font('Helvetica').fillColor(MUTED).text('/ 97', 70 + 65, y + 24);
+      doc.fontSize(18).font('Helvetica-Bold').fillColor(severityColor).text(severity, 200, y + 18);
+      doc.fontSize(9).font('Helvetica').fillColor(MUTED).text('Higher is safer  ·  DFJ v2.3 Methodology', 200, y + 44);
+      y += 85;
+
+      // ── Score bar ────────────────────────────────────────────────────────
+      const barW = doc.page.width - 100;
+      doc.rect(50, y, barW, 8).fill('#E5E7EB');
+      doc.rect(50, y, Math.max(4, (score / 97) * barW), 8).fill(severityColor);
+      y += 22;
+
+      // ── Section helper ───────────────────────────────────────────────────
+      const section = (title: string) => {
+        doc.fontSize(11).font('Helvetica-Bold').fillColor(DARK).text(title, 50, y);
+        y += 5;
+        doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor('#E5E7EB').stroke();
+        y += 10;
+      };
+
+      const row = (label: string, pts: number, max: number, indent = 0) => {
+        const pct = max > 0 ? pts / max : 0;
+        const color = pct >= 0.75 ? GREEN : pct >= 0.5 ? YELLOW : pct >= 0.25 ? ORANGE : RED;
+        doc.fontSize(9).font('Helvetica').fillColor(DARK).text(label, 50 + indent, y, { width: 280 });
+        doc.font('Helvetica-Bold').fillColor(color).text(`${pts.toFixed(1)} / ${max}`, doc.page.width - 150, y, { width: 100, align: 'right' });
+        y += 14;
+      };
+
+      // ── Foundation ───────────────────────────────────────────────────────
+      section('FOUNDATION  (what they built)  —  ' + fb.total.toFixed(1) + ' / 45');
+      row('F1  Audit & Verification', fb.auditVerification, 18);
+      row('F2  Code & Contract History', fb.codeContractHistory, 12);
+      row('F3  Track Record', fb.trackRecord, 10);
+      row('F4  Documentation', fb.documentation, 3);
+      row('F5  Historical Governance', fb.historicalGovernance, 2);
+      y += 6;
+
+      // ── Active ───────────────────────────────────────────────────────────
+      section('ACTIVE  (how they protect now)  —  ' + ab.activeTotal.toFixed(1) + ' / 55');
+      row('A1  Security Infrastructure', ab.securityInfrastructure, 22);
+      row('A2  Incident Response', ab.incidentResponse, 15);
+      row('A3  Proactive Monitoring', ab.proactiveMonitoring, 7);
+      row('A4  Economic Health', ab.economicHealth, 6);
+      row('A5  Live Governance', ab.liveGovernance, 3);
+      row('A6  Ongoing Vigilance', ab.ongoingVigilance, 2);
+      y += 6;
+
+      // ── Gross + penalties ────────────────────────────────────────────────
+      section('SCORE CALCULATION');
+      doc.fontSize(9).font('Helvetica').fillColor(DARK).text('Gross Score (Foundation + Active)', 50, y, { width: 280 });
+      doc.font('Helvetica-Bold').fillColor(DARK).text(ab.grossScore.toFixed(1) + ' / 100', doc.page.width - 150, y, { width: 100, align: 'right' });
+      y += 14;
+      doc.fontSize(9).font('Helvetica').fillColor(RED).text('Penalties applied', 50, y, { width: 280 });
+      doc.font('Helvetica-Bold').fillColor(RED).text('− ' + ab.totalPenalty.toFixed(1) + ' / 30', doc.page.width - 150, y, { width: 100, align: 'right' });
+      y += 14;
+      doc.moveTo(doc.page.width - 200, y).lineTo(doc.page.width - 50, y).strokeColor('#D1D5DB').stroke();
+      y += 6;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor(severityColor).text('Final DFJ Score', 50, y, { width: 280 });
+      doc.fillColor(severityColor).text(score.toFixed(1) + ' / 97', doc.page.width - 150, y, { width: 100, align: 'right' });
+      y += 20;
+
+      // ── Security indicators ──────────────────────────────────────────────
+      if (y > 680) { doc.addPage(); y = 50; }
+      section('SECURITY INDICATORS');
+      const indicators2 = [
+        ['Audited', indicators.hasAudit],
+        ['Reputable Audit Firm', indicators.reputableAuditFirm],
+        ['Formal Verification', indicators.formalVerification],
+        ['Open Source', indicators.hasOpenSource],
+        ['Multisig', indicators.hasMultisig],
+        ['Timelock', indicators.hasTimelock],
+        ['Bug Bounty', indicators.hasBugBounty],
+        ['Active Community', indicators.activeCommunity],
+      ] as [string, boolean][];
+      const colW = (doc.page.width - 100) / 2;
+      indicators2.forEach(([label, val], i) => {
+        const col = i % 2;
+        const xOff = 50 + col * colW;
+        if (col === 0 && i > 0) y += 14;
+        doc.fontSize(9).font('Helvetica').fillColor(val ? GREEN : MUTED)
+          .text(val ? '✓' : '✗', xOff, y, { width: 16 });
+        doc.fillColor(DARK).text(label, xOff + 16, y, { width: colW - 20 });
+        if (col === 1 || i === indicators2.length - 1) {}
+      });
+      y += 22;
+
+      // ── Threats detected ─────────────────────────────────────────────────
+      if (threats.length > 0) {
+        if (y > 650) { doc.addPage(); y = 50; }
+        section(`THREATS DETECTED  (${threats.length})`);
+        for (const t of threats.slice(0, 8)) {
+          const tc = t.severity === 'CRITICAL' ? RED : t.severity === 'HIGH' ? ORANGE : YELLOW;
+          doc.fontSize(8).font('Helvetica-Bold').fillColor(tc).text(`[${t.severity}]`, 50, y, { width: 70 });
+          doc.font('Helvetica').fillColor(DARK).text(t.message, 120, y, { width: doc.page.width - 170 });
+          y += 13;
+          if (y > 750) { doc.addPage(); y = 50; }
+        }
+        if (threats.length > 8) {
+          doc.fontSize(8).fillColor(MUTED).text(`… and ${threats.length - 8} more`, 50, y);
+          y += 13;
+        }
+        y += 6;
+      }
+
+      // ── Recommendations ──────────────────────────────────────────────────
+      if (recommendations.length > 0) {
+        if (y > 650) { doc.addPage(); y = 50; }
+        section('RECOMMENDATIONS');
+        for (const r of recommendations) {
+          doc.fontSize(8).font('Helvetica').fillColor(DARK).text('• ' + r, 50, y, { width: doc.page.width - 100 });
+          y += 13;
+          if (y > 750) { doc.addPage(); y = 50; }
+        }
+        y += 6;
+      }
+
+      // ── Footer ───────────────────────────────────────────────────────────
+      doc.fontSize(7).font('Helvetica').fillColor(MUTED)
+        .text('This report is generated automatically using on-chain and off-chain data. It is for informational purposes only and does not constitute financial advice. DeFiJerusalem · defijerusalem.com', 50, doc.page.height - 40, { align: 'center', width: doc.page.width - 100 });
+
+      doc.end();
+    } catch (error) {
+      console.error("[SCORE-REPORT] Error:", error);
+      if (!res.headersSent) res.status(500).json({ message: "Failed to generate report" });
     }
   });
 
