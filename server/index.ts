@@ -12,7 +12,7 @@ import { pool } from "./db";
 
 const app = express();
 
-// Trust proxy - Required for rate limiting behind Replit's reverse proxy
+// Trust proxy - Required for rate limiting behind the platform's reverse proxy (Render, etc.)
 // This enables Express to read the X-Forwarded-For header to get real client IPs
 app.set('trust proxy', 1);
 

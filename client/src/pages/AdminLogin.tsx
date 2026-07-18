@@ -281,7 +281,7 @@ export default function AdminLogin() {
                       </FormControl>
                       <FormMessage />
                       <p className="text-xs text-muted-foreground mt-1">
-                        This is the ADMIN_BOOTSTRAP_SECRET environment variable set in Replit Secrets
+                        This is the ADMIN_BOOTSTRAP_SECRET environment variable set on the server
                       </p>
                     </FormItem>
                   )}
