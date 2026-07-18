@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, DiscoveredContract, InsertDiscoveredContract, ProtocolWhitelist, InsertProtocolWhitelist, TwitterAlert, InsertTwitterAlert, CertikAudit, InsertCertikAudit, ContractScan, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ScammerAddress, InsertScammerAddress, AlertSubscription, InsertAlertSubscription, WebhookEndpoint, InsertWebhookEndpoint } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, discoveredContracts, protocolWhitelist, twitterAlerts, certikAudits, contractScans, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, Insert, ProtocolWhitelist, InsertProtocolWhitelist, Insert, CertikAudit, InsertCertikAudit, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ScammerAddress, InsertScammerAddress, AlertSubscription, InsertAlertSubscription, WebhookEndpoint, InsertWebhookEndpoint } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, protocolWhitelist, certikAudits, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -49,32 +49,16 @@ export interface IStorage {
   updateCustomizationPayment(id: string, paymentStatus: string, txHash?: string, currency?: string): Promise<void>;
   getAllCustomizations(): Promise<ProtocolCustomization[]>;
   
-  // Contract discovery methods
-  addDiscoveredContract(contract: InsertDiscoveredContract): Promise<DiscoveredContract>;
-  getDiscoveredContracts(filters?: { status?: string; chain?: string; limit?: number }): Promise<DiscoveredContract[]>;
-  updateDiscoveredContractStatus(id: string, status: string): Promise<void>;
-  promoteContractToProtocol(contractId: string, protocolId: string): Promise<void>;
-  
   // Whitelist methods
   addToWhitelist(entry: InsertProtocolWhitelist): Promise<ProtocolWhitelist>;
   getWhitelist(): Promise<ProtocolWhitelist[]>;
   isProtocolWhitelisted(protocolId: string): Promise<boolean>;
   removeFromWhitelist(protocolId: string): Promise<void>;
   
-  // Twitter monitoring methods
-  getTwitterAlerts(filters?: { status?: string; severity?: string; category?: string; limit?: number }): Promise<TwitterAlert[]>;
-  addTwitterAlert(alert: InsertTwitterAlert): Promise<TwitterAlert>;
-  updateTwitterAlert(id: string, updates: { status?: string; reviewNotes?: string }): Promise<void>;
-  
   // CertiK audit methods
   getCertikAudits(filters?: { protocolId?: string; limit?: number }): Promise<CertikAudit[]>;
   getCertikAuditByProtocolId(protocolId: string): Promise<CertikAudit | undefined>;
   upsertCertikAudit(audit: InsertCertikAudit): Promise<CertikAudit>;
-  
-  // Contract scan methods
-  addContractScan(contractScan: Omit<ContractScan, 'id' | 'scannedAt'>): Promise<ContractScan>;
-  getContractScanByAddress(contractAddress: string, chain: string): Promise<ContractScan | undefined>;
-  getContractScansByProtocolId(protocolId: string): Promise<ContractScan[]>;
   
   // Protocol submission methods
   createProtocolSubmission(submission: InsertProtocolSubmission): Promise<ProtocolSubmission>;
@@ -788,94 +772,6 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async addDiscoveredContract(contract: InsertDiscoveredContract): Promise<DiscoveredContract> {
-    const id = `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Try to insert, update on conflict (deduplication)
-    const [result] = await db
-      .insert(discoveredContracts)
-      .values({ ...contract as any, id })
-      .onConflictDoUpdate({
-        target: [discoveredContracts.contractAddress, discoveredContracts.chain],
-        set: {
-          contractName: contract.contractName,
-          contractType: contract.contractType,
-          compilerVersion: contract.compilerVersion,
-          optimization: contract.optimization,
-          metadata: contract.metadata as any,
-        }
-      })
-      .returning();
-    
-    return this.mapDiscoveredContract(result);
-  }
-
-  async getDiscoveredContracts(filters?: { status?: string; chain?: string; limit?: number }): Promise<DiscoveredContract[]> {
-    const conditions = [];
-    
-    if (filters?.status) {
-      conditions.push(eq(discoveredContracts.status, filters.status));
-    }
-    
-    if (filters?.chain) {
-      conditions.push(eq(discoveredContracts.chain, filters.chain));
-    }
-    
-    let query = db
-      .select()
-      .from(discoveredContracts)
-      .orderBy(desc(discoveredContracts.discoveredAt));
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
-    }
-    
-    const results = await query;
-    return results.map(r => this.mapDiscoveredContract(r));
-  }
-
-  async updateDiscoveredContractStatus(id: string, status: string): Promise<void> {
-    await db
-      .update(discoveredContracts)
-      .set({ status, reviewedAt: new Date() })
-      .where(eq(discoveredContracts.id, id));
-  }
-
-  async promoteContractToProtocol(contractId: string, protocolId: string): Promise<void> {
-    await db
-      .update(discoveredContracts)
-      .set({ promotedToProtocol: true, protocolId, status: 'approved' })
-      .where(eq(discoveredContracts.id, contractId));
-  }
-
-  private mapDiscoveredContract(contract: any): DiscoveredContract {
-    return {
-      id: contract.id,
-      contractAddress: contract.contractAddress,
-      contractName: contract.contractName,
-      chain: contract.chain,
-      contractType: contract.contractType,
-      verifiedAt: contract.verifiedAt?.toISOString() ?? null,
-      discoveredAt: contract.discoveredAt.toISOString(),
-      compilerVersion: contract.compilerVersion,
-      optimization: contract.optimization,
-      sourceCode: contract.sourceCode,
-      abi: contract.abi as any[] | null,
-      creatorAddress: contract.creatorAddress,
-      txHash: contract.txHash,
-      explorerUrl: contract.explorerUrl,
-      status: contract.status as 'pending' | 'reviewed' | 'approved' | 'rejected',
-      reviewedAt: contract.reviewedAt?.toISOString() ?? null,
-      promotedToProtocol: contract.promotedToProtocol ?? false,
-      protocolId: contract.protocolId,
-      metadata: contract.metadata as any,
-    };
-  }
-
   async addToWhitelist(entry: InsertProtocolWhitelist): Promise<ProtocolWhitelist> {
     const id = `wl_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const [result] = await db
@@ -933,81 +829,6 @@ export class DatabaseStorage implements IStorage {
       addedBy: entry.addedBy,
       addedAt: entry.addedAt.toISOString(),
       lastVerified: entry.lastVerified.toISOString(),
-    };
-  }
-
-  // Twitter monitoring methods
-  async getTwitterAlerts(filters?: { status?: string; severity?: string; category?: string; limit?: number }): Promise<TwitterAlert[]> {
-    const conditions = [];
-    
-    if (filters?.status) {
-      conditions.push(eq(twitterAlerts.status, filters.status));
-    }
-    
-    if (filters?.severity) {
-      conditions.push(eq(twitterAlerts.severity, filters.severity));
-    }
-    
-    if (filters?.category) {
-      conditions.push(eq(twitterAlerts.category, filters.category));
-    }
-    
-    let query = db.select().from(twitterAlerts);
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-    
-    const results = await query
-      .orderBy(desc(twitterAlerts.detectedAt))
-      .limit(filters?.limit || 100);
-    
-    return results.map(r => this.mapTwitterAlert(r));
-  }
-
-  async addTwitterAlert(alert: InsertTwitterAlert): Promise<TwitterAlert> {
-    const id = `tw_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const [result] = await db
-      .insert(twitterAlerts)
-      .values({ ...alert as any, id })
-      .returning();
-    
-    return this.mapTwitterAlert(result);
-  }
-
-  async updateTwitterAlert(id: string, updates: { status?: string; reviewNotes?: string }): Promise<void> {
-    await db
-      .update(twitterAlerts)
-      .set({
-        ...updates,
-        reviewedAt: new Date(),
-      })
-      .where(eq(twitterAlerts.id, id));
-  }
-
-  private mapTwitterAlert(alert: any): TwitterAlert {
-    return {
-      id: alert.id,
-      tweetId: alert.tweetId,
-      authorId: alert.authorId,
-      authorUsername: alert.authorUsername,
-      tweetText: alert.tweetText,
-      alertType: alert.alertType,
-      category: alert.category,
-      severity: alert.severity,
-      matchedKeywords: alert.matchedKeywords as string[],
-      extractedUrls: alert.extractedUrls as string[] | null,
-      hashtags: alert.hashtags as string[] | null,
-      mentions: alert.mentions as string[] | null,
-      protocolMentioned: alert.protocolMentioned,
-      isSuspicious: alert.isSuspicious,
-      blacklistedDomain: alert.blacklistedDomain,
-      crossReferencedProtocol: alert.crossReferencedProtocol,
-      status: alert.status,
-      reviewNotes: alert.reviewNotes,
-      tweetCreatedAt: alert.tweetCreatedAt.toISOString(),
-      detectedAt: alert.detectedAt.toISOString(),
-      reviewedAt: alert.reviewedAt?.toISOString() ?? null,
     };
   }
 
@@ -1098,72 +919,6 @@ export class DatabaseStorage implements IStorage {
       dataSource: audit.dataSource,
       lastUpdated: audit.lastUpdated.toISOString(),
       fetchedAt: audit.fetchedAt.toISOString(),
-    };
-  }
-
-  // Contract scan methods
-  async addContractScan(contractScan: Omit<ContractScan, 'id' | 'scannedAt'>): Promise<ContractScan> {
-    const id = `cs_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const [result] = await db
-      .insert(contractScans)
-      .values({ ...contractScan, id })
-      .onConflictDoNothing()
-      .returning();
-    
-    return this.mapContractScan(result);
-  }
-
-  async getContractScanByAddress(contractAddress: string, chain: string): Promise<ContractScan | undefined> {
-    const [result] = await db
-      .select()
-      .from(contractScans)
-      .where(
-        and(
-          eq(contractScans.contractAddress, contractAddress.toLowerCase()),
-          eq(contractScans.chain, chain)
-        )
-      )
-      .orderBy(desc(contractScans.scannedAt))
-      .limit(1);
-    
-    return result ? this.mapContractScan(result) : undefined;
-  }
-
-  async getContractScansByProtocolId(protocolId: string): Promise<ContractScan[]> {
-    const results = await db
-      .select()
-      .from(contractScans)
-      .where(eq(contractScans.protocolId, protocolId))
-      .orderBy(desc(contractScans.scannedAt));
-    
-    return results.map(r => this.mapContractScan(r));
-  }
-
-  private mapContractScan(scan: any): ContractScan {
-    return {
-      id: scan.id,
-      protocolId: scan.protocolId,
-      contractAddress: scan.contractAddress,
-      chain: scan.chain,
-      isHoneypot: scan.isHoneypot,
-      cannotBuy: scan.cannotBuy,
-      cannotSell: scan.cannotSell,
-      buyTax: scan.buyTax,
-      sellTax: scan.sellTax,
-      hiddenOwner: scan.hiddenOwner,
-      isProxy: scan.isProxy,
-      isOpenSource: scan.isOpenSource,
-      ownerChangeBalance: scan.ownerChangeBalance,
-      canTakeBackOwnership: scan.canTakeBackOwnership,
-      tradingCooldown: scan.tradingCooldown,
-      transferPausable: scan.transferPausable,
-      holders: scan.holders,
-      totalSupply: scan.totalSupply,
-      threats: scan.threats as any,
-      riskScore: scan.riskScore,
-      severity: scan.severity,
-      rawData: scan.rawData as any,
-      scannedAt: scan.scannedAt.toISOString(),
     };
   }
 

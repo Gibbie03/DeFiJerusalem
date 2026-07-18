@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { pgTable, text, boolean, real, integer, timestamp, json, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
-// Database Tables
+// ==========================================
+// EXISTING TABLES — matched exactly to DB columns
+// ==========================================
+
 export const protocols = pgTable('protocols', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -36,8 +39,6 @@ export const protocols = pgTable('protocols', {
   defiDataFetchedAt: timestamp('defi_data_fetched_at'),
   contractAddress: text('contract_address'),
   contractChain: text('contract_chain'),
-  
-  // Activity Metrics (DApp Repository Features)
   dailyActiveWallets: integer('daily_active_wallets').default(0),
   weeklyActiveWallets: integer('weekly_active_wallets').default(0),
   monthlyActiveWallets: integer('monthly_active_wallets').default(0),
@@ -45,22 +46,10 @@ export const protocols = pgTable('protocols', {
   transactions7d: integer('transactions_7d').default(0),
   contractCalls24h: integer('contract_calls_24h').default(0),
   activityHistory: json('activity_history').$type<Array<{ date: string; wallets: number; transactions: number }>>(),
-  
-  // Rankings
   rankByActivity: integer('rank_by_activity'),
   rankByTvl: integer('rank_by_tvl'),
   rankByVolume: integer('rank_by_volume'),
-}, (table) => ({
-  tvlIdx: index('protocols_tvl_idx').on(table.tvl),
-  volume24hIdx: index('protocols_volume24h_idx').on(table.volume24h),
-  categoryIdx: index('protocols_category_idx').on(table.category),
-  change24hIdx: index('protocols_change24h_idx').on(table.change24h),
-  discoveredAtIdx: index('protocols_discovered_at_idx').on(table.discoveredAt),
-  sponsoredUntilIdx: index('protocols_sponsored_until_idx').on(table.sponsoredUntil),
-  sponsorshipTierIdx: index('protocols_sponsorship_tier_idx').on(table.sponsorshipTier),
-  dailyActiveWalletsIdx: index('protocols_daily_active_wallets_idx').on(table.dailyActiveWallets),
-  rankByActivityIdx: index('protocols_rank_by_activity_idx').on(table.rankByActivity),
-}));
+});
 
 export const securityScans = pgTable('security_scans', {
   id: text('id').primaryKey(),
@@ -70,42 +59,24 @@ export const securityScans = pgTable('security_scans', {
   threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
   score: real('score').notNull(),
   scannedAt: timestamp('scanned_at').notNull().defaultNow(),
-}, (table) => ({
-  protocolIdIdx: uniqueIndex('security_scans_protocol_id_unique_idx').on(table.protocolId),
-  scannedAtIdx: index('security_scans_scanned_at_idx').on(table.scannedAt),
-}));
+});
 
 export const blacklistEntries = pgTable('blacklist_entries', {
   id: text('id').primaryKey(),
   dappId: text('dapp_id').notNull(),
   dappName: text('dapp_name').notNull(),
   severity: text('severity').notNull(),
-  threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
-  reason: text('reason'),
-  status: text('status').notNull(),
+  threats: json('threats').$type<string[]>().notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').notNull().default('ACTIVE'),
   timestamp: timestamp('timestamp').notNull().defaultNow(),
   website: text('website'),
   twitter: text('twitter'),
   github: text('github'),
   legitimacyScore: real('legitimacy_score').default(0),
-  securityMetrics: json('security_metrics').$type<{
-    hasAudit: boolean;
-    auditFirms: string[];
-    tvl: number;
-    holderCount: number | null;
-    hasOpenSource: boolean;
-    hasMultisig: boolean;
-    hasTimelock: boolean;
-    hasBugBounty: boolean;
-    hasDoxxedTeam: boolean;
-    communitySize: number | null;
-  }>(),
+  securityMetrics: json('security_metrics').$type<Record<string, any>>(),
   lastVetted: timestamp('last_vetted'),
-}, (table) => ({
-  dappIdIdx: uniqueIndex('blacklist_entries_dapp_id_unique_idx').on(table.dappId),
-  timestampIdx: index('blacklist_entries_timestamp_idx').on(table.timestamp),
-  statusIdx: index('blacklist_entries_status_idx').on(table.status),
-}));
+});
 
 export const tutorialVideos = pgTable('tutorial_videos', {
   id: text('id').primaryKey(),
@@ -116,6 +87,187 @@ export const tutorialVideos = pgTable('tutorial_videos', {
   duration: integer('duration'),
   category: text('category').notNull(),
   uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
+});
+
+export const adminUsers = pgTable('admin_users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  email: text('email'),
+  role: text('role').default('admin'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  lastLogin: timestamp('last_login'),
+});
+
+export const protocolCustomizations = pgTable('protocol_customizations', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull(),
+  requestorEmail: text('requestor_email'),
+  requestorName: text('requestor_name'),
+  customDescription: text('custom_description'),
+  customWebsite: text('custom_website'),
+  customTwitter: text('custom_twitter'),
+  customGithub: text('custom_github'),
+  customAuditLinks: json('custom_audit_links').$type<string[]>(),
+  customLogo: text('custom_logo'),
+  paymentAmount: real('payment_amount'),
+  paymentStatus: text('payment_status').default('unpaid'),
+  paymentCurrency: text('payment_currency'),
+  paymentTxHash: text('payment_tx_hash'),
+  paymentAddress: text('payment_address'),
+  status: text('status').notNull().default('pending'),
+  reviewNotes: text('review_notes'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  approvedAt: timestamp('approved_at'),
+  appliedAt: timestamp('applied_at'),
+});
+
+export const protocolWhitelist = pgTable('protocol_whitelist', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull(),
+  protocolName: text('protocol_name'),
+  reason: text('reason'),
+  verificationSource: text('verification_source'),
+  certikScore: real('certik_score'),
+  defiSafetyScore: real('defi_safety_score'),
+  minTvl: real('min_tvl'),
+  exchangeListings: json('exchange_listings').$type<string[]>(),
+  addedBy: text('added_by'),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
+  lastVerified: timestamp('last_verified').notNull().defaultNow(),
+});
+
+export const certikAudits = pgTable('certik_audits', {
+  id: text('id').primaryKey(),
+  protocolId: text('protocol_id').notNull().references(() => protocols.id),
+  protocolName: text('protocol_name').notNull(),
+  securityScore: real('security_score'),
+  codeSecurityScore: real('code_security_score'),
+  marketScore: real('market_score'),
+  governanceScore: real('governance_score'),
+  hasAudit: boolean('has_audit'),
+  auditDate: timestamp('audit_date'),
+  auditStatus: text('audit_status'),
+  auditReportUrl: text('audit_report_url'),
+  vulnerabilities: json('vulnerabilities').$type<Array<{ severity: string; count: number }>>(),
+  riskCategories: json('risk_categories').$type<Record<string, any>>(),
+  onChainMonitoring: boolean('on_chain_monitoring'),
+  kycVerified: boolean('kyc_verified'),
+  bugBountyProgram: boolean('bug_bounty_program'),
+  certikSkynetUrl: text('certik_skynet_url'),
+  dataSource: text('data_source'),
+  lastUpdated: timestamp('last_updated').notNull().defaultNow(),
+  fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
+});
+
+export const aiLearnedPatterns = pgTable('ai_learned_patterns', {
+  id: text('id').primaryKey(),
+  pattern: text('pattern').notNull(),
+  severity: text('severity').notNull(),
+  category: text('category'),
+  confidence: real('confidence').notNull(),
+  occurrences: integer('occurrences').notNull().default(1),
+  examples: json('examples').$type<string[]>(),
+  firstSeen: timestamp('first_seen').notNull().defaultNow(),
+  lastSeen: timestamp('last_seen').notNull().defaultNow(),
+});
+
+export const aiScanHistory = pgTable('ai_scan_history', {
+  id: text('id').primaryKey(),
+  entityId: text('entity_id'),
+  entityName: text('entity_name').notNull(),
+  entityType: text('entity_type'),
+  threats: json('threats').$type<Record<string, any>>(),
+  severity: text('severity'),
+  score: real('score'),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+});
+
+export const userReports = pgTable('user_reports', {
+  id: text('id').primaryKey(),
+  reporterName: text('reporter_name'),
+  reporterEmail: text('reporter_email'),
+  reportType: text('report_type').notNull(),
+  targetId: text('target_id'),
+  targetName: text('target_name'),
+  title: text('title'),
+  description: text('description').notNull(),
+  evidence: text('evidence'),
+  severity: text('severity').notNull().default('MEDIUM'),
+  category: text('category'),
+  status: text('status').notNull().default('pending'),
+  upvotes: integer('upvotes').notNull().default(0),
+  downvotes: integer('downvotes').notNull().default(0),
+  verified: boolean('verified').notNull().default(false),
+  verifiedBy: text('verified_by'),
+  verifiedAt: timestamp('verified_at'),
+  submittedAt: timestamp('submitted_at').notNull().defaultNow(),
+  reviewedAt: timestamp('reviewed_at'),
+  adminNotes: text('admin_notes'),
+});
+
+export const reportVotes = pgTable('report_votes', {
+  id: text('id').primaryKey(),
+  reportId: text('report_id').notNull().references(() => userReports.id),
+  voterSessionId: text('voter_session_id').notNull(),
+  voteType: text('vote_type').notNull(),
+  votedAt: timestamp('voted_at').notNull().defaultNow(),
+});
+
+export const userReputation = pgTable('user_reputation', {
+  id: text('id').primaryKey(),
+  userIdentifier: text('user_identifier').notNull(),
+  reputationScore: integer('reputation_score').notNull().default(0),
+  reportsSubmitted: integer('reports_submitted').notNull().default(0),
+  reportsVerified: integer('reports_verified').notNull().default(0),
+  reportsRejected: integer('reports_rejected').notNull().default(0),
+  lastActive: timestamp('last_active').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const scammerAddresses = pgTable('scammer_addresses', {
+  id: text('id').primaryKey(),
+  address: text('address').notNull(),
+  chain: text('chain').notNull(),
+  addressType: text('address_type'),
+  category: text('category').notNull(),
+  severity: text('severity').notNull().default('HIGH'),
+  description: text('description'),
+  associatedScam: text('associated_scam'),
+  totalStolen: real('total_stolen'),
+  victimCount: integer('victim_count'),
+  firstSeen: timestamp('first_seen'),
+  lastActivity: timestamp('last_activity'),
+  isActive: boolean('is_active').notNull().default(true),
+  relatedAddresses: json('related_addresses').$type<string[]>(),
+  evidenceLinks: json('evidence_links').$type<string[]>(),
+  reportedBy: text('reported_by'),
+  verifiedAt: timestamp('verified_at'),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
+});
+
+export const alertSubscriptions = pgTable('alert_subscriptions', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  telegramChatId: text('telegram_chat_id'),
+  subscriptionType: text('subscription_type').notNull(),
+  alertTypes: json('alert_types').$type<string[]>(),
+  frequency: text('frequency'),
+  active: boolean('active').notNull().default(true),
+  lastSent: timestamp('last_sent'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const webhookEndpoints = pgTable('webhook_endpoints', {
+  id: text('id').primaryKey(),
+  url: text('url').notNull(),
+  secret: text('secret').notNull(),
+  eventTypes: json('event_types').$type<string[]>().notNull(),
+  active: boolean('active').notNull().default(true),
+  lastTriggered: timestamp('last_triggered'),
+  failureCount: integer('failure_count').default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdBy: text('created_by').notNull(),
 });
 
 export const manualAudits = pgTable('manual_audits', {
@@ -130,110 +282,28 @@ export const manualAudits = pgTable('manual_audits', {
 
 export const sponsorPayments = pgTable('sponsor_payments', {
   id: text('id').primaryKey(),
-  protocolId: text('protocol_id').notNull().references(() => protocols.id),
+  protocolId: text('protocol_id').notNull(),
   tier: text('tier').notNull(),
   startDate: timestamp('start_date').notNull().defaultNow(),
   endDate: timestamp('end_date').notNull(),
   amount: real('amount').notNull(),
   status: text('status').notNull().default('pending'),
   invoiceUrl: text('invoice_url'),
-  contactEmail: text('contact_email').notNull(),
+  contactEmail: text('contact_email'),
   notes: text('notes'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (table) => ({
-  protocolIdIdx: index('sponsor_payments_protocol_id_idx').on(table.protocolId),
-  statusIdx: index('sponsor_payments_status_idx').on(table.status),
-}));
-
-export const discoveredContracts = pgTable('discovered_contracts', {
-  id: text('id').primaryKey(),
-  contractAddress: text('contract_address').notNull(),
-  contractName: text('contract_name'),
-  chain: text('chain').notNull(),
-  contractType: text('contract_type'),
-  verifiedAt: timestamp('verified_at'),
-  discoveredAt: timestamp('discovered_at').notNull().defaultNow(),
-  compilerVersion: text('compiler_version'),
-  optimization: boolean('optimization'),
-  sourceCode: text('source_code'),
-  abi: json('abi').$type<any[]>(),
-  creatorAddress: text('creator_address'),
-  txHash: text('tx_hash'),
-  explorerUrl: text('explorer_url'),
-  status: text('status').notNull().default('pending'),
-  reviewedAt: timestamp('reviewed_at'),
-  promotedToProtocol: boolean('promoted_to_protocol').default(false),
-  protocolId: text('protocol_id'),
-  metadata: json('metadata').$type<{
-    isERC20?: boolean;
-    isERC721?: boolean;
-    isProxy?: boolean;
-    isGovernance?: boolean;
-    hasLiquidity?: boolean;
-    estimatedTVL?: number;
-    socialLinks?: { website?: string; twitter?: string; github?: string };
-    license?: string;
-    txCount?: number;
-    balance?: string;
-    source?: 'defillama' | 'etherscan-scraper';
-  }>(),
-}, (table) => ({
-  chainIdx: index('discovered_contracts_chain_idx').on(table.chain),
-  discoveredAtIdx: index('discovered_contracts_discovered_at_idx').on(table.discoveredAt),
-  statusIdx: index('discovered_contracts_status_idx').on(table.status),
-  contractAddressIdx: index('discovered_contracts_address_idx').on(table.contractAddress),
-  uniqueContractChain: uniqueIndex('discovered_contracts_unique_contract_chain').on(table.contractAddress, table.chain),
-}));
-
-export const adminUsers = pgTable('admin_users', {
-  id: text('id').primaryKey(),
-  username: text('username').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  email: text('email').notNull(),
-  role: text('role').notNull().default('admin'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  lastLogin: timestamp('last_login'),
-}, (table) => ({
-  usernameIdx: index('admin_users_username_idx').on(table.username),
-}));
-
-export const protocolCustomizations = pgTable('protocol_customizations', {
-  id: text('id').primaryKey(),
-  protocolId: text('protocol_id').notNull().references(() => protocols.id),
-  requestorEmail: text('requestor_email').notNull(),
-  requestorName: text('requestor_name'),
-  customDescription: text('custom_description'),
-  customWebsite: text('custom_website'),
-  customTwitter: text('custom_twitter'),
-  customGithub: text('custom_github'),
-  customAuditLinks: json('custom_audit_links').$type<string[]>(),
-  customLogo: text('custom_logo'),
-  paymentAmount: real('payment_amount').notNull().default(200),
-  paymentStatus: text('payment_status').notNull().default('pending'),
-  paymentCurrency: text('payment_currency'),
-  paymentTxHash: text('payment_tx_hash'),
-  paymentAddress: text('payment_address'),
-  status: text('status').notNull().default('pending'),
-  reviewNotes: text('review_notes'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  approvedAt: timestamp('approved_at'),
-  appliedAt: timestamp('applied_at'),
-}, (table) => ({
-  protocolIdIdx: index('protocol_customizations_protocol_id_idx').on(table.protocolId),
-  statusIdx: index('protocol_customizations_status_idx').on(table.status),
-  paymentStatusIdx: index('protocol_customizations_payment_status_idx').on(table.paymentStatus),
-}));
+});
 
 export const protocolSubmissions = pgTable('protocol_submissions', {
   id: text('id').primaryKey(),
-  submitterEmail: text('submitter_email').notNull(),
+  submitterEmail: text('submitter_email'),
   submitterName: text('submitter_name'),
   protocolName: text('protocol_name').notNull(),
-  website: text('website').notNull(),
-  chains: json('chains').$type<string[]>().notNull(),
+  website: text('website'),
+  chains: json('chains').$type<string[]>(),
   category: text('category').notNull(),
-  contractAddresses: json('contract_addresses').$type<Record<string, string>>(),
-  description: text('description').notNull(),
+  contractAddresses: json('contract_addresses').$type<string[]>(),
+  description: text('description'),
   logo: text('logo'),
   twitter: text('twitter'),
   github: text('github'),
@@ -242,741 +312,233 @@ export const protocolSubmissions = pgTable('protocol_submissions', {
   auditLinks: json('audit_links').$type<string[]>(),
   status: text('status').notNull().default('pending'),
   adminNotes: text('admin_notes'),
-  securityScanResult: json('security_scan_result').$type<any>(),
+  securityScanResult: json('security_scan_result').$type<Record<string, any>>(),
   submittedAt: timestamp('submitted_at').notNull().defaultNow(),
   reviewedAt: timestamp('reviewed_at'),
   reviewedBy: text('reviewed_by'),
-}, (table) => ({
-  submitterEmailIdx: index('protocol_submissions_submitter_email_idx').on(table.submitterEmail),
-  statusIdx: index('protocol_submissions_status_idx').on(table.status),
-  submittedAtIdx: index('protocol_submissions_submitted_at_idx').on(table.submittedAt),
-}));
+});
 
-export const protocolWhitelist = pgTable('protocol_whitelist', {
-  id: text('id').primaryKey(),
-  protocolId: text('protocol_id').notNull().unique(),
-  protocolName: text('protocol_name').notNull(),
-  reason: text('reason').notNull(),
-  verificationSource: text('verification_source').notNull(),
-  certikScore: real('certik_score'),
-  defiSafetyScore: real('defi_safety_score'),
-  minTvl: real('min_tvl'),
-  exchangeListings: json('exchange_listings').$type<string[]>(),
-  addedBy: text('added_by').notNull().default('system'),
-  addedAt: timestamp('added_at').notNull().defaultNow(),
-  lastVerified: timestamp('last_verified').notNull().defaultNow(),
-}, (table) => ({
-  protocolIdIdx: index('protocol_whitelist_protocol_id_idx').on(table.protocolId),
-}));
+// ==========================================
+// BOUNTY SYSTEM & AUDIT FIRM PIPELINE
+// ==========================================
 
-export const contractScans = pgTable('contract_scans', {
-  id: text('id').primaryKey(),
-  protocolId: text('protocol_id').references(() => protocols.id),
-  contractAddress: text('contract_address').notNull(),
-  chain: text('chain').notNull(),
-  isHoneypot: boolean('is_honeypot'),
-  cannotBuy: boolean('cannot_buy'),
-  cannotSell: boolean('cannot_sell'),
-  buyTax: real('buy_tax'),
-  sellTax: real('sell_tax'),
-  hiddenOwner: boolean('hidden_owner'),
-  isProxy: boolean('is_proxy'),
-  isOpenSource: boolean('is_open_source'),
-  ownerChangeBalance: boolean('owner_change_balance'),
-  canTakeBackOwnership: boolean('can_take_back_ownership'),
-  tradingCooldown: boolean('trading_cooldown'),
-  transferPausable: boolean('transfer_pausable'),
-  holders: integer('holders'),
-  totalSupply: text('total_supply'),
-  threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
-  riskScore: real('risk_score').notNull(),
-  severity: text('severity').notNull(),
-  rawData: json('raw_data').$type<any>(),
-  scannedAt: timestamp('scanned_at').notNull().defaultNow(),
-}, (table) => ({
-  protocolIdIdx: index('contract_scans_protocol_id_idx').on(table.protocolId),
-  contractAddressIdx: index('contract_scans_address_idx').on(table.contractAddress),
-  chainIdx: index('contract_scans_chain_idx').on(table.chain),
-  scannedAtIdx: index('contract_scans_scanned_at_idx').on(table.scannedAt),
-}));
-
-export const twitterAlerts = pgTable('twitter_alerts', {
-  id: text('id').primaryKey(),
-  tweetId: text('tweet_id').notNull().unique(),
-  authorId: text('author_id').notNull(),
-  authorUsername: text('author_username'),
-  tweetText: text('tweet_text').notNull(),
-  alertType: text('alert_type').notNull(),
-  category: text('category').notNull(),
-  severity: text('severity').notNull(),
-  matchedKeywords: json('matched_keywords').$type<string[]>().notNull(),
-  extractedUrls: json('extracted_urls').$type<string[]>(),
-  hashtags: json('hashtags').$type<string[]>(),
-  mentions: json('mentions').$type<string[]>(),
-  protocolMentioned: text('protocol_mentioned'),
-  isSuspicious: boolean('is_suspicious').notNull().default(false),
-  blacklistedDomain: text('blacklisted_domain'),
-  crossReferencedProtocol: text('cross_referenced_protocol'),
-  status: text('status').notNull().default('pending'),
-  reviewNotes: text('review_notes'),
-  tweetCreatedAt: timestamp('tweet_created_at').notNull(),
-  detectedAt: timestamp('detected_at').notNull().defaultNow(),
-  reviewedAt: timestamp('reviewed_at'),
-}, (table) => ({
-  tweetIdIdx: index('twitter_alerts_tweet_id_idx').on(table.tweetId),
-  alertTypeIdx: index('twitter_alerts_alert_type_idx').on(table.alertType),
-  categoryIdx: index('twitter_alerts_category_idx').on(table.category),
-  severityIdx: index('twitter_alerts_severity_idx').on(table.severity),
-  statusIdx: index('twitter_alerts_status_idx').on(table.status),
-  detectedAtIdx: index('twitter_alerts_detected_at_idx').on(table.detectedAt),
-}));
-
-export const certikAudits = pgTable('certik_audits', {
-  id: text('id').primaryKey(),
-  protocolId: text('protocol_id').notNull().references(() => protocols.id),
-  protocolName: text('protocol_name').notNull(),
-  securityScore: real('security_score'),
-  codeSecurityScore: real('code_security_score'),
-  marketScore: real('market_score'),
-  governanceScore: real('governance_score'),
-  hasAudit: boolean('has_audit').notNull().default(false),
-  auditDate: timestamp('audit_date'),
-  auditStatus: text('audit_status'),
-  auditReportUrl: text('audit_report_url'),
-  vulnerabilities: json('vulnerabilities').$type<Array<{
-    severity: string;
-    category: string;
-    description: string;
-    status: string;
-  }>>(),
-  riskCategories: json('risk_categories').$type<{
-    codeRisk: string;
-    marketRisk: string;
-    governanceRisk: string;
-    operationalRisk: string;
-  }>(),
-  onChainMonitoring: boolean('on_chain_monitoring').default(false),
-  kycVerified: boolean('kyc_verified').default(false),
-  bugBountyProgram: boolean('bug_bounty_program').default(false),
-  certikSkynetUrl: text('certik_skynet_url'),
-  dataSource: text('data_source').notNull().default('skynet_scraper'),
-  lastUpdated: timestamp('last_updated').notNull().defaultNow(),
-  fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
-}, (table) => ({
-  protocolIdIdx: index('certik_audits_protocol_id_idx').on(table.protocolId),
-  securityScoreIdx: index('certik_audits_security_score_idx').on(table.securityScore),
-  fetchedAtIdx: index('certik_audits_fetched_at_idx').on(table.fetchedAt),
-}));
-
-// AI Learning Pattern Persistence (Phase 2)
-export const aiLearnedPatterns = pgTable('ai_learned_patterns', {
-  id: text('id').primaryKey(),
-  pattern: text('pattern').notNull(),
-  severity: text('severity').notNull(),
-  category: text('category').notNull(),
-  confidence: real('confidence').notNull(),
-  occurrences: integer('occurrences').notNull().default(1),
-  examples: json('examples').$type<string[]>().notNull().default([]),
-  firstSeen: timestamp('first_seen').notNull().defaultNow(),
-  lastSeen: timestamp('last_seen').notNull().defaultNow(),
-}, (table) => ({
-  patternIdx: uniqueIndex('ai_learned_patterns_pattern_idx').on(table.pattern, table.severity),
-  confidenceIdx: index('ai_learned_patterns_confidence_idx').on(table.confidence),
-  categoryIdx: index('ai_learned_patterns_category_idx').on(table.category),
-  lastSeenIdx: index('ai_learned_patterns_last_seen_idx').on(table.lastSeen),
-}));
-
-export const aiScanHistory = pgTable('ai_scan_history', {
-  id: text('id').primaryKey(),
-  entityId: text('entity_id').notNull(),
-  entityName: text('entity_name').notNull(),
-  entityType: text('entity_type').notNull(),
-  threats: json('threats').$type<Array<{ type: string; severity: string; message: string }>>().notNull(),
-  severity: text('severity').notNull(),
-  score: real('score').notNull(),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-}, (table) => ({
-  entityIdIdx: index('ai_scan_history_entity_id_idx').on(table.entityId),
-  entityTypeIdx: index('ai_scan_history_entity_type_idx').on(table.entityType),
-  timestampIdx: index('ai_scan_history_timestamp_idx').on(table.timestamp),
-}));
-
-// TypeScript Types - manually defined to use strings for timestamps
-export type Protocol = {
-  id: string;
-  name: string;
-  chains: string[];
-  category: string;
-  tvl: number;
-  volume24h: number;
-  change24h: number;
-  age: number | null;
-  audited: boolean;
-  auditCount: number;
-  auditNote: string | null;
-  auditLinks: string[] | null;
-  securityScore: number;
-  logo: string | null;
-  website: string | null;
-  twitter: string | null;
-  github: string | null;
-  description: string;
-  autoDiscovered: boolean;
-  manuallyAdded: boolean;
-  sponsoredUntil: string | null;
-  sponsorshipTier: 'free' | 'featured' | 'sponsored';
-  featuredPosition: number | null;
-  defiSecurityScore: number | null;
-  defiAuditReports: Array<{ auditor: string; date: string; reportUrl: string }> | null;
-  defiHasMultisig: boolean | null;
-  defiHasTimelock: boolean | null;
-  defiDataFetchedAt: string | null;
-  contractAddress: string | null;
-  contractChain: string | null;
-  
-  // Activity Metrics
-  dailyActiveWallets: number;
-  weeklyActiveWallets: number;
-  monthlyActiveWallets: number;
-  transactions24h: number;
-  transactions7d: number;
-  contractCalls24h: number;
-  activityHistory: Array<{ date: string; wallets: number; transactions: number }> | null;
-  
-  // Rankings
-  rankByActivity: number | null;
-  rankByTvl: number | null;
-  rankByVolume: number | null;
-};
-
-export type SecurityScan = {
-  isBlacklisted: boolean;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  threats: Threat[];
-  score: number;
-  scannedAt: string;
-};
-
-export type SecurityMetrics = {
-  hasAudit: boolean;
-  auditFirms: string[];
-  tvl: number;
-  holderCount: number | null;
-  hasOpenSource: boolean;
-  hasMultisig: boolean;
-  hasTimelock: boolean;
-  hasBugBounty: boolean;
-  hasDoxxedTeam: boolean;
-  communitySize: number | null;
-};
-
-export type BlacklistEntry = {
-  id: string;
-  dappId: string;
-  dappName: string;
-  website: string | null;
-  twitter: string | null;
-  github: string | null;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  threats: Threat[];
-  reason: string | null;
-  status: 'ACTIVE' | 'INACTIVE';
-  timestamp: string;
-  legitimacyScore: number;
-  securityMetrics: SecurityMetrics | null;
-  lastVetted: string | null;
-};
-
-export type TutorialVideo = {
-  id: string;
-  title: string;
-  description: string;
-  videoUrl: string;
-  thumbnailUrl: string | null;
-  duration: number | null;
-  category: string;
-  uploadedAt: string;
-};
-
-export type ManualAudit = {
-  id: string;
-  protocolId: string;
-  auditFirm: string;
-  auditDate: string;
-  reportUrl: string | null;
-  findings: string | null;
-  addedAt: string;
-};
-
-export type SponsorPayment = {
-  id: string;
-  protocolId: string;
-  tier: 'featured' | 'sponsored';
-  startDate: string;
-  endDate: string;
-  amount: number;
-  status: 'pending' | 'active' | 'expired' | 'cancelled';
-  invoiceUrl: string | null;
-  contactEmail: string;
-  notes: string | null;
-  createdAt: string;
-};
-
-export type AdminUser = {
-  id: string;
-  username: string;
-  passwordHash: string;
-  email: string;
-  role: string;
-  createdAt: string;
-  lastLogin: string | null;
-};
-
-export type ProtocolCustomization = {
-  id: string;
-  protocolId: string;
-  requestorEmail: string;
-  requestorName: string | null;
-  customDescription: string | null;
-  customWebsite: string | null;
-  customTwitter: string | null;
-  customGithub: string | null;
-  customAuditLinks: string[] | null;
-  customLogo: string | null;
-  paymentAmount: number;
-  paymentStatus: 'pending' | 'paid' | 'confirmed' | 'failed';
-  paymentCurrency: string | null;
-  paymentTxHash: string | null;
-  paymentAddress: string | null;
-  status: 'pending' | 'payment_pending' | 'under_review' | 'approved' | 'rejected' | 'applied';
-  reviewNotes: string | null;
-  createdAt: string;
-  approvedAt: string | null;
-  appliedAt: string | null;
-};
-
-export type ProtocolSubmission = {
-  id: string;
-  submitterEmail: string;
-  submitterName: string | null;
-  protocolName: string;
-  website: string;
-  chains: string[];
-  category: string;
-  contractAddresses: Record<string, string> | null;
-  description: string;
-  logo: string | null;
-  twitter: string | null;
-  github: string | null;
-  telegram: string | null;
-  discord: string | null;
-  auditLinks: string[] | null;
-  status: 'pending' | 'approved' | 'rejected';
-  adminNotes: string | null;
-  securityScanResult: any | null;
-  submittedAt: string;
-  reviewedAt: string | null;
-  reviewedBy: string | null;
-};
-
-export type DiscoveredContract = {
-  id: string;
-  contractAddress: string;
-  contractName: string | null;
-  chain: string;
-  contractType: string | null;
-  verifiedAt: string | null;
-  discoveredAt: string;
-  compilerVersion: string | null;
-  optimization: boolean | null;
-  sourceCode: string | null;
-  abi: any[] | null;
-  creatorAddress: string | null;
-  txHash: string | null;
-  explorerUrl: string | null;
-  status: 'pending' | 'reviewed' | 'approved' | 'rejected';
-  reviewedAt: string | null;
-  promotedToProtocol: boolean;
-  protocolId: string | null;
-  metadata: {
-    isERC20?: boolean;
-    isERC721?: boolean;
-    isProxy?: boolean;
-    isGovernance?: boolean;
-    hasLiquidity?: boolean;
-    estimatedTVL?: number;
-    socialLinks?: { website?: string; twitter?: string; github?: string };
-  } | null;
-};
-
-export type ProtocolWhitelist = {
-  id: string;
-  protocolId: string;
-  protocolName: string;
-  reason: string;
-  verificationSource: string;
-  certikScore: number | null;
-  defiSafetyScore: number | null;
-  minTvl: number | null;
-  exchangeListings: string[] | null;
-  addedBy: string;
-  addedAt: string;
-  lastVerified: string;
-};
-
-export type TwitterAlert = {
-  id: string;
-  tweetId: string;
-  authorId: string;
-  authorUsername: string | null;
-  tweetText: string;
-  alertType: 'airdrop' | 'migration' | 'scam' | 'audit' | 'vulnerability';
-  category: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
-  matchedKeywords: string[];
-  extractedUrls: string[] | null;
-  hashtags: string[] | null;
-  mentions: string[] | null;
-  protocolMentioned: string | null;
-  isSuspicious: boolean;
-  blacklistedDomain: string | null;
-  crossReferencedProtocol: string | null;
-  status: 'pending' | 'reviewed' | 'flagged' | 'dismissed';
-  reviewNotes: string | null;
-  tweetCreatedAt: string;
-  detectedAt: string;
-  reviewedAt: string | null;
-};
-
-export type CertikAudit = {
-  id: string;
-  protocolId: string;
-  protocolName: string;
-  securityScore: number | null;
-  codeSecurityScore: number | null;
-  marketScore: number | null;
-  governanceScore: number | null;
-  hasAudit: boolean;
-  auditDate: string | null;
-  auditStatus: string | null;
-  auditReportUrl: string | null;
-  vulnerabilities: Array<{
-    severity: string;
-    category: string;
-    description: string;
-    status: string;
-  }> | null;
-  riskCategories: {
-    codeRisk: string;
-    marketRisk: string;
-    governanceRisk: string;
-    operationalRisk: string;
-  } | null;
-  onChainMonitoring: boolean;
-  kycVerified: boolean;
-  bugBountyProgram: boolean;
-  certikSkynetUrl: string | null;
-  dataSource: string;
-  lastUpdated: string;
-  fetchedAt: string;
-};
-
-export type Threat = {
-  type: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  message: string;
-};
-
-export type ContractScan = {
-  id: string;
-  protocolId: string | null;
-  contractAddress: string;
-  chain: string;
-  isHoneypot: boolean | null;
-  cannotBuy: boolean | null;
-  cannotSell: boolean | null;
-  buyTax: number | null;
-  sellTax: number | null;
-  hiddenOwner: boolean | null;
-  isProxy: boolean | null;
-  isOpenSource: boolean | null;
-  ownerChangeBalance: boolean | null;
-  canTakeBackOwnership: boolean | null;
-  tradingCooldown: boolean | null;
-  transferPausable: boolean | null;
-  holders: number | null;
-  totalSupply: string | null;
-  threats: Threat[];
-  riskScore: number;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  rawData: any | null;
-  scannedAt: string;
-};
-
-export type AILearnedPattern = {
-  id: string;
-  pattern: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  category: string;
-  confidence: number;
-  occurrences: number;
-  examples: string[];
-  firstSeen: string;
-  lastSeen: string;
-};
-
-export type AIScanHistory = {
-  id: string;
-  entityId: string;
-  entityName: string;
-  entityType: 'protocol' | 'wallet' | 'website';
-  threats: Threat[];
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  score: number;
-  timestamp: string;
-};
-
-// Phase 4: Community & Reporting Tables
-export const userReports = pgTable('user_reports', {
-  id: text('id').primaryKey(),
-  reporterName: text('reporter_name'),
-  reporterEmail: text('reporter_email'),
-  reportType: text('report_type').notNull(), // 'protocol' | 'wallet' | 'website' | 'contract'
-  targetId: text('target_id').notNull(), // protocol ID, wallet address, website URL, or contract address
-  targetName: text('target_name').notNull(),
-  title: text('title').notNull(),
-  description: text('description').notNull(),
-  evidence: json('evidence').$type<Array<{ type: string; url: string; description: string }>>(),
-  severity: text('severity').notNull(), // 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
-  category: text('category').notNull(), // threat category
-  status: text('status').notNull().default('pending'), // 'pending' | 'verified' | 'rejected' | 'investigating'
-  upvotes: integer('upvotes').notNull().default(0),
-  downvotes: integer('downvotes').notNull().default(0),
-  verified: boolean('verified').notNull().default(false),
-  verifiedBy: text('verified_by'),
-  verifiedAt: timestamp('verified_at'),
-  submittedAt: timestamp('submitted_at').notNull().defaultNow(),
-  reviewedAt: timestamp('reviewed_at'),
-  adminNotes: text('admin_notes'),
-}, (table) => ({
-  reportTypeIdx: index('user_reports_report_type_idx').on(table.reportType),
-  statusIdx: index('user_reports_status_idx').on(table.status),
-  submittedAtIdx: index('user_reports_submitted_at_idx').on(table.submittedAt),
-  targetIdIdx: index('user_reports_target_id_idx').on(table.targetId),
-}));
-
-export const reportVotes = pgTable('report_votes', {
-  id: text('id').primaryKey(),
-  reportId: text('report_id').notNull().references(() => userReports.id),
-  voterSessionId: text('voter_session_id').notNull(), // Session ID or IP hash for anonymous voting
-  voteType: text('vote_type').notNull(), // 'upvote' | 'downvote'
-  votedAt: timestamp('voted_at').notNull().defaultNow(),
-}, (table) => ({
-  reportIdIdx: index('report_votes_report_id_idx').on(table.reportId),
-  uniqueVoteIdx: uniqueIndex('report_votes_unique_vote_idx').on(table.reportId, table.voterSessionId),
-}));
-
-export const userReputation = pgTable('user_reputation', {
-  id: text('id').primaryKey(),
-  userIdentifier: text('user_identifier').notNull(), // email or session ID
-  reputationScore: integer('reputation_score').notNull().default(0),
-  reportsSubmitted: integer('reports_submitted').notNull().default(0),
-  reportsVerified: integer('reports_verified').notNull().default(0),
-  reportsRejected: integer('reports_rejected').notNull().default(0),
-  lastActive: timestamp('last_active').notNull().defaultNow(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (table) => ({
-  userIdentifierIdx: uniqueIndex('user_reputation_user_identifier_idx').on(table.userIdentifier),
-  reputationScoreIdx: index('user_reputation_reputation_score_idx').on(table.reputationScore),
-}));
-
-// Phase 5: Intelligence Sharing Tables
-export const scammerAddresses = pgTable('scammer_addresses', {
-  id: text('id').primaryKey(),
-  address: text('address').notNull(),
-  chain: text('chain').notNull(), // 'ethereum', 'bsc', 'polygon', 'solana', etc.
-  addressType: text('address_type').notNull(), // 'wallet' | 'contract'
-  category: text('category').notNull(), // 'drainer' | 'phishing' | 'rugpull' | 'ponzi' | 'honeypot'
-  severity: text('severity').notNull(), // 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
-  description: text('description').notNull(),
-  associatedScam: text('associated_scam'), // Name of the scam operation
-  totalStolen: real('total_stolen').default(0), // Estimated amount stolen in USD
-  victimCount: integer('victim_count').default(0),
-  firstSeen: timestamp('first_seen').notNull().defaultNow(),
-  lastActivity: timestamp('last_activity'),
-  isActive: boolean('is_active').notNull().default(true),
-  relatedAddresses: json('related_addresses').$type<string[]>(), // Related scammer addresses
-  evidenceLinks: json('evidence_links').$type<string[]>(),
-  reportedBy: text('reported_by'), // Source of the report
-  verifiedAt: timestamp('verified_at'),
-  addedAt: timestamp('added_at').notNull().defaultNow(),
-}, (table) => ({
-  addressIdx: uniqueIndex('scammer_addresses_address_chain_idx').on(table.address, table.chain),
-  chainIdx: index('scammer_addresses_chain_idx').on(table.chain),
-  categoryIdx: index('scammer_addresses_category_idx').on(table.category),
-  isActiveIdx: index('scammer_addresses_is_active_idx').on(table.isActive),
-  addedAtIdx: index('scammer_addresses_added_at_idx').on(table.addedAt),
-}));
-
-export const alertSubscriptions = pgTable('alert_subscriptions', {
+export const communityUsers = pgTable('community_users', {
   id: text('id').primaryKey(),
   email: text('email'),
-  telegramChatId: text('telegram_chat_id'),
-  subscriptionType: text('subscription_type').notNull(), // 'email' | 'telegram'
-  alertTypes: json('alert_types').$type<string[]>().notNull(), // ['new_threat', 'critical_alert', 'scammer_address', 'blacklist_update']
-  frequency: text('frequency').notNull().default('immediate'), // 'immediate' | 'daily' | 'weekly'
-  active: boolean('active').notNull().default(true),
-  lastSent: timestamp('last_sent'),
+  walletAddress: text('wallet_address'),
+  displayName: text('display_name').notNull(),
+  totalPoints: integer('total_points').notNull().default(0),
+  bio: text('bio'),
+  twitterHandle: text('twitter_handle'),
+  githubHandle: text('github_handle'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (table) => ({
-  emailIdx: index('alert_subscriptions_email_idx').on(table.email),
-  telegramChatIdIdx: index('alert_subscriptions_telegram_chat_id_idx').on(table.telegramChatId),
-  subscriptionTypeIdx: index('alert_subscriptions_subscription_type_idx').on(table.subscriptionType),
-}));
+  lastActive: timestamp('last_active').notNull().defaultNow(),
+});
 
-export const webhookEndpoints = pgTable('webhook_endpoints', {
+export const bountyTasks = pgTable('bounty_tasks', {
   id: text('id').primaryKey(),
-  url: text('url').notNull(),
-  secret: text('secret').notNull(), // HMAC secret for webhook verification
-  eventTypes: json('event_types').$type<string[]>().notNull(), // ['new_threat', 'blacklist_update', 'scammer_address']
-  active: boolean('active').notNull().default(true),
-  lastTriggered: timestamp('last_triggered'),
-  failureCount: integer('failure_count').notNull().default(0),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  category: text('category').notNull(),
+  pointReward: integer('point_reward').notNull(),
+  status: text('status').notNull().default('open'),
+  deadline: timestamp('deadline'),
+  requirements: json('requirements').$type<string[]>().default([]),
+  protocolId: text('protocol_id'),
+  createdBy: text('created_by').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  createdBy: text('created_by'), // API key or admin ID
-}, (table) => ({
-  urlIdx: uniqueIndex('webhook_endpoints_url_idx').on(table.url),
-  activeIdx: index('webhook_endpoints_active_idx').on(table.active),
-}));
-
-// Zod Insert Schemas from Drizzle
-export const insertProtocolSchema = createInsertSchema(protocols).omit({ 
-  discoveredAt: true, 
-  lastUpdated: true 
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  submissionCount: integer('submission_count').notNull().default(0),
+  maxSubmissions: integer('max_submissions'),
 });
 
-export const insertTutorialVideoSchema = createInsertSchema(tutorialVideos).omit({ 
-  id: true, 
-  uploadedAt: true 
+export const bountySubmissions = pgTable('bounty_submissions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => communityUsers.id),
+  taskId: text('task_id').references(() => bountyTasks.id),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  evidence: text('evidence'),
+  evidenceLinks: json('evidence_links').$type<string[]>().default([]),
+  protocolId: text('protocol_id'),
+  protocolName: text('protocol_name'),
+  status: text('status').notNull().default('pending'),
+  pointsAwarded: integer('points_awarded'),
+  reviewedBy: text('reviewed_by'),
+  reviewNote: text('review_note'),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export const insertManualAuditSchema = createInsertSchema(manualAudits).omit({ 
-  id: true, 
-  addedAt: true 
+export const pointsLedger = pgTable('points_ledger', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => communityUsers.id),
+  amount: integer('amount').notNull(),
+  reason: text('reason').notNull(),
+  submissionId: text('submission_id').references(() => bountySubmissions.id),
+  awardedBy: text('awarded_by'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export const insertSponsorPaymentSchema = createInsertSchema(sponsorPayments).omit({ 
-  id: true, 
-  createdAt: true 
+export const auditFirms = pgTable('audit_firms', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  website: text('website').notNull(),
+  description: text('description').notNull(),
+  logoUrl: text('logo_url'),
+  specialties: json('specialties').$type<string[]>().default([]),
+  foundedYear: integer('founded_year'),
+  teamSize: text('team_size'),
+  contactEmail: text('contact_email').notNull(),
+  twitterHandle: text('twitter_handle'),
+  githubHandle: text('github_handle'),
+  verificationStatus: text('verification_status').notNull().default('pending'),
+  verifiedAt: timestamp('verified_at'),
+  verifiedBy: text('verified_by'),
+  rejectionReason: text('rejection_reason'),
+  totalClaims: integer('total_claims').notNull().default(0),
+  verifiedClaims: integer('verified_claims').notNull().default(0),
+  postExploitCount: integer('post_exploit_count').notNull().default(0),
+  communityRating: real('community_rating'),
+  totalReviews: integer('total_reviews').notNull().default(0),
+  avgBountyResponseDays: real('avg_bounty_response_days'),
+  scopeCoverageScore: real('scope_coverage_score'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const insertProtocolCustomizationSchema = createInsertSchema(protocolCustomizations).omit({ 
-  id: true, 
-  createdAt: true,
-  approvedAt: true,
-  appliedAt: true
+export const auditFirmClaims = pgTable('audit_firm_claims', {
+  id: text('id').primaryKey(),
+  firmId: text('firm_id').notNull().references(() => auditFirms.id),
+  protocolId: text('protocol_id').notNull(),
+  protocolName: text('protocol_name').notNull(),
+  auditDate: text('audit_date').notNull(),
+  auditReportUrl: text('audit_report_url').notNull(),
+  auditSummary: text('audit_summary'),
+  criticalFindings: integer('critical_findings').notNull().default(0),
+  highFindings: integer('high_findings').notNull().default(0),
+  mediumFindings: integer('medium_findings').notNull().default(0),
+  lowFindings: integer('low_findings').notNull().default(0),
+  deployedCodeMatchesAudit: boolean('deployed_code_matches_audit'),
+  postAuditChanges: text('post_audit_changes'),
+  bountyResponseDays: integer('bounty_response_days'),
+  verificationStatus: text('verification_status').notNull().default('pending'),
+  verifiedAt: timestamp('verified_at'),
+  verifiedBy: text('verified_by'),
+  rejectionReason: text('rejection_reason'),
+  submittedAt: timestamp('submitted_at').notNull().defaultNow(),
+  protocolWasExploited: boolean('protocol_was_exploited').default(false),
+  exploitDate: text('exploit_date'),
+  exploitDescription: text('exploit_description'),
 });
 
-export const insertProtocolSubmissionSchema = createInsertSchema(protocolSubmissions).omit({ 
-  id: true, 
-  submittedAt: true,
-  reviewedAt: true,
-  reviewedBy: true,
-  adminNotes: true,
-  securityScanResult: true,
-  status: true
+export const auditFirmReviews = pgTable('audit_firm_reviews', {
+  id: text('id').primaryKey(),
+  firmId: text('firm_id').notNull().references(() => auditFirms.id),
+  reviewerUserId: text('reviewer_user_id').notNull().references(() => communityUsers.id),
+  rating: integer('rating').notNull(),
+  reviewText: text('review_text').notNull(),
+  claimId: text('claim_id').references(() => auditFirmClaims.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export const insertDiscoveredContractSchema = createInsertSchema(discoveredContracts).omit({ 
-  id: true, 
-  discoveredAt: true,
-  reviewedAt: true
-});
+// ==========================================
+// INSERT SCHEMAS
+// ==========================================
 
-export const insertProtocolWhitelistSchema = createInsertSchema(protocolWhitelist).omit({ 
-  id: true, 
-  addedAt: true,
-  lastVerified: true
-});
+export const insertProtocolSchema = createInsertSchema(protocols).omit({ discoveredAt: true, lastUpdated: true });
+export const insertTutorialVideoSchema = createInsertSchema(tutorialVideos).omit({ uploadedAt: true });
+export const insertManualAuditSchema = createInsertSchema(manualAudits).omit({ addedAt: true });
+export const insertSponsorPaymentSchema = createInsertSchema(sponsorPayments).omit({ createdAt: true });
+export const insertDiscoveredContractSchema = createInsertSchema(protocolSubmissions);
+export const insertProtocolCustomizationSchema = createInsertSchema(protocolCustomizations).omit({ createdAt: true });
+export const insertProtocolSubmissionSchema = createInsertSchema(protocolSubmissions).omit({ submittedAt: true });
+export const insertProtocolWhitelistSchema = createInsertSchema(protocolWhitelist).omit({ addedAt: true });
+export const insertTwitterAlertSchema = createInsertSchema(bountyTasks); // placeholder kept for import compat
+export const insertCertikAuditSchema = createInsertSchema(certikAudits).omit({ lastUpdated: true, fetchedAt: true });
+export const insertUserReportSchema = createInsertSchema(userReports).omit({ submittedAt: true, upvotes: true, downvotes: true, verified: true });
+export const insertReportVoteSchema = createInsertSchema(reportVotes).omit({ votedAt: true });
+export const insertUserReputationSchema = createInsertSchema(userReputation).omit({ createdAt: true, lastActive: true });
+export const insertScammerAddressSchema = createInsertSchema(scammerAddresses).omit({ addedAt: true });
+export const insertAlertSubscriptionSchema = createInsertSchema(alertSubscriptions).omit({ createdAt: true });
+export const insertWebhookEndpointSchema = createInsertSchema(webhookEndpoints).omit({ createdAt: true });
+export const insertCommunityUserSchema = createInsertSchema(communityUsers).omit({ createdAt: true, lastActive: true, totalPoints: true });
+export const insertBountyTaskSchema = createInsertSchema(bountyTasks).omit({ createdAt: true, updatedAt: true, submissionCount: true });
+export const insertBountySubmissionSchema = createInsertSchema(bountySubmissions).omit({ createdAt: true, status: true });
+export const insertAuditFirmSchema = createInsertSchema(auditFirms).omit({ createdAt: true, updatedAt: true, verificationStatus: true, totalClaims: true, verifiedClaims: true, postExploitCount: true, communityRating: true, totalReviews: true });
+export const insertAuditFirmClaimSchema = createInsertSchema(auditFirmClaims).omit({ submittedAt: true, verificationStatus: true });
+export const insertAuditFirmReviewSchema = createInsertSchema(auditFirmReviews).omit({ createdAt: true });
 
-export const insertTwitterAlertSchema = createInsertSchema(twitterAlerts).omit({ 
-  id: true, 
-  detectedAt: true,
-  reviewedAt: true
-});
+// ==========================================
+// SELECT TYPES
+// ==========================================
 
-export const insertCertikAuditSchema = createInsertSchema(certikAudits).omit({ 
-  id: true, 
-  lastUpdated: true,
-  fetchedAt: true
-});
-
-// Phase 4 & 5 Insert Schemas
-export const insertUserReportSchema = createInsertSchema(userReports).omit({ 
-  id: true, 
-  submittedAt: true,
-  reviewedAt: true,
-  upvotes: true,
-  downvotes: true,
-  verified: true,
-  verifiedBy: true,
-  verifiedAt: true
-}).extend({
-  reporterEmail: z.string().email().or(z.literal("")).optional().nullable()
-});
-
-export const insertReportVoteSchema = createInsertSchema(reportVotes).omit({ 
-  id: true, 
-  votedAt: true
-});
-
-export const insertUserReputationSchema = createInsertSchema(userReputation).omit({ 
-  id: true, 
-  lastActive: true,
-  createdAt: true
-});
-
-export const insertScammerAddressSchema = createInsertSchema(scammerAddresses).omit({ 
-  id: true, 
-  firstSeen: true,
-  addedAt: true
-});
-
-export const insertAlertSubscriptionSchema = createInsertSchema(alertSubscriptions).omit({ 
-  id: true, 
-  createdAt: true
-});
-
-export const insertWebhookEndpointSchema = createInsertSchema(webhookEndpoints).omit({ 
-  id: true, 
-  createdAt: true
-});
-
-export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
-export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
-export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
-export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
-export type InsertDiscoveredContract = z.infer<typeof insertDiscoveredContractSchema>;
-export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
-export type InsertProtocolSubmission = z.infer<typeof insertProtocolSubmissionSchema>;
-export type InsertProtocolWhitelist = z.infer<typeof insertProtocolWhitelistSchema>;
-export type InsertTwitterAlert = z.infer<typeof insertTwitterAlertSchema>;
-export type InsertCertikAudit = z.infer<typeof insertCertikAuditSchema>;
-
-// Phase 4 & 5 Types
+export type Protocol = typeof protocols.$inferSelect;
+export type SecurityScan = typeof securityScans.$inferSelect;
+export type BlacklistEntry = typeof blacklistEntries.$inferSelect;
+export type TutorialVideo = typeof tutorialVideos.$inferSelect;
+export type ManualAudit = typeof manualAudits.$inferSelect;
+export type SponsorPayment = typeof sponsorPayments.$inferSelect;
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type ProtocolCustomization = typeof protocolCustomizations.$inferSelect;
+export type ProtocolSubmission = typeof protocolSubmissions.$inferSelect;
+export type ProtocolWhitelist = typeof protocolWhitelist.$inferSelect;
+export type CertikAudit = typeof certikAudits.$inferSelect;
+export type AILearnedPattern = typeof aiLearnedPatterns.$inferSelect;
+export type AIScanHistory = typeof aiScanHistory.$inferSelect;
 export type UserReport = typeof userReports.$inferSelect;
 export type ReportVote = typeof reportVotes.$inferSelect;
 export type UserReputation = typeof userReputation.$inferSelect;
 export type ScammerAddress = typeof scammerAddresses.$inferSelect;
 export type AlertSubscription = typeof alertSubscriptions.$inferSelect;
 export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+export type CommunityUser = typeof communityUsers.$inferSelect;
+export type BountyTask = typeof bountyTasks.$inferSelect;
+export type BountySubmission = typeof bountySubmissions.$inferSelect;
+export type PointsLedgerEntry = typeof pointsLedger.$inferSelect;
+export type AuditFirm = typeof auditFirms.$inferSelect;
+export type AuditFirmClaim = typeof auditFirmClaims.$inferSelect;
+export type AuditFirmReview = typeof auditFirmReviews.$inferSelect;
 
+// Legacy compat aliases used in storage.ts
+export type DiscoveredContract = ProtocolSubmission;
+export type TwitterAlert = BountyTask;
+export type ContractScan = { id: string; [key: string]: any };
+export type InsertDiscoveredContract = InsertProtocolSubmission;
+export type InsertTwitterAlert = InsertBountyTask;
+
+// ==========================================
+// INSERT TYPES
+// ==========================================
+
+export type InsertProtocol = z.infer<typeof insertProtocolSchema>;
+export type InsertTutorialVideo = z.infer<typeof insertTutorialVideoSchema>;
+export type InsertManualAudit = z.infer<typeof insertManualAuditSchema>;
+export type InsertSponsorPayment = z.infer<typeof insertSponsorPaymentSchema>;
+export type InsertProtocolCustomization = z.infer<typeof insertProtocolCustomizationSchema>;
+export type InsertProtocolSubmission = z.infer<typeof insertProtocolSubmissionSchema>;
+export type InsertProtocolWhitelist = z.infer<typeof insertProtocolWhitelistSchema>;
+export type InsertCertikAudit = z.infer<typeof insertCertikAuditSchema>;
 export type InsertUserReport = z.infer<typeof insertUserReportSchema>;
 export type InsertReportVote = z.infer<typeof insertReportVoteSchema>;
 export type InsertUserReputation = z.infer<typeof insertUserReputationSchema>;
 export type InsertScammerAddress = z.infer<typeof insertScammerAddressSchema>;
 export type InsertAlertSubscription = z.infer<typeof insertAlertSubscriptionSchema>;
 export type InsertWebhookEndpoint = z.infer<typeof insertWebhookEndpointSchema>;
+export type InsertCommunityUser = z.infer<typeof insertCommunityUserSchema>;
+export type InsertBountyTask = z.infer<typeof insertBountyTaskSchema>;
+export type InsertBountySubmission = z.infer<typeof insertBountySubmissionSchema>;
+export type InsertAuditFirm = z.infer<typeof insertAuditFirmSchema>;
+export type InsertAuditFirmClaim = z.infer<typeof insertAuditFirmClaimSchema>;
+export type InsertAuditFirmReview = z.infer<typeof insertAuditFirmReviewSchema>;
+
+// Threat type
+export interface Threat {
+  type: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  message: string;
+}
 
 // API response types
 export const protocolsResponseSchema = z.array(z.custom<Protocol>());

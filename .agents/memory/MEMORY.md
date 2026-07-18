@@ -1,0 +1,2 @@
+- [Schema-DB alignment](schema-db-alignment.md) — always verify actual DB columns before rewriting schema.ts; regex surgery on storage.ts leaves mangled stubs.
+- [Bounty & audit firm tables](bounty-audit-schema.md) — new tables created via raw SQL (drizzle-kit push hangs on interactive rename prompts for new tables).

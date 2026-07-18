@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, Skull, AlertOctagon, Database, MessageSquare, Search, Users, Briefcase, ChevronDown } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, AlertOctagon, MessageSquare, Search, Users, Briefcase, ChevronDown, Trophy, Award } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -50,8 +50,17 @@ const menuGroups = [
     title: "Community",
     icon: Users,
     items: [
+      { title: "Bounty Board", url: "/bounties", icon: Trophy },
       { title: "Report Protocol", url: "/report-scam", icon: AlertOctagon },
       { title: "Community Reports", url: "/community-reports", icon: MessageSquare },
+    ]
+  },
+  {
+    title: "Audit Firms",
+    icon: Award,
+    items: [
+      { title: "Firm Directory", url: "/audit-firms", icon: Shield },
+      { title: "Register Firm", url: "/audit-firms/register", icon: Upload },
     ]
   },
   {

@@ -11,6 +11,7 @@ import { threatLearner } from "./lib/threat-pattern-learner";
 import { insertProtocolSchema, insertTutorialVideoSchema, insertProtocolSubmissionSchema, insertUserReportSchema, type Protocol } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 import { z } from "zod";
+import { registerBountyAuditRoutes } from "./routes/bounty-audit-routes";
 
 // Pre-serialized cache for CMC-level performance (avoids re-serialization overhead)
 interface CacheEntry {
@@ -2977,6 +2978,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch bug bounties" });
     }
   });
+
+  // Bounty system + audit firm pipeline
+  registerBountyAuditRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

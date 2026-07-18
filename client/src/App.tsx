@@ -25,6 +25,10 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ReportScam from "@/pages/ReportScam";
 import CommunityReports from "@/pages/CommunityReports";
+import BountiesPage from "@/pages/BountiesPage";
+import AuditFirmsPage from "@/pages/AuditFirmsPage";
+import AuditFirmDetail from "@/pages/AuditFirmDetail";
+import AuditFirmRegister from "@/pages/AuditFirmRegister";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
@@ -93,6 +97,10 @@ function Router() {
                 <Route path="/sponsorship" component={SponsorshipGuide} />
                 <Route path="/report-scam" component={ReportScam} />
                 <Route path="/community-reports" component={CommunityReports} />
+                <Route path="/bounties" component={BountiesPage} />
+                <Route path="/audit-firms/register" component={AuditFirmRegister} />
+                <Route path="/audit-firms/:id" component={AuditFirmDetail} />
+                <Route path="/audit-firms" component={AuditFirmsPage} />
                 <Route path="/admin/login" component={AdminLogin} />
                 <Route path="/admin/dashboard" component={AdminDashboard} />
                 {/* Legacy redirects */}
