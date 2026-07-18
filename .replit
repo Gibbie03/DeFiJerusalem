@@ -44,3 +44,9 @@ integrations = ["javascript_mem_db:1.0.0", "javascript_database:1.0.0"]
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 120000
+
+[userenv]
+
+[userenv.shared]
+ADMIN_EMAIL = "admin@example.com"
+ADMIN_USERNAME = "admin"
