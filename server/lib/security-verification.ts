@@ -31,23 +31,68 @@ export interface SecurityIndicators {
 }
 
 export const REPUTABLE_AUDITORS = [
-  'certik',
-  'hacken',
-  'consensys',
-  'peckshield',
-  'trail of bits',
-  'openzeppelin',
-  'quantstamp',
-  'slowmist',
-  'immunefi',
-  'dedaub',
-  'chainsecurity',
-  'sigma prime',
-  'abdk',
-  'spearbit',
-  'sherlock',
-  'code4rena',
+  'certik', 'hacken', 'consensys', 'peckshield', 'trail of bits',
+  'openzeppelin', 'quantstamp', 'slowmist', 'immunefi', 'dedaub',
+  'chainsecurity', 'sigma prime', 'abdk', 'spearbit', 'sherlock',
+  'code4rena', 'mixbytes', 'halborn', 'zellic', 'cantina',
+  'nethermind', 'iosiro', 'solidified', 'zokyo', 'oxor',
+  'pwc', 'kudelski', 'least authority', 'cure53', 'macro',
+  'omniscia', 'cyfrin', 'trust security', 'guardians of the smart contract',
 ];
+
+/**
+ * Known audit-firm URL patterns for Option-1 auto-confirmation.
+ * If a protocol's auditLinks contain a URL matching one of these domains,
+ * it counts as a confirmed reputable auditor.
+ */
+export const AUDIT_URL_PATTERNS: { domain: string; firm: string }[] = [
+  { domain: 'certik.com',              firm: 'certik' },
+  { domain: 'hacken.io',               firm: 'hacken' },
+  { domain: 'quantstamp.com',          firm: 'quantstamp' },
+  { domain: 'openzeppelin.com',        firm: 'openzeppelin' },
+  { domain: 'trailofbits.com',         firm: 'trail of bits' },
+  { domain: 'consensys.io',            firm: 'consensys' },
+  { domain: 'consensys.net',           firm: 'consensys' },
+  { domain: 'diligence.consensys.net', firm: 'consensys' },
+  { domain: 'peckshield.com',          firm: 'peckshield' },
+  { domain: 'slowmist.com',            firm: 'slowmist' },
+  { domain: 'dedaub.com',              firm: 'dedaub' },
+  { domain: 'chainsecurity.com',       firm: 'chainsecurity' },
+  { domain: 'sigmaprime.io',           firm: 'sigma prime' },
+  { domain: 'abdk.consulting',         firm: 'abdk' },
+  { domain: 'spearbit.com',            firm: 'spearbit' },
+  { domain: 'sherlock.xyz',            firm: 'sherlock' },
+  { domain: 'code4rena.com',           firm: 'code4rena' },
+  { domain: 'github.com/code-423n4',   firm: 'code4rena' },
+  { domain: 'mixbytes.io',             firm: 'mixbytes' },
+  { domain: 'halborn.com',             firm: 'halborn' },
+  { domain: 'zellic.io',               firm: 'zellic' },
+  { domain: 'cantina.xyz',             firm: 'cantina' },
+  { domain: 'nethermind.io',           firm: 'nethermind' },
+  { domain: 'immunefi.com',            firm: 'immunefi' },
+  { domain: 'iosiro.com',              firm: 'iosiro' },
+  { domain: 'solidified.io',           firm: 'solidified' },
+  { domain: 'zokyo.io',               firm: 'zokyo' },
+  { domain: 'oxor.io',                 firm: 'oxor' },
+  { domain: 'cyfrin.io',               firm: 'cyfrin' },
+  { domain: 'macro.security',          firm: 'macro' },
+  { domain: 'omniscia.io',             firm: 'omniscia' },
+  { domain: 'kudelskisecurity.com',    firm: 'kudelski' },
+  { domain: 'least-authority.com',     firm: 'least authority' },
+];
+
+/** Resolve a list of audit URLs → set of confirmed firm names */
+export function firmsFromAuditLinks(links: string[] | null | undefined): Set<string> {
+  const found = new Set<string>();
+  if (!links?.length) return found;
+  for (const url of links) {
+    const lower = url.toLowerCase();
+    for (const { domain, firm } of AUDIT_URL_PATTERNS) {
+      if (lower.includes(domain)) { found.add(firm); break; }
+    }
+  }
+  return found;
+}
 
 const FORMAL_VERIFICATION_TERMS = [
   'certora',
@@ -68,15 +113,25 @@ function scoreAuditVerification(protocol: Protocol): number {
   // Base credit for having any audit
   score += 6;
 
-  // Reputable audit firm
+  // Check all text sources for reputable auditor mention
   const auditText = (protocol.auditNote || '').toLowerCase();
   const auditReports = protocol.defiAuditReports || [];
-  const isReputable = REPUTABLE_AUDITORS.some(
-    a => auditText.includes(a) || auditReports.some(r => r.auditor.toLowerCase().includes(a))
-  );
+
+  // Option-1: URL pattern matching against known audit firm domains
+  const confirmedFirms = firmsFromAuditLinks(protocol.auditLinks);
+
+  const isReputable =
+    confirmedFirms.size > 0 ||
+    REPUTABLE_AUDITORS.some(
+      a => auditText.includes(a) ||
+           auditReports.some(r => r.auditor.toLowerCase().includes(a))
+    );
   if (isReputable) score += 4;
 
-  // Multiple audits
+  // Multiple distinct confirmed firms = stronger assurance
+  if (confirmedFirms.size >= 2) score += 2; // bonus for multi-firm coverage
+
+  // Multiple audits (count-based)
   const count = protocol.auditCount || (protocol.audited ? 1 : 0);
   if (count >= 5) score += 5;
   else if (count >= 3) score += 4;

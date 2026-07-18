@@ -104,7 +104,10 @@ function scoreIncidentResponse(protocol: Protocol): number {
   let score = 0;
 
   const auditText = (protocol.auditNote || '').toLowerCase();
-  const hasBugBounty = /bug\s*bounty|immunefi|hackerone/.test(auditText);
+  // Check note text AND audit link URLs for bug bounty signals
+  const linkUrls = (protocol.auditLinks || []).join(' ').toLowerCase();
+  const hasBugBounty = /bug\s*bounty|immunefi|hackerone/.test(auditText) ||
+                       /immunefi\.com|hackerone\.com/.test(linkUrls);
 
   if (hasBugBounty) {
     score += 7;
@@ -297,28 +300,9 @@ export class UnifiedSecurityScanner {
       }
     }
 
-    // ── 4. AI Pattern Penalties ────────────────────────────────────────────
-    let aiPatternMatches = 0;
-    let aiConfidence = 0;
-    try {
-      const patterns = await threatLearner.getPatterns();
-      const protocolText = `${protocol.name} ${protocol.description || ''} ${protocol.website || ''}`.toLowerCase();
-      for (const pattern of patterns) {
-        if (protocolText.includes(pattern.pattern.toLowerCase())) {
-          aiPatternMatches++;
-          aiConfidence = Math.max(aiConfidence, pattern.confidence);
-          const d = Math.ceil(pattern.confidence * 5);
-          allPenalties.push({ reason: `AI pattern: "${pattern.pattern}"`, deduction: d, severity: 'MEDIUM' });
-          allThreats.push({
-            type: 'AI_LEARNED_PATTERN',
-            severity: pattern.confidence > 0.8 ? 'HIGH' : 'MEDIUM',
-            message: `AI detected threat pattern: "${pattern.pattern}" (${(pattern.confidence * 100).toFixed(0)}% confidence)`,
-          });
-        }
-      }
-    } catch (err) {
-      console.error('AI pattern scan error:', err);
-    }
+    // ── 4. (AI keyword penalties removed — too noisy, do not restore) ───────
+    const aiPatternMatches = 0;
+    const aiConfidence = 0;
 
     // ── 5. Active Score ────────────────────────────────────────────────────
     const activeBreakdown = calculateActiveScore(protocol, hasGoPlusData);

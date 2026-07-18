@@ -3123,6 +3123,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Admin: Protocol Enrichment + Batch Rescore ───────────────────────────
+
+  app.post('/api/admin/enrich-protocols', async (req, res) => {
+    if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    try {
+      const { enrichProtocols } = await import('./lib/protocol-enrichment');
+      const limit = parseInt(req.query.limit as string) || 500;
+      console.log(`[ENRICH] Starting enrichment of top ${limit} protocols…`);
+      const result = await enrichProtocols(limit);
+      console.log(`[ENRICH] Done:`, result);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[ENRICH] Error:', err);
+      res.status(500).json({ message: 'Enrichment failed', error: String(err) });
+    }
+  });
+
+  app.post('/api/admin/batch-rescore', async (req, res) => {
+    if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    try {
+      const { batchRescore } = await import('./lib/protocol-enrichment');
+      console.log('[RESCORE] Starting batch rescore…');
+      const result = await batchRescore();
+      console.log('[RESCORE] Done:', result);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[RESCORE] Error:', err);
+      res.status(500).json({ message: 'Batch rescore failed', error: String(err) });
+    }
+  });
+
+  app.post('/api/admin/enrich-and-rescore', async (req, res) => {
+    if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    try {
+      const { enrichProtocols, batchRescore } = await import('./lib/protocol-enrichment');
+      const limit = parseInt(req.query.limit as string) || 500;
+      console.log(`[ENRICH+RESCORE] Enriching top ${limit} then rescoring all…`);
+      const enrichResult = await enrichProtocols(limit);
+      console.log('[ENRICH+RESCORE] Enrich done:', enrichResult);
+      const scoreResult = await batchRescore();
+      console.log('[ENRICH+RESCORE] Rescore done:', scoreResult);
+      res.json({ ok: true, enrich: enrichResult, rescore: scoreResult });
+    } catch (err) {
+      console.error('[ENRICH+RESCORE] Error:', err);
+      res.status(500).json({ message: 'Enrich+rescore failed', error: String(err) });
+    }
+  });
+
   // Bounty system + audit firm pipeline
   registerBountyAuditRoutes(app);
 
