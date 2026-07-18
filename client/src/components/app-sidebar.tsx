@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, AlertOctagon, MessageSquare, Search, Users, Briefcase, ChevronDown, Trophy, Award } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, AlertOctagon, MessageSquare, Search, Users, Briefcase, ChevronDown, Trophy, Award, Bot } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +27,7 @@ const menuGroups = [
       { title: "Home", url: "/", icon: Home },
       { title: "New Protocols", url: "/new", icon: Clock },
       { title: "Trending", url: "/trending", icon: TrendingUp },
+      { title: "Ask AI", url: "/chat", icon: Bot },
     ]
   },
   {

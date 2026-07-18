@@ -12,6 +12,7 @@ import { insertProtocolSchema, insertTutorialVideoSchema, insertProtocolSubmissi
 import { authLimiter, apiLimiter } from "./index";
 import { z } from "zod";
 import { registerBountyAuditRoutes } from "./routes/bounty-audit-routes";
+import { registerChatRoutes } from "./routes/chat-routes";
 
 // Pre-serialized cache for CMC-level performance (avoids re-serialization overhead)
 interface CacheEntry {
@@ -2981,6 +2982,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Bounty system + audit firm pipeline
   registerBountyAuditRoutes(app);
+
+  // AI agent chat
+  registerChatRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

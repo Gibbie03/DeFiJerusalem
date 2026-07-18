@@ -29,6 +29,7 @@ import BountiesPage from "@/pages/BountiesPage";
 import AuditFirmsPage from "@/pages/AuditFirmsPage";
 import AuditFirmDetail from "@/pages/AuditFirmDetail";
 import AuditFirmRegister from "@/pages/AuditFirmRegister";
+import ChatPage from "@/pages/ChatPage";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
@@ -101,6 +102,7 @@ function Router() {
                 <Route path="/audit-firms/register" component={AuditFirmRegister} />
                 <Route path="/audit-firms/:id" component={AuditFirmDetail} />
                 <Route path="/audit-firms" component={AuditFirmsPage} />
+                <Route path="/chat" component={ChatPage} />
                 <Route path="/admin/login" component={AdminLogin} />
                 <Route path="/admin/dashboard" component={AdminDashboard} />
                 {/* Legacy redirects */}
