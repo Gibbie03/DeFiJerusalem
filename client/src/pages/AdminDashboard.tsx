@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle } from 'lucide-react';
+import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -765,6 +765,7 @@ export default function AdminDashboard() {
   const [editingProtocol, setEditingProtocol] = useState<Protocol | null>(null);
   const [editFormData, setEditFormData] = useState<EditProtocolData | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<ProtocolSubmission | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   const { data: session, isLoading: sessionLoading } = useQuery<AdminSession>({
     queryKey: ['/api/admin/session'],
@@ -849,6 +850,50 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const res = await apiRequest('PUT', '/api/admin/password', data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Password Updated',
+        description: 'Your password has been changed successfully',
+      });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Password Change Failed',
+        description: error instanceof Error ? error.message : 'Failed to update password',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleChangePassword = () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: 'Passwords Do Not Match',
+        description: 'New password and confirmation must match',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      toast({
+        title: 'Password Too Short',
+        description: 'New password must be at least 8 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+    });
+  };
 
   const updateProtocolMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<EditProtocolData> }) => {
@@ -1013,6 +1058,63 @@ export default function AdminDashboard() {
                   {session.admin?.role}
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4" />
+              Change Password
+            </CardTitle>
+            <CardDescription>Update your admin account password</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  placeholder="Enter current password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))}
+                  data-testid="input-current-password"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="At least 8 characters"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))}
+                  data-testid="input-new-password"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="Repeat new password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                  data-testid="input-confirm-password"
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button
+                onClick={handleChangePassword}
+                disabled={changePasswordMutation.isPending || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                data-testid="button-change-password"
+              >
+                <KeyRound className="w-4 h-4 mr-2" />
+                {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -2135,6 +2135,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PUT /api/admin/password - Change admin password (requires current password verification)
+  app.put("/api/admin/password", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.adminId) {
+        return res.status(401).json({ success: false, message: 'Admin authentication required' });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword ||
+          typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+        return res.status(400).json({ success: false, message: 'Current password and new password are required' });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+      }
+
+      // Fetch admin by username from session
+      const admin = await storage.getAdminByUsername(req.session.adminUsername!);
+      if (!admin) {
+        return res.status(404).json({ success: false, message: 'Admin account not found' });
+      }
+
+      // Verify current password
+      const isValid = await bcryptjs.compare(currentPassword, admin.passwordHash);
+      if (!isValid) {
+        auditLogger.logFromRequest(req, 'ADMIN_PASSWORD_CHANGE_INVALID_CURRENT', false, { username: admin.username });
+        return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+      }
+
+      // Hash and store new password
+      const newPasswordHash = await bcryptjs.hash(newPassword, 12);
+      await storage.updateAdminPassword(admin.id, newPasswordHash);
+
+      auditLogger.logFromRequest(req, 'ADMIN_PASSWORD_CHANGE_SUCCESS', true, { username: admin.username });
+
+      res.json({ success: true, message: 'Password updated successfully' });
+    } catch (error) {
+      console.error("Error changing admin password:", error);
+      auditLogger.logFromRequest(req, 'ADMIN_PASSWORD_CHANGE_ERROR', false, { error: error instanceof Error ? error.message : 'Unknown error' });
+      res.status(500).json({ success: false, message: 'Failed to update password' });
+    }
+  });
+
   // POST /api/admin/init - Create first admin (SECURED with bootstrap secret and rate limiting)
   app.post("/api/admin/init", authLimiter, async (req: Request, res: Response) => {
     try {

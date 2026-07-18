@@ -39,6 +39,7 @@ export interface IStorage {
   getAllAdmins(): Promise<AdminUser[]>;
   createAdmin(username: string, passwordHash: string, email: string): Promise<AdminUser>;
   updateAdminLastLogin(adminId: string): Promise<void>;
+  updateAdminPassword(adminId: string, newPasswordHash: string): Promise<void>;
   updateProtocol(protocolId: string, updates: Partial<Protocol>): Promise<void>;
   
   // Protocol customization methods
@@ -591,6 +592,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(adminUsers)
       .set({ lastLogin: new Date() })
+      .where(eq(adminUsers.id, adminId));
+  }
+
+  async updateAdminPassword(adminId: string, newPasswordHash: string): Promise<void> {
+    await db
+      .update(adminUsers)
+      .set({ passwordHash: newPasswordHash })
       .where(eq(adminUsers.id, adminId));
   }
 
