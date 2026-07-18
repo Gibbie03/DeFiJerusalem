@@ -16,10 +16,7 @@ import BlacklistDetails from "@/pages/BlacklistDetails";
 import ThreatsPage from "@/pages/ThreatsPage";
 import ThreatEncyclopedia from "@/pages/ThreatEncyclopedia";
 import ThreatDetail from "@/pages/ThreatDetail";
-import ScamHallOfShame from "@/pages/ScamHallOfShame";
 import SecurityMethodology from "@/pages/SecurityMethodology";
-import SecurityScanner from "@/pages/SecurityScanner";
-import SolanaSecurityGuide from "@/pages/SolanaSecurityGuide";
 import SubmitProtocol from "@/pages/SubmitProtocol";
 import ProtocolDetail from "@/pages/ProtocolDetail";
 import Tutorials from "@/pages/Tutorials";
@@ -28,7 +25,6 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ReportScam from "@/pages/ReportScam";
 import CommunityReports from "@/pages/CommunityReports";
-import ScammerAddresses from "@/pages/ScammerAddresses";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
@@ -61,7 +57,7 @@ function Router() {
         {/* Top Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm z-50 shrink-0">
           <div className="flex items-center justify-between px-6 py-3">
-            {/* Jerusalem Logo - Left */}
+            {/* Logo - Left */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
                 <Landmark className="w-6 h-6 text-primary-foreground" />
@@ -88,25 +84,20 @@ function Router() {
                 <Route path="/protocol/:id" component={ProtocolDetail} />
                 <Route path="/blacklist/:id" component={BlacklistDetails} />
                 <Route path="/blacklist" component={Blacklist} />
-                <Route path="/security-stats">{() => { window.location.href = '/threats'; return null; }}</Route>
-                <Route path="/how-it-works">{() => { window.location.href = '/security-methodology'; return null; }}</Route>
                 <Route path="/threats/encyclopedia/:threatId" component={ThreatDetail} />
                 <Route path="/threats/encyclopedia" component={ThreatEncyclopedia} />
                 <Route path="/threats" component={ThreatsPage} />
-                <Route path="/scam-hall-of-shame" component={ScamHallOfShame} />
                 <Route path="/security-methodology" component={SecurityMethodology} />
-                <Route path="/security-scanner" component={SecurityScanner} />
-                <Route path="/solana-security" component={SolanaSecurityGuide} />
-                <Route path="/scan-website">{() => { window.location.href = '/security-scanner'; return null; }}</Route>
-                <Route path="/scan-wallet">{() => { window.location.href = '/security-scanner'; return null; }}</Route>
                 <Route path="/submit-protocol" component={SubmitProtocol} />
                 <Route path="/tutorials" component={Tutorials} />
                 <Route path="/sponsorship" component={SponsorshipGuide} />
                 <Route path="/report-scam" component={ReportScam} />
                 <Route path="/community-reports" component={CommunityReports} />
-                <Route path="/scammer-addresses" component={ScammerAddresses} />
                 <Route path="/admin/login" component={AdminLogin} />
                 <Route path="/admin/dashboard" component={AdminDashboard} />
+                {/* Legacy redirects */}
+                <Route path="/security-stats">{() => { window.location.href = '/threats'; return null; }}</Route>
+                <Route path="/how-it-works">{() => { window.location.href = '/security-methodology'; return null; }}</Route>
                 <Route component={NotFound} />
               </Switch>
             </div>
@@ -122,8 +113,6 @@ function Router() {
 }
 
 function App() {
-  // Force invalidate all cached queries on app mount to ensure fresh data
-  // Fixes mobile browser cache persistence issues across different browsers
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
     queryClient.invalidateQueries({ queryKey: ['/api/volume/cross-chain'] });

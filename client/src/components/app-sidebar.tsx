@@ -25,7 +25,7 @@ const menuGroups = [
     icon: Search,
     items: [
       { title: "Home", url: "/", icon: Home },
-      { title: "New DApps", url: "/new", icon: Clock },
+      { title: "New Protocols", url: "/new", icon: Clock },
       { title: "Trending", url: "/trending", icon: TrendingUp },
     ]
   },
@@ -33,11 +33,9 @@ const menuGroups = [
     title: "Security",
     icon: Shield,
     items: [
-      { title: "Security Scanner", url: "/security-scanner", icon: Shield },
-      { title: "Blacklisted", url: "/blacklist", icon: Lock },
-      { title: "Security & Threats", url: "/threats", icon: AlertTriangle },
+      { title: "Flagged Protocols", url: "/blacklist", icon: Lock },
+      { title: "Threat Intelligence", url: "/threats", icon: AlertTriangle },
       { title: "Threat Encyclopedia", url: "/threats/encyclopedia", icon: Library },
-      { title: "Scam Hall of Shame", url: "/scam-hall-of-shame", icon: Skull },
     ]
   },
   {
@@ -45,7 +43,6 @@ const menuGroups = [
     icon: BookOpen,
     items: [
       { title: "Our Methodology", url: "/security-methodology", icon: BookOpen },
-      { title: "Solana Security", url: "/solana-security", icon: Shield },
       { title: "Tutorials", url: "/tutorials", icon: Video },
     ]
   },
@@ -53,9 +50,8 @@ const menuGroups = [
     title: "Community",
     icon: Users,
     items: [
-      { title: "Report Scam", url: "/report-scam", icon: AlertOctagon },
+      { title: "Report Protocol", url: "/report-scam", icon: AlertOctagon },
       { title: "Community Reports", url: "/community-reports", icon: MessageSquare },
-      { title: "Scammer Addresses", url: "/scammer-addresses", icon: Database },
     ]
   },
   {

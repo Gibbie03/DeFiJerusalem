@@ -19,10 +19,58 @@
 
 import type { Protocol, SecurityScan, Threat } from '@shared/schema';
 import type { IStorage } from '../storage';
-import { WalletDrainerDetector } from './wallet-drainer-detector';
 import { calculateLegitimacyScore, type SecurityIndicators } from './security-verification';
 import { scanContractWithGoPlus } from './goplus-scanner';
 import { threatLearner } from './threat-pattern-learner';
+
+/**
+ * Lightweight metadata-based risk check — replaces wallet-drainer-detector
+ * for protocol-level security analysis.
+ */
+function scanProtocolMetadata(protocol: { name: string; description?: string | null; website?: string | null; category?: string | null }): { score: number; threats: Threat[] } {
+  const threats: Threat[] = [];
+  let score = 0;
+
+  const text = `${protocol.name} ${protocol.description ?? ''} ${protocol.website ?? ''}`.toLowerCase();
+
+  // High-risk name patterns
+  const criticalKeywords = ['drainer', 'honeypot', 'rug', 'scam', 'ponzi', 'pyramid', 'fake'];
+  const highKeywords = ['clone', 'fork copy', 'airdrop claim', 'giveaway', 'guaranteed profit', '1000x'];
+  const mediumKeywords = ['unaudited', 'anonymous team', 'no audit'];
+
+  for (const kw of criticalKeywords) {
+    if (text.includes(kw)) {
+      score += 80;
+      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'CRITICAL', message: `Protocol name/description contains high-risk keyword: "${kw}"` });
+    }
+  }
+  for (const kw of highKeywords) {
+    if (text.includes(kw)) {
+      score += 50;
+      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'HIGH', message: `Protocol name/description contains suspicious phrase: "${kw}"` });
+    }
+  }
+  for (const kw of mediumKeywords) {
+    if (text.includes(kw)) {
+      score += 25;
+      threats.push({ type: 'SUSPICIOUS_KEYWORD', severity: 'MEDIUM', message: `Protocol indicates: "${kw}"` });
+    }
+  }
+
+  // Typosquatting — known major protocol names with slight variations
+  const majorProtocols = ['uniswap', 'aave', 'compound', 'curve', 'lido', 'maker', 'sushiswap', 'balancer', 'yearn', 'convex'];
+  const nameLower = protocol.name.toLowerCase().replace(/[\s-_]/g, '');
+  for (const major of majorProtocols) {
+    if (nameLower !== major && nameLower.includes(major) && !text.includes(`${major}.fi`) && !text.includes(`${major} protocol`)) {
+      // name contains a major protocol's name but isn't the actual protocol — possible typosquat
+      score += 30;
+      threats.push({ type: 'POTENTIAL_TYPOSQUAT', severity: 'MEDIUM', message: `Name may be impersonating "${major}" — verify authenticity` });
+      break;
+    }
+  }
+
+  return { score: Math.min(score, 100), threats };
+}
 
 export interface UnifiedSecurityResult {
   // Final unified score (0-100, lower is better)
@@ -66,11 +114,7 @@ export interface UnifiedSecurityResult {
 }
 
 export class UnifiedSecurityScanner {
-  private drainerDetector: WalletDrainerDetector;
-  
-  constructor(private storage: IStorage) {
-    this.drainerDetector = new WalletDrainerDetector(storage);
-  }
+  constructor(private storage: IStorage) {}
   
   /**
    * Perform comprehensive security scan combining all detection methods
@@ -83,9 +127,9 @@ export class UnifiedSecurityScanner {
     // ====================
     // 1. METADATA THREAT DETECTION
     // ====================
-    const metadataScan = await this.drainerDetector.scanDApp(protocol);
+    const metadataScan = scanProtocolMetadata(protocol);
     allThreats.push(...metadataScan.threats);
-    const threatScore = metadataScan.score; // 0-100+ (threats add points)
+    const threatScore = metadataScan.score; // 0-100 (threats add points)
     
     // ====================
     // 2. LEGITIMACY SCORING
@@ -288,7 +332,7 @@ export class UnifiedSecurityScanner {
       threats: allThreats,
       breakdown: {
         threatScore,
-        threatCount: metadataScan.threats.length,
+        threatCount: metadataScan.threats.length + goPlusThreats.length,
         legitimacyScore,
         legitimacyIndicators,
         goPlusScore,

@@ -1,6 +1,20 @@
 import type { Protocol } from '@shared/schema';
 import { apiCache } from './api-cache';
-import { extractContractFromProtocolLinks, normalizeChainName } from './contract-extractor';
+// Inline chain name normalizer (contract-extractor removed — not needed for protocol aggregation)
+function normalizeChainName(chain: string): string {
+  const map: Record<string, string> = {
+    ethereum: 'Ethereum', eth: 'Ethereum',
+    bsc: 'Binance', binance: 'Binance', 'binance smart chain': 'Binance',
+    polygon: 'Polygon', matic: 'Polygon',
+    arbitrum: 'Arbitrum', 'arbitrum one': 'Arbitrum',
+    optimism: 'Optimism', op: 'Optimism',
+    avalanche: 'Avalanche', avax: 'Avalanche',
+    solana: 'Solana', sol: 'Solana',
+    fantom: 'Fantom', ftm: 'Fantom',
+    base: 'Base',
+  };
+  return map[chain.toLowerCase()] ?? chain;
+}
 
 // DAppDiscovery - Fetches from DeFiLlama (126+ chains)
 export class DAppDiscovery {
@@ -182,20 +196,7 @@ export class DAppDiscovery {
           }
         }
         
-        // Fallback: If no address from DeFiLlama, try extracting from protocol links
-        if (!contractAddress) {
-          const extractedContract = extractContractFromProtocolLinks({
-            website: p.url,
-            github: p.github,
-            twitter: p.twitter,
-            description: p.description,
-          });
-          
-          if (extractedContract) {
-            contractAddress = extractedContract.address.toLowerCase();
-            contractChain = extractedContract.chain;
-          }
-        }
+        // Contract address extraction from protocol links removed (not needed for protocol security aggregation)
         
         // Get real volume data from DeFiLlama volume endpoints
         let volume24h = volumeData[p.name?.toLowerCase()] || 0;

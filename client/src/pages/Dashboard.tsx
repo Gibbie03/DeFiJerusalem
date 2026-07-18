@@ -434,19 +434,19 @@ export default function Dashboard() {
 
         <Alert data-testid="alert-scanning-info" className="bg-muted/50">
           <Info className="h-4 w-4" />
-          <AlertTitle>Advanced Security Scanning System</AlertTitle>
+          <AlertTitle>DeFi Protocol Security Aggregator</AlertTitle>
           <AlertDescription className="space-y-2 mt-2">
             <div>
-              <strong>Comprehensive Threat Detection:</strong> Our AI-powered system scans for 38+ threat categories including 2025 advanced wallet drainers (Pink Drainer, Angel Drainer, CLINKSINK), EIP-2612 permit exploits, approval phishing, CREATE2 evasion, honeypots, rug pulls, and more.
+              <strong>Aggregated Security Intelligence:</strong> Security scores are derived from audit coverage (CertiK, Code4rena, Sherlock), known incident history (DeFiLlama hacks), bug bounty programs (Immunefi), governance structure, and TVL-weighted risk signals.
             </div>
             <div>
-              <strong>Smart Contract Analysis:</strong> Real-time analysis across 126+ blockchain chains using GoPlus Security API for honeypot detection, hidden ownership risks, trading restrictions, and excessive taxes.
+              <strong>Incident History:</strong> Each protocol detail page shows all known hacks and exploits sourced from DeFiLlama's incident database, including funds lost and attack techniques.
             </div>
             <div>
-              <strong>Automatic Updates:</strong> When new threat patterns or drainer operations are detected, the system automatically updates security statistics and triggers re-scans of affected protocols to ensure the latest threat intelligence.
+              <strong>Bug Bounty Tracking:</strong> We surface active Immunefi bug bounty programs for each protocol — a positive security signal that indicates the team invests in responsible disclosure.
             </div>
             <div>
-              <strong>Add Protocols for Scanning:</strong> Use the "+ DApp" button to add protocols by URL. Our system automatically extracts contract addresses from websites and performs comprehensive security analysis including contract verification, GoPlus scans, and threat pattern matching.
+              <strong>Submit a Protocol:</strong> Use the "+ Protocol" button to add any DeFi protocol for tracking. Community submissions are reviewed and added to the aggregator.
             </div>
           </AlertDescription>
         </Alert>
