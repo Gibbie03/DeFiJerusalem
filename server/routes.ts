@@ -70,6 +70,10 @@ function clearCache(keyPrefix?: string): void {
 let backgroundRefreshInProgress = false;
 let lastBackgroundRefresh = 0;
 
+// Admin session timeout constants
+const ADMIN_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000;   // 2 hours idle → expire
+const ADMIN_MAX_SESSION_MS  = 24 * 60 * 60 * 1000;  // 24 hours absolute max
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const discovery = new DAppDiscovery();
   let blacklistManager: BlacklistManager;
@@ -80,6 +84,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     blacklistManager = new BlacklistManager(blacklist);
   };
   await initBlacklistManager();
+
+  // ── Admin session guard ─────────────────────────────────────────────────
+  // Enforces idle-timeout (2 h) and absolute max-age (24 h) for every
+  // /api/admin/* request except the login endpoint itself.
+  app.use('/api/admin', (req: Request, res: Response, next) => {
+    // Login establishes the session – let it through unconditionally.
+    if (req.path === '/login') return next();
+
+    // If there is no session, individual route handlers return 401 themselves.
+    if (!req.session.adminId) return next();
+
+    const now = Date.now();
+
+    // Absolute session max-age check
+    if (req.session.loginTime && (now - req.session.loginTime) > ADMIN_MAX_SESSION_MS) {
+      return req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.status(401).json({ success: false, message: 'Session expired, please log in again' });
+      });
+    }
+
+    // Idle-timeout check
+    if (req.session.lastActivity && (now - req.session.lastActivity) > ADMIN_IDLE_TIMEOUT_MS) {
+      return req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.status(401).json({ success: false, message: 'Session timed out due to inactivity, please log in again' });
+      });
+    }
+
+    // Refresh last-activity timestamp on every valid request
+    req.session.lastActivity = now;
+    next();
+  });
 
   // AI Learning Pattern Monitoring - Automatic Re-scanning
   let lastPatternCheck = 0;
@@ -2056,6 +2093,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.adminUsername = admin.username;
       req.session.adminEmail = admin.email;
       req.session.adminRole = admin.role;
+      req.session.loginTime = Date.now();
+      req.session.lastActivity = Date.now();
 
       auditLogger.logFromRequest(req, 'ADMIN_LOGIN_SUCCESS', true, { username: sanitizedUsername });
 
@@ -2098,6 +2137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userAgent: req.get('user-agent') || 'unknown',
           success: true
         });
+        // Explicitly clear the session cookie on the client
+        res.clearCookie('connect.sid');
         res.json({ success: true });
       });
     } catch (error) {

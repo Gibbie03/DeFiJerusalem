@@ -64,7 +64,7 @@ app.use(session({
   saveUninitialized: false,
   store: createSessionStore(),
   cookie: {
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours absolute max-age
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax',
@@ -118,6 +118,8 @@ declare module 'express-session' {
     adminUsername?: string;
     adminEmail?: string;
     adminRole?: string;
+    loginTime?: number;     // Unix ms timestamp when session was created
+    lastActivity?: number;  // Unix ms timestamp of last admin API activity
   }
 }
 app.use(express.json({
