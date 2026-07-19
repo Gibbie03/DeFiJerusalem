@@ -319,6 +319,23 @@ export const protocolSubmissions = pgTable('protocol_submissions', {
 });
 
 // ==========================================
+// CHAT SESSIONS (shareable conversations)
+// ==========================================
+
+export const chatSessions = pgTable('chat_sessions', {
+  id: text('id').primaryKey(),
+  messages: json('messages').$type<Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>>().notNull(),
+  title: text('title').notNull().default('AI Security Chat'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+}, (table) => ({
+  expiresAtIdx: index('chat_sessions_expires_at_idx').on(table.expiresAt),
+}));
+
+export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({ createdAt: true });
+export type ChatSession = typeof chatSessions.$inferSelect;
+
+// ==========================================
 // BOUNTY SYSTEM & AUDIT FIRM PIPELINE
 // ==========================================
 

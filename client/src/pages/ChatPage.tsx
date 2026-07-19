@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Loader2, Shield, Zap, AlertTriangle, BarChart3, RefreshCw } from "lucide-react";
+import { Send, Bot, User, Loader2, Shield, Zap, AlertTriangle, BarChart3, RefreshCw, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -87,9 +87,13 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
+
+  const hasAssistantReply = messages.some((m) => m.role === "assistant");
 
   const { data: statusData } = useQuery<{ configured: boolean }>({
     queryKey: ["/api/chat/status"],
@@ -174,7 +178,59 @@ export default function ChatPage() {
 
   const clearChat = () => {
     setMessages([]);
+    setShareUrl(null);
   };
+
+  const shareChat = useCallback(async () => {
+    if (isSharing || messages.length === 0) return;
+    setIsSharing(true);
+    try {
+      // Derive a title from the first user message (truncated)
+      const firstUser = messages.find((m) => m.role === "user");
+      const title = firstUser
+        ? firstUser.content.slice(0, 80) + (firstUser.content.length > 80 ? "…" : "")
+        : "AI Security Chat";
+
+      const payload = {
+        title,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp.toISOString(),
+        })),
+      };
+
+      const res = await fetch("/api/chat/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error ?? res.statusText);
+      }
+
+      const { id } = await res.json();
+      const url = `${window.location.origin}/chat/share/${id}`;
+      setShareUrl(url);
+
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Link copied!",
+        description: "Share link copied to clipboard. Valid for 7 days.",
+      });
+    } catch (err) {
+      toast({
+        title: "Share failed",
+        description: err instanceof Error ? err.message : "Could not create share link",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharing(false);
+    }
+  }, [isSharing, messages, toast]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-screen bg-background">
@@ -201,6 +257,32 @@ export default function ChatPage() {
             >
               {isConfigured ? "● Online" : "● Not Configured"}
             </Badge>
+            {hasAssistantReply && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={shareChat}
+                disabled={isSharing}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {shareUrl ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 mr-1 text-green-500" />
+                    Copied!
+                  </>
+                ) : isSharing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    Sharing…
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3.5 h-3.5 mr-1" />
+                    Share
+                  </>
+                )}
+              </Button>
+            )}
             {messages.length > 0 && (
               <Button
                 variant="ghost"

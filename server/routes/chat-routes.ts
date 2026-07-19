@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { runChatAgent, type ChatMessage } from "../lib/ai-chat-agent";
+import { storage } from "../storage";
 import { z } from "zod";
 
 const chatRequestSchema = z.object({
@@ -13,6 +14,20 @@ const chatRequestSchema = z.object({
     )
     .max(20)
     .default([]),
+});
+
+const shareRequestSchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+        timestamp: z.string(),
+      })
+    )
+    .min(2)
+    .max(40),
+  title: z.string().max(200).default("AI Security Chat"),
 });
 
 export function registerChatRoutes(app: Express): void {
@@ -50,5 +65,43 @@ export function registerChatRoutes(app: Express): void {
   // GET /api/chat/status — check if AI is configured
   app.get("/api/chat/status", (_req: Request, res: Response) => {
     res.json({ configured: Boolean(process.env.OPENAI_API_KEY) });
+  });
+
+  // POST /api/chat/share — save a conversation and return its share URL
+  app.post("/api/chat/share", async (req: Request, res: Response) => {
+    try {
+      const parsed = shareRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid request",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const { messages, title } = parsed.data;
+      const session = await storage.createChatSession(messages, title);
+
+      res.json({ id: session.id, expiresAt: session.expiresAt });
+    } catch (err) {
+      console.error("[AI-CHAT] Share error:", err);
+      res.status(500).json({ error: "Failed to save conversation" });
+    }
+  });
+
+  // GET /api/chat/share/:id — retrieve a shared conversation
+  app.get("/api/chat/share/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const session = await storage.getChatSession(id);
+
+      if (!session) {
+        return res.status(404).json({ error: "Conversation not found or has expired" });
+      }
+
+      res.json(session);
+    } catch (err) {
+      console.error("[AI-CHAT] Retrieve share error:", err);
+      res.status(500).json({ error: "Failed to retrieve conversation" });
+    }
   });
 }

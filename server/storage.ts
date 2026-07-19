@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, Insert, ProtocolWhitelist, InsertProtocolWhitelist, Insert, CertikAudit, InsertCertikAudit, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ScammerAddress, InsertScammerAddress, AlertSubscription, InsertAlertSubscription, WebhookEndpoint, InsertWebhookEndpoint } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, protocolWhitelist, certikAudits, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, Insert, ProtocolWhitelist, InsertProtocolWhitelist, Insert, CertikAudit, InsertCertikAudit, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ScammerAddress, InsertScammerAddress, AlertSubscription, InsertAlertSubscription, WebhookEndpoint, InsertWebhookEndpoint, ChatSession } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, protocolWhitelist, certikAudits, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints, chatSessions } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 
@@ -128,6 +128,10 @@ export interface IStorage {
   addWebhookEndpoint(webhook: import("@shared/schema").InsertWebhookEndpoint): Promise<import("@shared/schema").WebhookEndpoint>;
   getWebhookEndpoints(filters?: { active?: boolean }): Promise<import("@shared/schema").WebhookEndpoint[]>;
   updateWebhookEndpoint(id: string, updates: Partial<import("@shared/schema").WebhookEndpoint>): Promise<void>;
+
+  // Chat session methods
+  createChatSession(messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>, title: string): Promise<import("@shared/schema").ChatSession>;
+  getChatSession(id: string): Promise<import("@shared/schema").ChatSession | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1428,6 +1432,38 @@ export class DatabaseStorage implements IStorage {
       .update(webhookEndpoints)
       .set(updates)
       .where(eq(webhookEndpoints.id, id));
+  }
+
+  // ── Chat session methods ──────────────────────────────────────────────────
+
+  async createChatSession(
+    messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>,
+    title: string
+  ): Promise<ChatSession> {
+    const id = `chat_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const [session] = await db
+      .insert(chatSessions)
+      .values({ id, messages, title, expiresAt })
+      .returning();
+
+    return session;
+  }
+
+  async getChatSession(id: string): Promise<ChatSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(chatSessions)
+      .where(
+        and(
+          eq(chatSessions.id, id),
+          gt(chatSessions.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    return session ?? undefined;
   }
 }
 
