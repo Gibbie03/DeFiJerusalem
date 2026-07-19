@@ -81,14 +81,31 @@ export const AUDIT_URL_PATTERNS: { domain: string; firm: string }[] = [
   { domain: 'least-authority.com',     firm: 'least authority' },
 ];
 
-/** Resolve a list of audit URLs → set of confirmed firm names */
+/** Resolve a list of audit URLs → set of confirmed firm names.
+ *
+ * Two-pass detection:
+ *  1. Known firm domains (e.g. certik.com, hacken.io)
+ *  2. Reputable auditor name anywhere in the URL path — covers self-hosted
+ *     repositories like github.com/peckshield/audit-reports or
+ *     github.com/lidofinance/audits/peckshield-…
+ */
 export function firmsFromAuditLinks(links: string[] | null | undefined): Set<string> {
   const found = new Set<string>();
   if (!links?.length) return found;
   for (const url of links) {
     const lower = url.toLowerCase();
+    // Pass 1: known firm domains
     for (const { domain, firm } of AUDIT_URL_PATTERNS) {
       if (lower.includes(domain)) { found.add(firm); break; }
+    }
+    // Pass 2: auditor name in the URL path (self-hosted, GitHub mirrors, etc.)
+    for (const auditor of REPUTABLE_AUDITORS) {
+      const compact = auditor.replace(/\s+/g, '');          // "trail of bits" → "trailofbits"
+      const hyphenated = auditor.replace(/\s+/g, '-');      // "trail of bits" → "trail-of-bits"
+      if (lower.includes(compact) || lower.includes(hyphenated) || lower.includes(auditor)) {
+        found.add(auditor);
+        // don't break — a single URL could reference multiple firms
+      }
     }
   }
   return found;
