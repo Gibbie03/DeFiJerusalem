@@ -269,22 +269,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // GET /api/cache/clear - Clear all server-side caches (public endpoint for testing)
-  app.get("/api/cache/clear", async (req: Request, res: Response) => {
+  // POST /api/internal/flush-cache - Localhost-only cache flush.
+  // Called by scripts (rescore, enrichment, etc.) running in the same process
+  // group after they write updated scores/data to the DB.  Only loopback
+  // addresses (127.0.0.1 / ::1) are accepted — external callers get 403.
+  app.post("/api/internal/flush-cache", (req: Request, res: Response) => {
+    const ip = req.socket.remoteAddress ?? '';
+    const isLoopback = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    if (!isLoopback) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const keys = (req.query.keys as string | undefined)?.split(',').map(k => k.trim()).filter(Boolean);
+    if (keys?.length) {
+      keys.forEach(k => clearCache(k));
+      console.log(`[CACHE] Flushed keys: ${keys.join(', ')}`);
+    } else {
+      clearCache();
+      console.log('[CACHE] Full cache flush via internal endpoint');
+    }
+    res.json({ ok: true, flushed: keys ?? 'all', timestamp: new Date().toISOString() });
+  });
+
+  // GET /api/cache/clear - kept for backwards compat; now localhost-only
+  app.get("/api/cache/clear", (req: Request, res: Response) => {
+    const ip = req.socket.remoteAddress ?? '';
+    const isLoopback = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    if (!isLoopback) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     try {
-      clearCache(); // Clear all caches
-      console.log('[CACHE] All caches cleared via API endpoint');
-      res.json({ 
-        success: true,
-        message: 'All server-side caches cleared successfully',
-        timestamp: new Date().toISOString()
-      });
+      clearCache();
+      console.log('[CACHE] All caches cleared via GET /api/cache/clear');
+      res.json({ success: true, message: 'All server-side caches cleared', timestamp: new Date().toISOString() });
     } catch (error) {
-      console.error('[CACHE] Error clearing cache:', error);
-      res.status(500).json({ 
-        success: false,
-        message: 'Failed to clear cache' 
-      });
+      res.status(500).json({ success: false, message: 'Failed to clear cache' });
     }
   });
 

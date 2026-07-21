@@ -18,6 +18,30 @@ import { calculateFoundationScore } from './security-verification';
 import { db } from '../db';
 import { protocols, blacklistEntries } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
+
+/**
+ * Signal the running server process to flush its in-memory protocol cache.
+ * Called after every DB write so the HTTP layer never serves stale scores.
+ *
+ * Works whether called from inside the server process or an external script —
+ * in both cases it hits the loopback-only endpoint.  Failures are swallowed
+ * (the server may not be running when a script executes standalone).
+ */
+export async function flushServerCache(keys = ['protocols', 'security-stats']): Promise<void> {
+  try {
+    const port = process.env.PORT ?? '5000';
+    const qs = keys.length ? `?keys=${keys.join(',')}` : '';
+    const res = await fetch(`http://127.0.0.1:${port}/api/internal/flush-cache${qs}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      console.log(`[CACHE] Server cache flushed (${keys.join(', ')})`);
+    }
+  } catch {
+    // Server not running (script context) — DB is source of truth, no action needed
+  }
+}
 import type { Protocol } from '@shared/schema';
 
 const LLAMA_DETAIL = 'https://api.llama.fi/protocol';
@@ -171,6 +195,10 @@ export async function batchRescore(): Promise<{
       WHERE id IN (${chunk.map(u => `'${u.id.replace(/'/g, "''")}'`).join(',')})
     `));
   }
+
+  // Flush the HTTP-layer cache so the running server immediately serves
+  // the updated scores without needing a restart.
+  await flushServerCache();
 
   // Auto-flag genuinely risky DeFi protocols:
   //   score < 30, TVL > $10M, not CEX / institutional RWA

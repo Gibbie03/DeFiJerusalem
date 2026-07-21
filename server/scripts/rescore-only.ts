@@ -1,17 +1,20 @@
 /**
  * Fast rescore: skips DeFiLlama enrichment, just recomputes DFJ v2.3 scores
  * for every protocol in the DB and writes them back to security_score.
+ * Automatically flushes the running server's cache after writing.
  *
  * Usage: npx tsx server/scripts/rescore-only.ts
  */
-import { batchRescore } from '../lib/protocol-enrichment';
+import { batchRescore, flushServerCache } from '../lib/protocol-enrichment';
 
 async function main() {
   console.log('Re-scoring all protocols (no enrichment)…');
-  const r = await batchRescore();
+  const r = await batchRescore(); // batchRescore() calls flushServerCache() internally
   console.log(`Done. ${r.total} protocols scored.`);
   console.log(`  SAFE=${r.safe}  LOW=${r.low}  MEDIUM=${r.medium}  HIGH=${r.high}  CRITICAL=${r.critical}`);
   console.log(`  Auto-flagged: ${r.flagged}`);
+  // Call again explicitly in case the server restarted between DB write and flush
+  await flushServerCache();
   process.exit(0);
 }
 

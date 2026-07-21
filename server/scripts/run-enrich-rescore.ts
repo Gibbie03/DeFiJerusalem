@@ -1,11 +1,12 @@
 /**
  * One-shot script: enrich top 500 protocols from DeFiLlama per-protocol
  * endpoint, then re-score all protocols and auto-flag CRITICAL ones.
+ * Automatically flushes the running server's cache after writing.
  *
  * Usage:  npx tsx server/scripts/run-enrich-rescore.ts
  */
 
-import { enrichProtocols, batchRescore } from '../lib/protocol-enrichment';
+import { enrichProtocols, batchRescore, flushServerCache } from '../lib/protocol-enrichment';
 
 async function main() {
   console.log('═══════════════════════════════════════════');
@@ -19,7 +20,7 @@ async function main() {
   console.log('  Errors:', enrichResult.errors);
 
   console.log('\n[2/2] Batch rescoring all protocols…');
-  const scoreResult = await batchRescore();
+  const scoreResult = await batchRescore(); // calls flushServerCache() internally
   console.log('  Total protocols scored:', scoreResult.total);
   console.log('  SAFE   (≥80):', scoreResult.safe);
   console.log('  LOW    (≥65):', scoreResult.low);
@@ -27,6 +28,9 @@ async function main() {
   console.log('  HIGH   (≥30):', scoreResult.high);
   console.log('  CRITICAL(<30):', scoreResult.critical);
   console.log('  Auto-flagged:', scoreResult.flagged);
+
+  // Final explicit flush (belt-and-suspenders)
+  await flushServerCache();
 
   console.log('\n✓ Done.');
   process.exit(0);
