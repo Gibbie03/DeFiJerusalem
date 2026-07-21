@@ -92,6 +92,7 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
+  const autoSentRef = useRef(false);
 
   const hasAssistantReply = messages.some((m) => m.role === "assistant");
 
@@ -168,6 +169,17 @@ export default function ChatPage() {
     },
     [input, isLoading, messages, toast]
   );
+
+  // Auto-send message from ?q= URL parameter (e.g. from protocol detail page)
+  useEffect(() => {
+    if (autoSentRef.current || !isConfigured || statusData === undefined) return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q) {
+      autoSentRef.current = true;
+      sendMessage(q);
+    }
+  }, [isConfigured, statusData, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

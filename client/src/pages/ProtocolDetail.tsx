@@ -1,4 +1,4 @@
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Shield, TrendingUp, AlertTriangle, CheckCircle2, XCircle,
   Globe, Twitter, Github, ExternalLink, Bug, Siren, Activity,
-  Download, FileText, Lock, Clock, Eye, Zap, BarChart2,
+  Download, FileText, Lock, Clock, Eye, Zap, BarChart2, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -179,6 +179,7 @@ function ScoreBar({ value, max, color }: { value: number; max: number; color: st
 
 export default function ProtocolDetail() {
   const [, params] = useRoute("/protocol/:id");
+  const [, navigate] = useLocation();
   const protocolId = params?.id;
 
   const { data: protocol, isLoading: protocolLoading } = useQuery<Protocol>({
@@ -242,6 +243,11 @@ export default function ProtocolDetail() {
 
   const handleDownloadReport = () => {
     window.open(`/api/protocols/${protocolId}/score-report.pdf`, '_blank');
+  };
+
+  const handleAskAI = () => {
+    const q = encodeURIComponent(`Tell me about ${protocol?.name}'s security`);
+    navigate(`/chat?q=${q}`);
   };
 
   const fmt = (n: number | null | undefined) => {
@@ -339,10 +345,16 @@ export default function ProtocolDetail() {
                 </a>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={handleDownloadReport} className="gap-2 shrink-0">
-              <Download className="w-4 h-4" />
-              Score Report
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={handleAskAI} className="gap-2 shrink-0">
+                <MessageSquare className="w-4 h-4" />
+                Ask AI
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadReport} className="gap-2 shrink-0">
+                <Download className="w-4 h-4" />
+                Score Report
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
