@@ -3233,6 +3233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[RESCORE] Starting batch rescore…');
       const result = await batchRescore();
       console.log('[RESCORE] Done:', result);
+      clearCache('protocols');
+      clearCache('security-stats');
       res.json({ ok: true, ...result });
     } catch (err) {
       console.error('[RESCORE] Error:', err);
@@ -3250,6 +3252,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[ENRICH+RESCORE] Enrich done:', enrichResult);
       const scoreResult = await batchRescore();
       console.log('[ENRICH+RESCORE] Rescore done:', scoreResult);
+      clearCache('protocols');
+      clearCache('security-stats');
       res.json({ ok: true, enrich: enrichResult, rescore: scoreResult });
     } catch (err) {
       console.error('[ENRICH+RESCORE] Error:', err);
