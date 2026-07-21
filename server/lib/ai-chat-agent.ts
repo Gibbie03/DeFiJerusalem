@@ -1,5 +1,47 @@
 import OpenAI from "openai";
+import crypto from "crypto";
 import { storage } from "../storage";
+
+// ─── Response cache ───────────────────────────────────────────────────────────
+// Keyed on SHA-256(userMessage + JSON-serialised history).
+// TTL is controlled by CHAT_CACHE_TTL_SECONDS (default 120 s).
+
+interface CacheEntry {
+  response: string;
+  expiresAt: number;
+}
+
+const responseCache = new Map<string, CacheEntry>();
+
+function getCacheTtlMs(): number {
+  const raw = process.env.CHAT_CACHE_TTL_SECONDS;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  const seconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 120;
+  return seconds * 1000;
+}
+
+function buildCacheKey(userMessage: string, history: ChatMessage[]): string {
+  const payload = JSON.stringify({ userMessage, history });
+  return crypto.createHash("sha256").update(payload).digest("hex");
+}
+
+function getCached(key: string): string | null {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.response;
+}
+
+function setCached(key: string, response: string): void {
+  // Evict expired entries on every write to keep memory bounded
+  for (const [k, v] of responseCache) {
+    if (Date.now() > v.expiresAt) responseCache.delete(k);
+  }
+  responseCache.set(key, { response, expiresAt: Date.now() + getCacheTtlMs() });
+}
 
 // Lazy-initialized — the server starts cleanly without OPENAI_API_KEY.
 // The key is read at call time so it picks up runtime env vars.
@@ -376,6 +418,14 @@ export async function runChatAgent(
   userMessage: string,
   history: ChatMessage[]
 ): Promise<string> {
+  // ── Cache check ────────────────────────────────────────────────────────────
+  const cacheKey = buildCacheKey(userMessage, history);
+  const cached = getCached(cacheKey);
+  if (cached !== null) {
+    console.log("[AI-CHAT] Cache hit — skipping OpenAI call");
+    return cached;
+  }
+
   const openai = getOpenAI(); // throws if key not set
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -405,7 +455,9 @@ export async function runChatAgent(
     messages.push(msg as OpenAI.Chat.ChatCompletionMessageParam);
 
     if (choice.finish_reason === "stop" || !msg.tool_calls?.length) {
-      return msg.content ?? "";
+      const reply = msg.content ?? "";
+      setCached(cacheKey, reply);
+      return reply;
     }
 
     // Execute all requested tool calls in parallel
@@ -433,5 +485,7 @@ export async function runChatAgent(
     temperature: 0.3,
   });
 
-  return fallback.choices[0].message.content ?? "I was unable to generate a response.";
+  const fallbackReply = fallback.choices[0].message.content ?? "I was unable to generate a response.";
+  setCached(cacheKey, fallbackReply);
+  return fallbackReply;
 }
