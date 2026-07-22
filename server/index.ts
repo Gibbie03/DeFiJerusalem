@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { pool } from "./db";
+import { checkBootstrapSecret } from "./lib/bootstrap-secret";
 
 const app = express();
 
@@ -161,18 +162,21 @@ app.use((req, res, next) => {
 
 (async () => {
   // ── Bootstrap secret check ────────────────────────────────────────────────
-  // Warn loudly at startup when ADMIN_BOOTSTRAP_SECRET is missing or still set
-  // to the placeholder value.  The /api/admin/reset-password and
-  // /api/admin/init endpoints are already blocked at request time, but an
-  // explicit startup warning lets operators catch misconfigurations before
-  // they discover them under pressure (e.g. a lockout).
+  // Validate ADMIN_BOOTSTRAP_SECRET at startup.
+  //
+  //  • Missing / placeholder → warn; endpoints are disabled but server starts.
+  //  • Set but < 32 chars    → error + process.exit(1).  A short secret can be
+  //    brute-forced offline by observing the 403/200 status difference on the
+  //    reset-password endpoint; refusing to start prevents silent weak configs.
+  //  • Set and long enough   → confirm; endpoints are active.
   {
-    const PLACEHOLDER = 'CHANGE_THIS_IN_PRODUCTION_OR_ADMIN_CREATION_DISABLED';
-    const bootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
-    if (!bootstrapSecret || bootstrapSecret === PLACEHOLDER) {
-      log('⚠️  WARNING: ADMIN_BOOTSTRAP_SECRET is not set (or is the placeholder value).');
-      log('⚠️  The /api/admin/reset-password and /api/admin/init endpoints are DISABLED.');
-      log('⚠️  Set ADMIN_BOOTSTRAP_SECRET in your environment to enable password reset.');
+    const result = checkBootstrapSecret(process.env.ADMIN_BOOTSTRAP_SECRET);
+    if (!result.ok && result.fatal) {
+      log(`❌ FATAL: ${result.reason}`);
+      process.exit(1);
+    } else if (!result.ok) {
+      log(`⚠️  WARNING: ${result.reason}`);
+      log('⚠️  Set ADMIN_BOOTSTRAP_SECRET (≥ 32 chars) in your environment to enable password reset.');
     } else {
       log('✓ ADMIN_BOOTSTRAP_SECRET is configured — password reset endpoint is active.');
     }
