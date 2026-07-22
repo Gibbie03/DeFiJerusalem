@@ -39,7 +39,11 @@ echo "==> Validating shared/schema.ts (drizzle-orm $ORM_VERSION, drizzle-kit $KI
 
 # drizzle.check.config.ts is identical to drizzle.config.ts except it writes
 # to /tmp/drizzle-schema-check so the project migrations/ folder stays clean.
-if ! output=$(npx drizzle-kit generate --config drizzle.check.config.ts 2>&1); then
+# DRIZZLE_CHECK_CONFIG can be overridden for testing purposes (e.g. to point
+# at a deliberately broken schema without touching the real config).
+DRIZZLE_CHECK_CONFIG="${DRIZZLE_CHECK_CONFIG:-drizzle.check.config.ts}"
+
+if ! output=$(npx drizzle-kit generate --config "$DRIZZLE_CHECK_CONFIG" 2>&1); then
   echo ""
   echo "FAIL: drizzle-kit schema validation failed."
   echo "      This means shared/schema.ts is incompatible with the installed"
