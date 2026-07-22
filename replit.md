@@ -81,6 +81,11 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 - **Trust Score Consistency**: Frontend components prioritize real-time `securityScan.score` data with fallback to cached `protocol.securityScore`. Backend automatically syncs protocol cache during scan completion to prevent score drift.
 - **Sponsorship Outreach Materials**: Professional PDF pitch decks with enhanced visual mockups generated via `scripts/generate-enhanced-pitch-pdfs.ts` using pdfkit. Includes 3 comprehensive visual guides: Featured Tier (12+ pages), Sponsored Tier (15+ pages), and Premium Tier (18+ pages). Each document features detailed ASCII-style visual mockups showing exact feature placement, before/after comparisons, step-by-step implementation guides (7 days for Featured, 2 weeks for Sponsored, 4 weeks for Premium), ROI metrics with conversion data, and comprehensive contact information. Total 45+ pages of professional sponsorship materials optimized for protocol outreach.
 
+## Security & Maintenance
+
+### Dependency Vulnerability Auditing
+Run `npm run audit:check` before merging any dependency changes. This executes `npm audit --audit-level=high` and exits non-zero if any high-severity vulnerabilities are found. Contributors should run this check locally and resolve any flagged issues before they pile up.
+
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.
