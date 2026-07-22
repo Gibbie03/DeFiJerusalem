@@ -10,26 +10,26 @@ import { Progress } from '@/components/ui/progress';
 export default function SecurityMethodology() {
   // SEO meta tags
   useEffect(() => {
-    document.title = 'Security Score Methodology - Unified 0-100 Scoring System - DeFiJerusalem';
+    document.title = 'Security Score Methodology - DFJ v2.3 Scoring System - DeFiJerusalem';
     
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s unified security scoring system (0-100, lower is safer). Learn how we detect 38+ threat categories and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.');
+      metaDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s DFJ v2.3 security scoring system (0–97, higher is safer). Learn how we score 7,900+ DeFi protocols across Foundation security, Active security, and risk penalties.');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'Full transparency into DeFiJerusalem\'s unified security scoring system (0-100, lower is safer). Learn how we detect 38+ threat categories and analyze 6,651+ DeFi protocols across 126+ blockchains with AI-powered threat intelligence.';
+      meta.content = 'Full transparency into DeFiJerusalem\'s DFJ v2.3 security scoring system (0–97, higher is safer). Learn how we score 7,900+ DeFi protocols across Foundation security, Active security, and risk penalties.';
       document.head.appendChild(meta);
     }
 
     const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
     ogTitle.setAttribute('property', 'og:title');
-    ogTitle.setAttribute('content', 'Security Methodology - Unified Scoring (Lower = Safer) - DeFiJerusalem');
+    ogTitle.setAttribute('content', 'Security Methodology - DFJ v2.3 (Higher = Safer) - DeFiJerusalem');
     if (!ogTitle.parentElement) document.head.appendChild(ogTitle);
 
     const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
     ogDescription.setAttribute('property', 'og:description');
-    ogDescription.setAttribute('content', 'Full transparency into DeFiJerusalem\'s unified 0-100 security scoring system where lower scores = safer protocols. Multi-layer analysis: metadata scanning, GoPlus API integration, and AI threat detection across 126+ blockchains.');
+    ogDescription.setAttribute('content', 'DeFiJerusalem DFJ v2.3 security scoring: Foundation (45 pts) + Active Security (55 pts) − Penalties (30 pts) = max 97. Higher scores mean safer protocols. Scores reflect currently available public data.');
     if (!ogDescription.parentElement) document.head.appendChild(ogDescription);
   }, []);
 
@@ -44,7 +44,7 @@ export default function SecurityMethodology() {
           Security Score Methodology
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          Full transparency into our unified security scoring system that protects you from crypto scams across 126+ blockchains. Lower scores = safer protocols.
+          Full transparency into our DFJ v2.3 security scoring system covering 7,900+ DeFi protocols. Higher scores = safer protocols.
         </p>
       </div>
 
@@ -53,9 +53,11 @@ export default function SecurityMethodology() {
         <Info className="h-5 w-5 text-primary" />
         <AlertTitle className="text-lg font-semibold">The Core Concept</AlertTitle>
         <AlertDescription className="text-base mt-2">
-          JERUSALEM uses a <strong>unified scoring system (0-100)</strong> where <strong>lower scores indicate safer protocols</strong>. 
-          We start at 100 (baseline risk) and subtract points for positive indicators like audits, high TVL, verified teams, and GitHub presence. 
-          This approach prevents false positives on legitimate protocols while instantly flagging suspicious new projects with scores of 80+.
+          DeFiJerusalem uses the <strong>DFJ v2.3 scoring system (0–97)</strong> where <strong>higher scores indicate safer protocols</strong>.
+          Scores are built additively: <strong>Foundation security</strong> (up to 45 pts for audits, code history, track record, documentation, governance)
+          + <strong>Active security</strong> (up to 55 pts for infrastructure, incident response, monitoring, economic health, community vigilance)
+          − <strong>Risk penalties</strong> (up to 30 pts deducted for detected threats, typosquatting, rugpull signals, and other red flags).
+          Scores reflect currently available public data — protocols with limited public information will score lower even if they are legitimate.
         </AlertDescription>
       </Alert>
 
@@ -324,7 +326,7 @@ export default function SecurityMethodology() {
                     </div>
                     <div>
                       <p className="font-semibold">Calculate Final Score</p>
-                      <p className="text-sm text-muted-foreground">Security Score = 100 - (Scam Score - Trust Score/2), capped at 0-100</p>
+                      <p className="text-sm text-muted-foreground">DFJ Score = Foundation (0–45) + Active Security (0–55) − Penalties (0–30), max 97</p>
                     </div>
                   </div>
                 </div>
@@ -332,56 +334,56 @@ export default function SecurityMethodology() {
 
               <Card className="border-primary/20">
                 <CardHeader>
-                  <CardTitle className="text-lg">Severity Classification (Lower = Safer)</CardTitle>
+                  <CardTitle className="text-lg">Severity Classification (Higher = Safer)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg">
                     <div>
                       <p className="font-semibold text-green-700 dark:text-green-400">SAFE</p>
-                      <p className="text-sm text-muted-foreground">Score: 0-19</p>
+                      <p className="text-sm text-muted-foreground">Score: 80 – 97</p>
                     </div>
-                    <Progress value={10} className="w-24 h-2" />
+                    <Progress value={90} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-blue-500/10 rounded-lg">
                     <div>
                       <p className="font-semibold text-blue-700 dark:text-blue-400">LOW RISK</p>
-                      <p className="text-sm text-muted-foreground">Score: 20-39</p>
+                      <p className="text-sm text-muted-foreground">Score: 65 – 79</p>
                     </div>
-                    <Progress value={30} className="w-24 h-2" />
+                    <Progress value={74} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg">
                     <div>
                       <p className="font-semibold text-yellow-700 dark:text-yellow-400">MEDIUM RISK</p>
-                      <p className="text-sm text-muted-foreground">Score: 40-59</p>
+                      <p className="text-sm text-muted-foreground">Score: 50 – 64</p>
                     </div>
-                    <Progress value={50} className="w-24 h-2" />
+                    <Progress value={58} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg">
                     <div>
                       <p className="font-semibold text-orange-700 dark:text-orange-400">HIGH RISK</p>
-                      <p className="text-sm text-muted-foreground">Score: 60-79</p>
+                      <p className="text-sm text-muted-foreground">Score: 30 – 49</p>
                     </div>
-                    <Progress value={70} className="w-24 h-2" />
+                    <Progress value={40} className="w-24 h-2" />
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg">
                     <div>
-                      <p className="font-semibold text-red-700 dark:text-red-400">CRITICAL RISK</p>
-                      <p className="text-sm text-muted-foreground">Score: 80-100</p>
+                      <p className="font-semibold text-red-700 dark:text-red-400">CRITICAL</p>
+                      <p className="text-sm text-muted-foreground">Score: 0 – 29</p>
                     </div>
-                    <Progress value={95} className="w-24 h-2" />
+                    <Progress value={15} className="w-24 h-2" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Alert className="border-destructive/20 bg-destructive/5">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                <AlertTitle>Automatic Blacklisting</AlertTitle>
+              <Alert className="border-amber-500/20 bg-amber-500/5">
+                <Info className="h-4 w-4 text-amber-500" />
+                <AlertTitle>Data Transparency</AlertTitle>
                 <AlertDescription>
-                  Protocols with Security Score ≥ 80 (CRITICAL RISK) are automatically added to our blacklist and flagged for users.
+                  Scores reflect currently available public data. Protocols with limited verifiable security records score lower — this is intentional, as unverifiable protocols carry inherently higher risk. Always do your own research before committing funds.
                 </AlertDescription>
               </Alert>
             </CardContent>

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Shield, TrendingUp, AlertTriangle, CheckCircle2, XCircle,
   Globe, Twitter, Github, ExternalLink, Bug, Siren, Activity,
-  Download, FileText, Lock, Clock, Eye, Zap, BarChart2, MessageSquare,
+  Download, FileText, Lock, Clock, Eye, Zap, BarChart2, MessageSquare, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -502,6 +502,16 @@ export default function ProtocolDetail() {
                       </span>
                     : <span className="text-xs text-muted-foreground">Loading…</span>}
                 </div>
+
+                {/* Data transparency notice — shown when key security indicators are unverified */}
+                {!protocol.auditNote && !protocol.github && !securityAgg?.hasBugBounty && (
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground pt-2 mt-1 border-t">
+                    <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                    <p>
+                      Score based on currently available public data — audit records, bug bounty programme and open-source repository could not be independently verified for this protocol. Exercise additional caution.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
