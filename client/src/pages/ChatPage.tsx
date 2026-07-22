@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Loader2, Shield, Zap, AlertTriangle, BarChart3, RefreshCw, Share2, Check } from "lucide-react";
+import { Send, Bot, User, Loader2, Shield, Zap, AlertTriangle, BarChart3, RefreshCw, Share2, Check, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
@@ -89,6 +90,8 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showSharePopover, setShowSharePopover] = useState(false);
+  const [copiedInPopover, setCopiedInPopover] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -191,6 +194,8 @@ export default function ChatPage() {
   const clearChat = () => {
     setMessages([]);
     setShareUrl(null);
+    setShowSharePopover(false);
+    setCopiedInPopover(false);
   };
 
   const shareChat = useCallback(async () => {
@@ -227,12 +232,14 @@ export default function ChatPage() {
       const { id } = await res.json();
       const url = `${window.location.origin}/chat/share/${id}`;
       setShareUrl(url);
+      setShowSharePopover(true);
 
-      await navigator.clipboard.writeText(url);
-      toast({
-        title: "Link copied!",
-        description: "Share link copied to clipboard. Valid for 7 days.",
-      });
+      // Best-effort clipboard write; popover lets users copy manually if it fails
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        // clipboard unavailable — popover still shows the link
+      }
     } catch (err) {
       toast({
         title: "Share failed",
@@ -243,6 +250,26 @@ export default function ChatPage() {
       setIsSharing(false);
     }
   }, [isSharing, messages, toast]);
+
+  const copyShareUrl = useCallback(async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedInPopover(true);
+      setTimeout(() => setCopiedInPopover(false), 2000);
+    } catch {
+      toast({ title: "Copy failed", description: "Please copy the URL manually.", variant: "destructive" });
+    }
+  }, [shareUrl, toast]);
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    setShowSharePopover(open);
+    if (!open) {
+      // Reset share state when popover is dismissed
+      setShareUrl(null);
+      setCopiedInPopover(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-screen bg-background">
@@ -270,30 +297,65 @@ export default function ChatPage() {
               {isConfigured ? "● Online" : "● Not Configured"}
             </Badge>
             {hasAssistantReply && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={shareChat}
-                disabled={isSharing}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {shareUrl ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 mr-1 text-green-500" />
-                    Copied!
-                  </>
-                ) : isSharing ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    Sharing…
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-3.5 h-3.5 mr-1" />
-                    Share
-                  </>
-                )}
-              </Button>
+              <Popover open={showSharePopover} onOpenChange={handlePopoverOpenChange}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={!shareUrl ? shareChat : undefined}
+                    disabled={isSharing}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {isSharing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                        Sharing…
+                      </>
+                    ) : shareUrl ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 mr-1 text-green-500" />
+                        Shared
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-3.5 h-3.5 mr-1" />
+                        Share
+                      </>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4" align="end">
+                  <p className="text-sm font-medium text-foreground mb-1">Share link</p>
+                  <p className="text-xs text-muted-foreground mb-3">Valid for 7 days. Anyone with this link can view the conversation.</p>
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2 mb-3 border border-border/60">
+                    <span className="text-xs text-foreground/80 truncate flex-1 font-mono select-all">
+                      {shareUrl}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                      onClick={copyShareUrl}
+                    >
+                      {copiedInPopover ? (
+                        <><Check className="w-3 h-3 mr-1 text-green-500" />Copied!</>
+                      ) : (
+                        <><Copy className="w-3 h-3 mr-1" />Copy</>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => window.open(shareUrl ?? "", "_blank", "noopener,noreferrer")}
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Open
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
             {messages.length > 0 && (
               <Button
