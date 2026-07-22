@@ -4,8 +4,18 @@ import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 import { invalidateAICache } from "./lib/ai-chat-agent";
 
+export interface ProtocolPageResult {
+  protocols: Protocol[];
+  total: number;
+  auditedCount: number;
+  totalTVL: number;
+  totalVolume: number;
+  hasMore: boolean;
+}
+
 export interface IStorage {
   getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]>;
+  getProtocolsPage(offset: number, limit: number, filters?: { category?: string; chain?: string; minTvl?: number }): Promise<ProtocolPageResult>;
   getProtocol(id: string): Promise<Protocol | null>;
   addProtocol(protocol: InsertProtocol): Promise<Protocol>;
   bulkUpsertProtocols(protocolList: InsertProtocol[]): Promise<void>;
@@ -207,6 +217,49 @@ export class DatabaseStorage implements IStorage {
     
     const result = await query.orderBy(desc(protocols.tvl));
     return result.map(p => this.mapProtocol(p));
+  }
+
+  async getProtocolsPage(
+    offset: number,
+    limit: number,
+    filters?: { category?: string; chain?: string; minTvl?: number }
+  ): Promise<ProtocolPageResult> {
+    const conditions = [];
+    if (filters?.category) conditions.push(eq(protocols.category, filters.category));
+    if (filters?.minTvl !== undefined) conditions.push(gte(protocols.tvl, filters.minTvl));
+    if (filters?.chain) conditions.push(sql`${protocols.chains}::jsonb @> ${JSON.stringify([filters.chain])}::jsonb`);
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Run page query + stats aggregation in parallel
+    const [rows, stats] = await Promise.all([
+      (() => {
+        let q = db.select().from(protocols);
+        if (whereClause) q = q.where(whereClause) as any;
+        return q.orderBy(desc(protocols.tvl)).limit(limit).offset(offset);
+      })(),
+      (() => {
+        let q = db.select({
+          total:        sql<number>`COUNT(*)::int`,
+          totalTVL:     sql<number>`COALESCE(SUM(${protocols.tvl}), 0)::float8`,
+          totalVolume:  sql<number>`COALESCE(SUM(CAST(${protocols.volume24h} AS float8)), 0)::float8`,
+          auditedCount: sql<number>`COUNT(*) FILTER (WHERE ${protocols.audited} = true OR ${protocols.auditCount} > 0)::int`,
+        }).from(protocols);
+        if (whereClause) q = q.where(whereClause) as any;
+        return q;
+      })(),
+    ]);
+
+    const { total, totalTVL, totalVolume, auditedCount } = stats[0] ?? { total: 0, totalTVL: 0, totalVolume: 0, auditedCount: 0 };
+
+    return {
+      protocols:    rows.map(p => this.mapProtocol(p)),
+      total:        Number(total),
+      auditedCount: Number(auditedCount),
+      totalTVL:     Number(totalTVL),
+      totalVolume:  Number(totalVolume),
+      hasMore:      offset + rows.length < Number(total),
+    };
   }
 
   async getProtocol(id: string): Promise<Protocol | null> {

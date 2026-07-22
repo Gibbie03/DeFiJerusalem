@@ -8,35 +8,40 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Footer } from "@/components/Footer";
 import { Menu, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { lazy, Suspense, useEffect } from "react";
+import { Link, useLocation } from "wouter";
+
+// Eagerly loaded — these are the two first-paint pages
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
-import NewDApps from "@/pages/NewDApps";
-import TrendingDApps from "@/pages/TrendingDApps";
-import Blacklist from "@/pages/Blacklist";
-import BlacklistDetails from "@/pages/BlacklistDetails";
-import ThreatsPage from "@/pages/ThreatsPage";
-import ThreatEncyclopedia from "@/pages/ThreatEncyclopedia";
-import ThreatDetail from "@/pages/ThreatDetail";
-import SecurityMethodology from "@/pages/SecurityMethodology";
-import SubmitProtocol from "@/pages/SubmitProtocol";
-import ProtocolDetail from "@/pages/ProtocolDetail";
-import Tutorials from "@/pages/Tutorials";
-import SponsorshipGuide from "@/pages/SponsorshipGuide";
-import AdminLogin from "@/pages/AdminLogin";
-import AdminDashboard from "@/pages/AdminDashboard";
-import ReportScam from "@/pages/ReportScam";
-import CommunityReports from "@/pages/CommunityReports";
-import BountiesPage from "@/pages/BountiesPage";
-import BugBountiesDirectory from "@/pages/BugBountiesDirectory";
-import AuditFirmsPage from "@/pages/AuditFirmsPage";
-import AuditFirmDetail from "@/pages/AuditFirmDetail";
-import AuditFirmRegister from "@/pages/AuditFirmRegister";
-import ChatPage from "@/pages/ChatPage";
-import SharedChatPage from "@/pages/SharedChatPage";
-import CategoriesPage from "@/pages/CategoriesPage";
-import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import LoadingSpinner from "@/components/LoadingSpinner";
+
+// Lazy-loaded — code-split into separate chunks, fetched only when the route is visited
+const NewDApps          = lazy(() => import("@/pages/NewDApps"));
+const TrendingDApps     = lazy(() => import("@/pages/TrendingDApps"));
+const Blacklist         = lazy(() => import("@/pages/Blacklist"));
+const BlacklistDetails  = lazy(() => import("@/pages/BlacklistDetails"));
+const ThreatsPage       = lazy(() => import("@/pages/ThreatsPage"));
+const ThreatEncyclopedia= lazy(() => import("@/pages/ThreatEncyclopedia"));
+const ThreatDetail      = lazy(() => import("@/pages/ThreatDetail"));
+const SecurityMethodology=lazy(() => import("@/pages/SecurityMethodology"));
+const SubmitProtocol    = lazy(() => import("@/pages/SubmitProtocol"));
+const ProtocolDetail    = lazy(() => import("@/pages/ProtocolDetail"));
+const Tutorials         = lazy(() => import("@/pages/Tutorials"));
+const SponsorshipGuide  = lazy(() => import("@/pages/SponsorshipGuide"));
+const AdminLogin        = lazy(() => import("@/pages/AdminLogin"));
+const AdminDashboard    = lazy(() => import("@/pages/AdminDashboard"));
+const ReportScam        = lazy(() => import("@/pages/ReportScam"));
+const CommunityReports  = lazy(() => import("@/pages/CommunityReports"));
+const BountiesPage      = lazy(() => import("@/pages/BountiesPage"));
+const BugBountiesDirectory=lazy(()=> import("@/pages/BugBountiesDirectory"));
+const AuditFirmsPage    = lazy(() => import("@/pages/AuditFirmsPage"));
+const AuditFirmDetail   = lazy(() => import("@/pages/AuditFirmDetail"));
+const AuditFirmRegister = lazy(() => import("@/pages/AuditFirmRegister"));
+const ChatPage          = lazy(() => import("@/pages/ChatPage"));
+const SharedChatPage    = lazy(() => import("@/pages/SharedChatPage"));
+const CategoriesPage    = lazy(() => import("@/pages/CategoriesPage"));
+const NotFound          = lazy(() => import("@/pages/not-found"));
 
 function CustomSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
@@ -143,6 +148,7 @@ function Router() {
         <div className="flex flex-1 overflow-hidden relative">
           <main className="flex-1 overflow-y-auto flex flex-col">
             <div className="flex-1">
+              <Suspense fallback={<LoadingSpinner message="Loading" subtitle="Just a moment…" />}>
               <Switch>
                 <Route path="/" component={LandingPage} />
                 <Route path="/home" component={Dashboard} />
@@ -175,6 +181,7 @@ function Router() {
                 <Route path="/how-it-works">{() => { window.location.href = '/security-methodology'; return null; }}</Route>
                 <Route component={NotFound} />
               </Switch>
+              </Suspense>
             </div>
             <Footer />
           </main>

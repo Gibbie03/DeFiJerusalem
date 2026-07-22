@@ -551,8 +551,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Parse pagination parameters
-      const limit = limitParam ? parseInt(limitParam as string, 10) : 500;
+      // Parse pagination parameters — default 100 for fast first paint
+      const limit = limitParam ? parseInt(limitParam as string, 10) : 100;
       const offset = offsetParam ? parseInt(offsetParam as string, 10) : 0;
       
       // Validate pagination params
@@ -601,48 +601,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(response);
       }
 
-      // Try to load from database first (fastest)
-      let existingProtocols = await storage.getProtocols(Object.keys(filters).length > 0 ? filters : undefined);
-      
-      // If we have protocols in DB, return them with test drainers appended
-      if (existingProtocols.length > 0) {
-        // Filter out test drainers from DB (they may already be there)
-        const realProtocols = existingProtocols.filter(
-          p => !['eth-airdrop-claimer', 'unisvvap-fake', 'vitalik-giveaway'].includes(p.id)
-        );
-        
-        // Always append fresh test drainer protocols for demonstration
+      // Fast path: DB-level pagination — only fetches the requested page + aggregation stats
+      const pageResult = await storage.getProtocolsPage(
+        validOffset,
+        validLimit,
+        Object.keys(filters).length > 0 ? filters : undefined
+      );
+
+      if (pageResult.total > 0) {
         const testDrainers = discovery.getTestDrainerProtocols();
-        const allProtocols = [...realProtocols, ...testDrainers];
-        
-        // Cache FULL dataset for pagination
-        setCache(fullDataCacheKey, allProtocols, 60 * 1000);
-        
-        // Persist test drainers to DB immediately (async, non-blocking)
-        storage.bulkUpsertProtocols(testDrainers as any).catch(err => 
-          console.error('Failed to persist test drainers:', err)
-        );
-        
-        // Return paginated data
-        const paginatedData = allProtocols.slice(validOffset, validOffset + validLimit);
-        const auditedCount = allProtocols.filter((p: any) => p.audited || (p.auditCount && p.auditCount > 0)).length;
-        const totalTVL = allProtocols.reduce((sum: number, p: any) => sum + (p.tvl || 0), 0);
-        const totalVolume = allProtocols.reduce((sum: number, p: any) => sum + (Number(p.volume24h) || 0), 0);
+
+        // Merge test drainers into the first page only (offset 0)
+        const pageProtocols = validOffset === 0
+          ? [
+              ...pageResult.protocols.filter(
+                p => !['eth-airdrop-claimer', 'unisvvap-fake', 'vitalik-giveaway'].includes(p.id)
+              ),
+              ...testDrainers,
+            ]
+          : pageResult.protocols;
+
+        // Persist test drainers to DB async (non-blocking)
+        if (validOffset === 0) {
+          storage.bulkUpsertProtocols(testDrainers as any).catch(err =>
+            console.error('Failed to persist test drainers:', err)
+          );
+        }
+
         const response = {
-          protocols: paginatedData,
-          total: allProtocols.length,
-          auditedCount,
-          totalTVL,
-          totalVolume,
-          limit: validLimit,
-          offset: validOffset,
-          hasMore: (validOffset + validLimit) < allProtocols.length
+          protocols:    pageProtocols,
+          total:        pageResult.total + (validOffset === 0 ? testDrainers.length : 0),
+          auditedCount: pageResult.auditedCount,
+          totalTVL:     pageResult.totalTVL,
+          totalVolume:  pageResult.totalVolume,
+          limit:        validLimit,
+          offset:       validOffset,
+          hasMore:      pageResult.hasMore,
         };
-        
-        // Cache this page
+
+        // Cache this page for 60 s
         setCache(cacheKey, response, 60 * 1000);
-        
-        // Send with ETag immediately (first-hit optimization)
+
         const cacheEntry = getCache(cacheKey);
         if (cacheEntry) {
           res.set('ETag', cacheEntry.etag);
@@ -651,25 +650,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           res.json(response);
         }
-        
-        // Background refresh with guard (only once every 5 minutes)
+
+        // Background refresh — at most once every 5 minutes
         const now = Date.now();
-        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
-        
+        const REFRESH_INTERVAL = 5 * 60 * 1000;
         if (!backgroundRefreshInProgress && (now - lastBackgroundRefresh) > REFRESH_INTERVAL) {
           backgroundRefreshInProgress = true;
           lastBackgroundRefresh = now;
-          
           discovery.fetchFromMultipleSources().then(async (freshProtocols) => {
             await storage.bulkUpsertProtocols(freshProtocols as any);
-            clearCache('protocols'); // Clear cache so next request gets fresh data
+            clearCache('protocols');
             backgroundRefreshInProgress = false;
           }).catch(err => {
             console.error('Background refresh failed:', err);
             backgroundRefreshInProgress = false;
           });
         }
-        
+
         return;
       }
       
