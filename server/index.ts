@@ -160,6 +160,24 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // ── Bootstrap secret check ────────────────────────────────────────────────
+  // Warn loudly at startup when ADMIN_BOOTSTRAP_SECRET is missing or still set
+  // to the placeholder value.  The /api/admin/reset-password and
+  // /api/admin/init endpoints are already blocked at request time, but an
+  // explicit startup warning lets operators catch misconfigurations before
+  // they discover them under pressure (e.g. a lockout).
+  {
+    const PLACEHOLDER = 'CHANGE_THIS_IN_PRODUCTION_OR_ADMIN_CREATION_DISABLED';
+    const bootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
+    if (!bootstrapSecret || bootstrapSecret === PLACEHOLDER) {
+      log('⚠️  WARNING: ADMIN_BOOTSTRAP_SECRET is not set (or is the placeholder value).');
+      log('⚠️  The /api/admin/reset-password and /api/admin/init endpoints are DISABLED.');
+      log('⚠️  Set ADMIN_BOOTSTRAP_SECRET in your environment to enable password reset.');
+    } else {
+      log('✓ ADMIN_BOOTSTRAP_SECRET is configured — password reset endpoint is active.');
+    }
+  }
+
   const server = await registerRoutes(app);
 
   // Initialize AI Learning with database persistence (Phase 2)
