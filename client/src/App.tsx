@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Footer } from "@/components/Footer";
-import { Menu } from "lucide-react";
+import { Menu, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
@@ -35,7 +35,7 @@ import SharedChatPage from "@/pages/SharedChatPage";
 import CategoriesPage from "@/pages/CategoriesPage";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 function CustomSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
@@ -69,6 +69,24 @@ function LogoIcon() {
       <span className="absolute top-1/2 left-0 right-0 h-px bg-[#E8C15A]/20" />
       <span className="absolute left-1/2 top-0 bottom-0 w-px bg-[#E8C15A]/20" />
     </div>
+  );
+}
+
+function DadaFAB() {
+  const [location] = useLocation();
+  // Hide on the chat page itself and shared chat views
+  if (location === "/chat" || location.startsWith("/chat/share")) return null;
+  return (
+    <Link href="/chat">
+      <button
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-[#E8C15A] hover:bg-[#f0cc6a] active:bg-[#d4ae4e] text-[#060606] px-4 py-3 text-[11px] font-black tracking-[0.15em] uppercase shadow-[0_0_24px_rgba(232,193,90,0.25)] hover:shadow-[0_0_32px_rgba(232,193,90,0.4)] transition-all duration-150"
+        data-testid="button-chat-with-dada"
+        aria-label="Chat with Dada the Defender"
+      >
+        <Bot className="w-4 h-4 shrink-0" />
+        Chat with Dada
+      </button>
+    </Link>
   );
 }
 
@@ -149,6 +167,9 @@ function Router() {
           <AppSidebar side="right" />
         </div>
       </div>
+
+      {/* Floating "Chat with Dada" button */}
+      <DadaFAB />
     </SidebarProvider>
   );
 }

@@ -223,7 +223,17 @@ function AppSidebarComponent({ side = "left" }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#1a1a1a] p-4 bg-[#060606]">
+      <SidebarFooter className="border-t border-[#1a1a1a] p-4 bg-[#060606] space-y-3">
+        {/* Chat with Dada CTA */}
+        <Link href="/chat" onClick={() => { if (isMobile) setOpenMobile(false); }}>
+          <div className="flex items-center gap-2.5 w-full border border-[#E8C15A]/50 hover:border-[#E8C15A] hover:bg-[#E8C15A]/8 px-3 py-2.5 transition-colors group">
+            <Bot className="w-3.5 h-3.5 text-[#E8C15A]/70 group-hover:text-[#E8C15A] shrink-0 transition-colors" />
+            <span className="text-[10px] font-black tracking-[0.18em] uppercase text-[#E8C15A]/70 group-hover:text-[#E8C15A] transition-colors">
+              Chat with Dada
+            </span>
+          </div>
+        </Link>
+
         <button
           onClick={toggleTheme}
           className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.18em] uppercase text-white/30 hover:text-white/60 transition-colors w-full"
