@@ -2161,7 +2161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getAdminByUsername(sanitizedUsername);
       if (!admin) {
         auditLogger.logFromRequest(req, 'ADMIN_LOGIN_USER_NOT_FOUND', false, { username: sanitizedUsername });
-        return res.json({ 
+        return res.status(401).json({ 
           success: false, 
           message: 'Invalid credentials' 
         });
@@ -2170,7 +2170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await bcryptjs.compare(password, admin.passwordHash);
       if (!isValid) {
         auditLogger.logFromRequest(req, 'ADMIN_LOGIN_INVALID_PASSWORD', false, { username: sanitizedUsername });
-        return res.json({ 
+        return res.status(401).json({ 
           success: false, 
           message: 'Invalid credentials' 
         });
