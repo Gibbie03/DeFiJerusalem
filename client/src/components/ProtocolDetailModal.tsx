@@ -154,7 +154,7 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
                   className="font-semibold"
                   data-testid="button-github-link"
                 >
-                  <a href={protocol.github} target="_blank" rel="noopener noreferrer">
+                  <a href={protocol.github?.startsWith('http') ? protocol.github : `https://github.com/${protocol.github}`} target="_blank" rel="noopener noreferrer">
                     <Github className="w-4 h-4 mr-2" />
                     GitHub
                   </a>

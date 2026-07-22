@@ -238,7 +238,21 @@ export class DAppDiscovery {
           logo: p.logo || null,
           website: p.url || null,
           twitter: p.twitter || null,
-          github: p.github || null,
+          github: (() => {
+            const g = p.github;
+            if (!g) return null;
+            // DeFiLlama sometimes returns github as an object {"org": url} instead of a string
+            if (typeof g === 'object') {
+              const firstVal = Object.values(g as Record<string, string>)[0];
+              const firstKey = Object.keys(g as Record<string, string>)[0];
+              const resolved = (firstVal && typeof firstVal === 'string' && firstVal.startsWith('http'))
+                ? firstVal
+                : firstKey ? `https://github.com/${firstKey}` : null;
+              return resolved;
+            }
+            if (typeof g !== 'string') return null;
+            return g.startsWith('http') ? g : `https://github.com/${g}`;
+          })(),
           description: p.description || '',
           autoDiscovered: true,
           manuallyAdded: false,
@@ -874,23 +888,57 @@ export class DAppDiscovery {
   }
 
   private calculateSecurityScore(p: any): number {
-    // DFJ v2.3: HIGHER IS BETTER (97 = safest, 0 = most dangerous)
-    // Start from 0 and add points for positive security indicators
+    // DFJ quick-score: approximates Foundation + partial Active using only DeFiLlama fields.
+    // Full scoring (A1 infrastructure, A2 incident response, A3 monitoring) requires the
+    // unified-security-scanner pipeline — this score is the best estimate without it.
     let score = 0;
 
-    // Parse audit count (DeFiLlama returns it as a string!)
+    // ── F1: Audit & Verification (0–18) ───────────────────────────────────────
     const auditCount = parseInt(p.audits) || 0;
-    if (auditCount > 0) score += 25; // Audited = strong positive signal
-    if (auditCount >= 3) score += 10; // Multiple audits = higher confidence
+    const auditLinks: string[] = Array.isArray(p.audit_links) ? p.audit_links : [];
+    const verifiedAudits = Math.max(auditCount, auditLinks.length > 0 ? 1 : 0);
+    if (verifiedAudits >= 3) score += 18;
+    else if (verifiedAudits === 2) score += 15;
+    else if (verifiedAudits === 1) score += 12;
+    // 0 audits → 0 (no unverified baseline; that distinction matters)
 
-    // High TVL indicates community trust
-    if (typeof p.tvl === 'number' && p.tvl > 100_000_000) score += 10;
-    else if (typeof p.tvl === 'number' && p.tvl > 10_000_000) score += 5;
+    // ── F2: Code & Contract History (0–8) ────────────────────────────────────
+    // Can confirm source visibility via GitHub; can't verify clean scan without tooling
+    if (p.github) score += 8;
 
-    // Open source and social presence = transparency
-    if (p.twitter) score += 5;
-    if (p.github) score += 5;
+    // ── F3: Track Record — age-based (0–10) ──────────────────────────────────
+    if (p.listedAt && typeof p.listedAt === 'number') {
+      const ageMonths = (Date.now() / 1000 - p.listedAt) / (30 * 24 * 3600);
+      if (ageMonths >= 48)      score += 10; // 4+ years
+      else if (ageMonths >= 36) score += 8;
+      else if (ageMonths >= 24) score += 7;
+      else if (ageMonths >= 12) score += 6;
+      else if (ageMonths >= 6)  score += 4;
+      else if (ageMonths >= 3)  score += 2;
+      // < 3 months → 0 (new protocol, no track record)
+    }
 
-    return Math.max(0, Math.min(97, score));
+    // ── F4: Documentation (0–3) ──────────────────────────────────────────────
+    if (p.url) score += 1.5;
+    if (p.description && p.description.length > 40) score += 1.5;
+
+    // ── F5: Historical Governance ─────────────────────────────────────────────
+    // DeFiLlama doesn't expose DAO/timelock data — scored by full scanner only
+
+    // ── A4: Economic Health (0–6) ─────────────────────────────────────────────
+    const tvl = typeof p.tvl === 'number' ? p.tvl : 0;
+    if (tvl >= 1_000_000_000)      score += 6;
+    else if (tvl >= 100_000_000)   score += 5;
+    else if (tvl >= 10_000_000)    score += 3;
+    else if (tvl >= 1_000_000)     score += 1;
+
+    // ── A5: Live Governance (0–3) ─────────────────────────────────────────────
+    if (p.twitter) score += 2;
+    if (p.url)     score += 1; // website = public-facing governance presence
+
+    // A1–A3 (infrastructure, incident response, monitoring = up to 44 pts of Active)
+    // require the full scanner; not estimated here to avoid false precision.
+
+    return Math.max(0, Math.min(97, Math.round(score)));
   }
 }

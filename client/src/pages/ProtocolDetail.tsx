@@ -348,7 +348,7 @@ export default function ProtocolDetail() {
                 </a>
               )}
               {protocol.github && (
-                <a href={protocol.github} target="_blank" rel="noopener noreferrer"
+                <a href={protocol.github.startsWith('http') ? protocol.github : `https://github.com/${protocol.github}`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
                   <Github className="w-4 h-4" /> GitHub
                 </a>
