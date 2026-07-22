@@ -28,6 +28,12 @@ function getCacheTtlMs(): number {
   return seconds * 1000;
 }
 
+function getMaxCacheEntries(): number {
+  const raw = process.env.MAX_CACHE_ENTRIES;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
+}
+
 /**
  * Immediately clears all cached AI responses.
  *
@@ -57,15 +63,32 @@ function getCached(key: string): string | null {
     responseCache.delete(key);
     return null;
   }
+  // LRU: move accessed entry to the end so it is evicted last
+  responseCache.delete(key);
+  responseCache.set(key, entry);
   return entry.response;
 }
 
 function setCached(key: string, response: string): void {
   // Evict expired entries on every write to keep memory bounded
+  const now = Date.now();
   for (const [k, v] of responseCache) {
-    if (Date.now() > v.expiresAt) responseCache.delete(k);
+    if (now > v.expiresAt) responseCache.delete(k);
   }
-  responseCache.set(key, { response, expiresAt: Date.now() + getCacheTtlMs() });
+
+  // If the key already exists, remove it so re-insertion moves it to the end
+  if (responseCache.has(key)) {
+    responseCache.delete(key);
+  }
+
+  // Enforce the entry cap: evict the oldest (first) entry before inserting
+  const max = getMaxCacheEntries();
+  while (responseCache.size >= max) {
+    const oldestKey = responseCache.keys().next().value as string;
+    responseCache.delete(oldestKey);
+  }
+
+  responseCache.set(key, { response, expiresAt: now + getCacheTtlMs() });
 }
 
 // Lazy-initialized — the server starts cleanly without OPENAI_API_KEY.

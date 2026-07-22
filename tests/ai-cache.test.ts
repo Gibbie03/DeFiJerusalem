@@ -233,4 +233,50 @@ describe('AI response cache', () => {
     expect(mockCreate).toHaveBeenCalledTimes(2);
     expect(second).toBe('Post-invalidation answer');
   });
+
+  // ── 7. Entry cap is enforced — Map never exceeds MAX_CACHE_ENTRIES ───────────
+
+  it('never exceeds the MAX_CACHE_ENTRIES cap under sustained load', async () => {
+    // Set a very small cap so the test runs quickly.
+    process.env.MAX_CACHE_ENTRIES = '5';
+
+    // Each unique question produces a unique cache key, forcing new insertions.
+    // Use a long TTL so entries never expire during this test.
+    process.env.CHAT_CACHE_TTL_SECONDS = '3600';
+
+    // Provide enough mock responses for all the unique questions.
+    const TOTAL_QUESTIONS = 20;
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+      mockCreate.mockResolvedValueOnce(makeOpenAIResponse(`Answer ${i}`));
+    }
+
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+      await runChatAgent(`Unique question number ${i}`, []);
+    }
+
+    // The Map must never have grown past the cap.
+    // invalidateAICache reports the size at clear-time — instead, check via
+    // repeated cache-hit behaviour: after 20 inserts with cap=5, only the
+    // 5 most-recently inserted keys should still be present.
+    // We verify indirectly: ask for the LAST 5 questions — they must be cached
+    // (no new OpenAI call), and asking for an early question must miss.
+    mockCreate.mockReset();
+
+    // The last 5 questions (indices 15–19) should still be in cache.
+    for (let i = TOTAL_QUESTIONS - 5; i < TOTAL_QUESTIONS; i++) {
+      await runChatAgent(`Unique question number ${i}`, []);
+    }
+    // None of those triggered a new OpenAI call (all were cache hits).
+    expect(mockCreate).toHaveBeenCalledTimes(0);
+
+    // The very first question (index 0) must have been evicted.
+    mockCreate.mockResolvedValueOnce(makeOpenAIResponse('Evicted answer'));
+    await runChatAgent('Unique question number 0', []);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  afterEach(() => {
+    // Clean up MAX_CACHE_ENTRIES between tests.
+    delete process.env.MAX_CACHE_ENTRIES;
+  });
 });
