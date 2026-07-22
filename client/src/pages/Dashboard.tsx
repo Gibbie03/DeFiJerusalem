@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, Shield, TrendingUp, AlertCircle, Sparkles, ScanSearch, ArrowUpDown, DollarSign, Info, Activity } from 'lucide-react';
+import {
+  Database, Shield, TrendingUp, AlertCircle, Sparkles,
+  ScanSearch, DollarSign, Activity, ArrowRight, Search as SearchIcon,
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -20,8 +22,8 @@ import AdSpace from '@/components/AdSpace';
 import SecurityRatingLegend from '@/components/SecurityRatingLegend';
 import { LatestThreatsWidget } from '@/components/LatestThreatsWidget';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
+import { Link } from 'wouter';
 
-// Paginated response type
 interface PaginatedResponse {
   protocols: Protocol[];
   total: number;
@@ -34,37 +36,32 @@ interface PaginatedResponse {
 }
 
 export default function Dashboard() {
-  const [searchValue, setSearchValue] = useState('');
-  const [selectedChain, setSelectedChain] = useState('all');
+  const [searchValue, setSearchValue]         = useState('');
+  const [selectedChain, setSelectedChain]     = useState('all');
   const [selectedCategory, setSelectedCategory] = useState(() => {
-    // Pre-select from ?category= query param (e.g. links from Categories page)
-    const param = new URLSearchParams(window.location.search).get('category');
-    return param ? decodeURIComponent(param) : 'all';
+    const p = new URLSearchParams(window.location.search).get('category');
+    return p ? decodeURIComponent(p) : 'all';
   });
-  const [sortBy, setSortBy] = useState<'tvl' | 'security'>('security');
-  const [activeTab, setActiveTab] = useState('trending');
-  const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
-  const isOnline = useOnlineStatus();
-  const { toast } = useToast();
+  const [sortBy, setSortBy]                   = useState<'tvl' | 'security'>('security');
+  const [activeTab, setActiveTab]             = useState('trending');
+  const [securityScans, setSecurityScans]     = useState<Record<string, SecurityScan>>({});
+  const [isProcessing, setIsProcessing]       = useState(false);
+  const [allProtocols, setAllProtocols]       = useState<Protocol[]>([]);
+  const [currentOffset, setCurrentOffset]     = useState(0);
+  const [hasMore, setHasMore]                 = useState(true);
+  const [isLoadingMore, setIsLoadingMore]     = useState(false);
+
+  const isOnline     = useOnlineStatus();
+  const { toast }    = useToast();
   const debouncedSearch = useDebounce(searchValue, 300);
-  
-  // Restore scroll position when returning from detail pages
   useScrollRestoration('dashboard');
 
-  // Fetch initial protocols from API with pagination
   const { data: initialData, isLoading, refetch } = useQuery<PaginatedResponse & { totalTVL?: number }>({
     queryKey: ['/api/protocols'],
     enabled: isOnline,
     retry: 3,
   });
 
-  // Update protocols when initial data loads
   useEffect(() => {
     if (initialData?.protocols) {
       setAllProtocols(initialData.protocols);
@@ -73,300 +70,166 @@ export default function Dashboard() {
     }
   }, [initialData]);
 
-  // Protocols to display (either filtered or all loaded)
   const protocols = allProtocols;
 
-
-  // Fetch blacklist
   const { data: blacklist = [] } = useQuery<BlacklistEntry[]>({
     queryKey: ['/api/blacklist'],
     enabled: isOnline,
   });
 
-  // Fetch all existing scans from database
   const { data: storedScans = {} } = useQuery<Record<string, SecurityScan>>({
     queryKey: ['/api/scans'],
     enabled: isOnline,
   });
 
-  // Update local security scans when stored scans are loaded
   useEffect(() => {
-    if (Object.keys(storedScans).length > 0) {
-      setSecurityScans(storedScans);
-    }
+    if (Object.keys(storedScans).length > 0) setSecurityScans(storedScans);
   }, [storedScans]);
 
-  // Security scan mutation
   const scanMutation = useMutation({
-    mutationFn: async (protocolIds: string[]) => {
-      const res = await apiRequest('POST', '/api/scan', { protocolIds });
-      return await res.json();
+    mutationFn: async (ids: string[]) => {
+      const res = await apiRequest('POST', '/api/scan', { protocolIds: ids });
+      return res.json();
     },
     onSuccess: (data: { scanResults: Record<string, SecurityScan>; scannedCount: number; newBlacklistEntries: BlacklistEntry[] }) => {
       setSecurityScans(prev => ({ ...prev, ...data.scanResults }));
       queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
-      toast({
-        title: "Security Scan Complete",
-        description: `Scanned ${data.scannedCount} protocols. Found ${data.newBlacklistEntries.length} critical threats.`,
-      });
+      toast({ title: 'Security Scan Complete', description: `Scanned ${data.scannedCount} protocols. Found ${data.newBlacklistEntries.length} critical threats.` });
     },
-    onError: (error) => {
-      toast({
-        title: "Scan Failed",
-        description: error instanceof Error ? error.message : "Failed to scan protocols",
-        variant: "destructive",
-      });
+    onError: (err) => {
+      toast({ title: 'Scan Failed', description: err instanceof Error ? err.message : 'Failed to scan protocols', variant: 'destructive' });
     },
   });
 
-  // Manual blacklist mutation
   const blacklistMutation = useMutation({
-    mutationFn: async (protocolId: string) => {
-      const res = await apiRequest('POST', '/api/admin/blacklist', { protocolId });
-      return await res.json();
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', '/api/admin/blacklist', { protocolId: id });
+      return res.json();
     },
     onSuccess: (data: { success: boolean; message: string }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/blacklist'] });
       queryClient.invalidateQueries({ queryKey: ['/api/protocols'] });
-      toast({
-        title: "Blacklist Updated",
-        description: data.message,
-      });
+      toast({ title: 'Blacklist Updated', description: data.message });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Blacklist Failed",
-        description: error?.message || "Failed to blacklist protocol",
-        variant: "destructive",
-      });
+    onError: (err: any) => {
+      toast({ title: 'Blacklist Failed', description: err?.message ?? 'Failed to blacklist protocol', variant: 'destructive' });
     },
   });
 
-  // Manual scan function
   const handleScanAll = useCallback(() => {
-    if (protocols.length > 0) {
-      const protocolIds = protocols.slice(0, 50).map(p => p.id);
-      scanMutation.mutate(protocolIds);
-    }
+    if (protocols.length > 0) scanMutation.mutate(protocols.slice(0, 50).map(p => p.id));
   }, [protocols, scanMutation]);
 
-  // Load more protocols function with deduplication
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || isLoadingMore || !isOnline) return;
-    
     setIsLoadingMore(true);
     try {
-      // Build query params with filters
-      const params = new URLSearchParams({
-        limit: '500',
-        offset: currentOffset.toString()
-      });
-      
+      const params = new URLSearchParams({ limit: '500', offset: currentOffset.toString() });
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
-      if (selectedChain !== 'all') params.append('chain', selectedChain);
-      
-      const response = await fetch(`/api/protocols?${params.toString()}`);
-      
-      // Check response status
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data: PaginatedResponse = await response.json();
-      
-      if (data.protocols && data.protocols.length > 0) {
-        // DEDUPLICATION: Use Set to prevent duplicate protocols (both from previous state and within current response)
-        let dedupedCount = 0;
+      if (selectedChain    !== 'all') params.append('chain',    selectedChain);
+      const res  = await fetch(`/api/protocols?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const data: PaginatedResponse = await res.json();
+      if (data.protocols?.length > 0) {
+        let deduped = 0;
         setAllProtocols(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const newProtocols: Protocol[] = [];
-          
-          // Filter out duplicates from both previous state AND within the current response
-          for (const protocol of data.protocols) {
-            if (!existingIds.has(protocol.id)) {
-              existingIds.add(protocol.id); // Add to set to catch duplicates within the same batch
-              newProtocols.push(protocol);
-            }
+          const existing = new Set(prev.map(p => p.id));
+          const fresh: Protocol[] = [];
+          for (const p of data.protocols) {
+            if (!existing.has(p.id)) { existing.add(p.id); fresh.push(p); }
           }
-          
-          dedupedCount = newProtocols.length;
-          
-          if (dedupedCount === 0) {
-            console.warn('[DEDUP] All protocols in this batch already loaded (all duplicates)');
-            return prev;
-          }
-          
-          return [...prev, ...newProtocols];
+          deduped = fresh.length;
+          return fresh.length ? [...prev, ...fresh] : prev;
         });
-        
-        // Critical: Always advance offset by original response length to match backend pagination
-        // This allows pagination to progress even when encountering duplicate-only batches
         setCurrentOffset(prev => prev + data.protocols.length);
-        
-        // Keep hasMore in sync with API response to allow continued pagination
         setHasMore(data.hasMore);
-        
-        if (dedupedCount === 0) {
-          // All duplicates - log and notify user, but allow pagination to continue
-          console.warn('[DEDUP] Encountered full duplicate batch - advancing offset but no new data added');
-          toast({
-            title: "No New Protocols",
-            description: `All ${data.protocols.length} protocols in this batch were duplicates. Click "Load More" to continue.`,
-          });
-        } else {
-          // New protocols found - show accurate metrics
-          const skippedCount = data.protocols.length - dedupedCount;
-          toast({
-            title: "Loaded More Protocols",
-            description: `Loaded ${dedupedCount} new protocols${skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : ''}. Total: ${allProtocols.length + dedupedCount}`,
-          });
-        }
+        const skipped = data.protocols.length - deduped;
+        toast({ title: 'Loaded More', description: `${deduped} new protocols${skipped > 0 ? ` (${skipped} skipped)` : ''}.` });
       }
-    } catch (error) {
-      toast({
-        title: "Load Failed",
-        description: error instanceof Error ? error.message : "Failed to load more protocols",
-        variant: "destructive",
-      });
+    } catch (err) {
+      toast({ title: 'Load Failed', description: err instanceof Error ? err.message : 'Failed to load', variant: 'destructive' });
     } finally {
       setIsLoadingMore(false);
     }
   }, [currentOffset, hasMore, isLoadingMore, isOnline, toast, selectedCategory, selectedChain]);
 
   const chains = useMemo(() => {
-    const uniqueChains = new Set<string>(['all']);
-    protocols.forEach(p => {
-      p.chains.forEach(chain => uniqueChains.add(chain));
-    });
-    return Array.from(uniqueChains);
+    const s = new Set<string>(['all']);
+    protocols.forEach(p => p.chains.forEach(c => s.add(c)));
+    return Array.from(s);
   }, [protocols]);
 
   const categories = useMemo(() => {
-    // Static list of all supported categories
-    const allSupportedCategories = [
-      'all',
-      'DeFi',
-      'DEX',
-      'Lending',
-      'Yield',
-      'Bridge',
-      'NFT',
-      'Gaming',
-      'Derivatives',
-      'Insurance',
-      'Stablecoin',
-      'Liquid Staking',
-      'DAO',
-      'Synthetics',
-      'Options',
-      'Prediction Market',
-      'RWA',
-      'CDP',
-      'Services',
-      'Launchpad',
-    ];
-    // Add any additional categories from actual protocols
-    const additionalCategories = new Set<string>();
-    protocols.forEach(p => {
-      if (!allSupportedCategories.includes(p.category)) {
-        additionalCategories.add(p.category);
-      }
-    });
-    return [...allSupportedCategories, ...Array.from(additionalCategories)];
+    const base = ['all','DeFi','DEX','Lending','Yield','Bridge','NFT','Gaming','Derivatives','Insurance','Stablecoin','Liquid Staking','DAO','Synthetics','Options','Prediction Market','RWA','CDP','Services','Launchpad'];
+    const extra = new Set<string>();
+    protocols.forEach(p => { if (!base.includes(p.category)) extra.add(p.category); });
+    return [...base, ...Array.from(extra)];
   }, [protocols]);
 
-  const filteredProtocols = useMemo(() => {
-    return protocols.filter(p => {
-      const chainMatch = selectedChain === 'all' || p.chains.includes(selectedChain);
-      const categoryMatch = selectedCategory === 'all' || p.category === selectedCategory;
-      const searchMatch = !debouncedSearch || 
-        p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        p.category.toLowerCase().includes(debouncedSearch.toLowerCase());
-      return chainMatch && categoryMatch && searchMatch;
-    });
-  }, [protocols, selectedChain, selectedCategory, debouncedSearch]);
+  const filteredProtocols = useMemo(() => protocols.filter(p => {
+    const chainMatch    = selectedChain    === 'all' || p.chains.includes(selectedChain);
+    const catMatch      = selectedCategory === 'all' || p.category === selectedCategory;
+    const searchMatch   = !debouncedSearch ||
+      p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      p.category.toLowerCase().includes(debouncedSearch.toLowerCase());
+    return chainMatch && catMatch && searchMatch;
+  }), [protocols, selectedChain, selectedCategory, debouncedSearch]);
 
-  // Show processing indicator when sort/filter changes
   useEffect(() => {
     setIsProcessing(true);
-    const timer = setTimeout(() => setIsProcessing(false), 150);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setIsProcessing(false), 150);
+    return () => clearTimeout(t);
   }, [sortBy, selectedChain, selectedCategory]);
 
   const displayProtocols = useMemo(() => {
-    let sorted = [...filteredProtocols];
-    
-    // Sort by selected criteria
+    let s = [...filteredProtocols];
     if (sortBy === 'tvl') {
-      sorted.sort((a, b) => b.tvl - a.tvl);
-    } else if (sortBy === 'security') {
-      // Use real-time scan scores when available, otherwise use cached securityScore
-      // DFJ v2.3: higher score = safer. Sort DESCENDING to show safest first.
-      sorted.sort((a, b) => {
-        const scoreA = securityScans[a.id]?.score ?? a.securityScore;
-        const scoreB = securityScans[b.id]?.score ?? b.securityScore;
-        return scoreB - scoreA; // Descending: higher scores (safer) first
+      s.sort((a, b) => b.tvl - a.tvl);
+    } else {
+      s.sort((a, b) => {
+        const sa = securityScans[a.id]?.score ?? a.securityScore;
+        const sb = securityScans[b.id]?.score ?? b.securityScore;
+        return sb - sa;
       });
     }
-    
-    // Apply tab-specific sorting as secondary sort
-    if (activeTab === 'new') {
-      sorted.sort((a, b) => (a.age || 999999) - (b.age || 999999));
-    }
-    
-    return sorted;
+    if (activeTab === 'new') s.sort((a, b) => (a.age ?? 999999) - (b.age ?? 999999));
+    return s;
   }, [filteredProtocols, activeTab, sortBy, securityScans]);
 
   const stats = useMemo(() => ({
-    total: initialData?.total || protocols.length,
-    chains: 126,
-    audited: initialData?.auditedCount || 0,
+    total:       initialData?.total       || protocols.length,
+    chains:      126,
+    audited:     initialData?.auditedCount || 0,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
-    totalTVL: initialData?.totalTVL || protocols.reduce((sum, p) => sum + p.tvl, 0),
-    totalVolume: initialData?.totalVolume || protocols.reduce((sum, p) => sum + (Number(p.volume24h) || 0), 0)
+    totalTVL:    initialData?.totalTVL    || protocols.reduce((s, p) => s + p.tvl, 0),
+    totalVolume: initialData?.totalVolume || protocols.reduce((s, p) => s + (Number(p.volume24h) || 0), 0),
   }), [protocols, blacklist, initialData]);
 
-  const handleRefresh = useCallback(async () => {
-    if (!isOnline) {
-      toast({
-        title: "No Connection",
-        description: "Cannot refresh while offline",
-        variant: "destructive",
-      });
-      return;
-    }
-    await refetch();
-    toast({
-      title: "Refreshed",
-      description: "Protocol data updated successfully",
-    });
-  }, [isOnline, refetch, toast]);
+  const fmtCurrency = (n: number) => {
+    if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+    if (n >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`;
+    if (n >= 1e6)  return `$${(n / 1e6).toFixed(2)}M`;
+    if (n >= 1e3)  return `$${(n / 1e3).toFixed(2)}K`;
+    return `$${n.toFixed(2)}`;
+  };
 
+  const handleScan      = useCallback((p: Protocol) => scanMutation.mutate([p.id]), [scanMutation]);
+  const handleBlacklist = useCallback((p: Protocol) => blacklistMutation.mutate(p.id), [blacklistMutation]);
 
-  const handleScan = useCallback(async (protocol: Protocol) => {
-    scanMutation.mutate([protocol.id]);
-  }, [scanMutation]);
-
-  const handleScanProtocol = useCallback((protocolId: string) => {
-    scanMutation.mutate([protocolId]);
-  }, [scanMutation]);
-
-  const handleBlacklist = useCallback((protocol: Protocol) => {
-    blacklistMutation.mutate(protocol.id);
-  }, [blacklistMutation]);
-
+  /* ── Offline ────────────────────────────────────────────────────── */
   if (!isOnline) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">No Internet Connection</h2>
-          <p className="text-muted-foreground">Please check your connection and try again</p>
+      <div className="min-h-screen bg-[#060606] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+          <h2 className="text-xl font-black uppercase tracking-widest text-white">No Connection</h2>
+          <p className="text-sm text-white/40">Please check your connection and try again</p>
         </div>
       </div>
     );
   }
 
+  /* ── Loading ────────────────────────────────────────────────────── */
   if (isLoading) {
     return (
       <LoadingSpinner
@@ -376,95 +239,108 @@ export default function Dashboard() {
     );
   }
 
+  /* ── Main render ────────────────────────────────────────────────── */
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-[#060606] min-h-screen">
       <AdSpace position="top" />
-      
       <TrendingTicker />
 
-      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <StatsCard
-            label="Total Protocols"
-            value={stats.total.toLocaleString()}
-            icon={Database}
-          />
-          <StatsCard
-            label="Total TVL"
-            value={(() => {
-              const tvl = stats.totalTVL;
-              if (tvl >= 1_000_000_000_000) return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
-              if (tvl >= 1_000_000_000) return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
-              if (tvl >= 1_000_000) return `$${(tvl / 1_000_000).toFixed(2)}M`;
-              if (tvl >= 1_000) return `$${(tvl / 1_000).toFixed(2)}K`;
-              return `$${tvl.toFixed(2)}`;
-            })()}
-            icon={DollarSign}
-            tooltip="Total Value Locked across all tracked protocols"
-          />
-          <StatsCard
-            label="Total Volume"
-            value={(() => {
-              const vol = stats.totalVolume;
-              if (vol >= 1_000_000_000_000) return `$${(vol / 1_000_000_000_000).toFixed(2)}T`;
-              if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(2)}B`;
-              if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(2)}M`;
-              if (vol >= 1_000) return `$${(vol / 1_000).toFixed(2)}K`;
-              return `$${vol.toFixed(2)}`;
-            })()}
-            icon={Activity}
-            tooltip="Total 24h trading volume across all tracked protocols"
-          />
-          <StatsCard
-            label="Chains Supported"
-            value="126+"
-            icon={TrendingUp}
-            tooltip="JERUSALEM tracks DeFi protocols across 126+ blockchain networks including Ethereum, BSC, Polygon, Arbitrum, Optimism, Avalanche, and more"
-          />
-          <StatsCard
-            label="Audited"
-            value={stats.audited.toLocaleString()}
-            icon={Shield}
-            tooltip="Total protocols with audit data from DeFiLlama. View individual protocol pages for detailed audit information."
-          />
-          <StatsCard
-            label="Blacklisted"
-            value={stats.blacklisted}
-            icon={AlertCircle}
-            tooltip="Protocols are automatically blacklisted when they reach a CRITICAL risk score (≥80 points). This includes new contracts (<7 days), no audits, anonymous teams, and low liquidity (<$50k)."
-          />
+      {/* ── HERO ─────────────────────────────────────────────────────── */}
+      <section className="relative bg-[#060606] border-b border-[#1a1a1a] overflow-hidden">
+        {/* Grid background */}
+        <div className="absolute inset-0 grid-bg" />
+        {/* Subtle gold gradient wash */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#E8C15A]/[0.03] via-transparent to-transparent" />
+
+        <div className="relative max-w-screen-2xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
+          {/* Tagline */}
+          <p className="text-[10px] sm:text-xs font-black tracking-[0.35em] text-[#E8C15A] mb-5 sm:mb-7 uppercase">
+            /// The Watchtower of Web3
+          </p>
+
+          {/* Hero headline */}
+          <h1 className="font-display font-black uppercase leading-[0.9] tracking-tight text-white">
+            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Every</span>
+            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Exploit.</span>
+            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Every</span>
+            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Audit.</span>
+            <span className="block text-[clamp(3rem,10vw,8.5rem)] text-[#E8C15A]">One Ledger.</span>
+          </h1>
+
+          {/* Sub-copy + CTA */}
+          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-12">
+            <p className="text-sm text-white/40 max-w-sm leading-relaxed">
+              Aggregated security intelligence across{' '}
+              <span className="text-white/70 font-semibold">126+ blockchains</span> and{' '}
+              <span className="text-white/70 font-semibold">{stats.total.toLocaleString()}+ protocols</span>.
+              Real-time threat detection, audit coverage, and exploit history — all in one place.
+            </p>
+            <div className="flex gap-3 shrink-0">
+              <Link href="/threats">
+                <button className="border border-[#E8C15A]/50 text-[#E8C15A] text-[11px] font-bold tracking-[0.18em] uppercase px-5 py-2.5 hover:bg-[#E8C15A]/10 transition-colors">
+                  Threat Intel
+                </button>
+              </Link>
+              <Link href="/bug-bounties">
+                <button className="border border-white/15 text-white/55 text-[11px] font-bold tracking-[0.18em] uppercase px-5 py-2.5 hover:border-white/30 hover:text-white/80 transition-colors">
+                  Bug Bounties
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS BAR ────────────────────────────────────────────────── */}
+      <section className="border-b border-[#1a1a1a]">
+        <div className="max-w-screen-2xl mx-auto px-5 sm:px-8 py-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-[#1a1a1a]">
+            {/* Each card sits on the gap colour, creating hairline dividers */}
+            <div className="bg-[#060606]">
+              <StatsCard label="Total Protocols" value={stats.total.toLocaleString()} icon={Database} />
+            </div>
+            <div className="bg-[#060606]">
+              <StatsCard label="Total TVL" value={fmtCurrency(stats.totalTVL)} icon={DollarSign} tooltip="Total Value Locked across all tracked protocols" />
+            </div>
+            <div className="bg-[#060606]">
+              <StatsCard label="Total Volume" value={fmtCurrency(stats.totalVolume)} icon={Activity} tooltip="Total 24h trading volume across all tracked protocols" />
+            </div>
+            <div className="bg-[#060606]">
+              <StatsCard label="Chains" value="126+" icon={TrendingUp} tooltip="Tracks DeFi protocols across 126+ blockchain networks" />
+            </div>
+            <div className="bg-[#060606]">
+              <StatsCard label="Audited" value={stats.audited.toLocaleString()} icon={Shield} tooltip="Total protocols with audit data from DeFiLlama." />
+            </div>
+            <div className="bg-[#060606]">
+              <StatsCard label="Blacklisted" value={stats.blacklisted} icon={AlertCircle} tooltip="Protocols that reached a CRITICAL risk score." />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main className="max-w-screen-2xl mx-auto px-5 sm:px-8 py-8 space-y-8">
+
+        {/* ── THREAT INTEL + LEGEND ──────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-[#1a1a1a]">
+          <div className="bg-[#060606]"><LatestThreatsWidget /></div>
+          <div className="bg-[#060606]"><SecurityRatingLegend /></div>
         </div>
 
-        <Alert data-testid="alert-scanning-info" className="bg-muted/50">
-          <Info className="h-4 w-4" />
-          <AlertTitle>DeFi Protocol Security Aggregator</AlertTitle>
-          <AlertDescription className="space-y-2 mt-2">
-            <div>
-              <strong>Aggregated Security Intelligence:</strong> Security scores are derived from audit coverage (CertiK, Code4rena, Sherlock), known incident history (DeFiLlama hacks), bug bounty programs (Immunefi), governance structure, and TVL-weighted risk signals.
-            </div>
-            <div>
-              <strong>Incident History:</strong> Each protocol detail page shows all known hacks and exploits sourced from DeFiLlama's incident database, including funds lost and attack techniques.
-            </div>
-            <div>
-              <strong>Bug Bounty Tracking:</strong> We surface active Immunefi bug bounty programs for each protocol — a positive security signal that indicates the team invests in responsible disclosure.
-            </div>
-            <div>
-              <strong>Submit a Protocol:</strong> Use the "+ Protocol" button to add any DeFi protocol for tracking. Community submissions are reviewed and added to the aggregator.
-            </div>
-          </AlertDescription>
-        </Alert>
-
-        <div className="space-y-4">
+        {/* ── SEARCH + FILTERS ───────────────────────────────────────── */}
+        <div className="space-y-3">
+          {/* Row 1: search + action buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
+            <div className="flex-1 relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
               <SearchBar value={searchValue} onChange={setSearchValue} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <AddDAppByUrlDialog />
               <Button
                 onClick={handleScanAll}
                 disabled={scanMutation.isPending || protocols.length === 0}
                 variant="default"
+                className="font-bold tracking-widest uppercase text-[11px] h-9 px-4"
                 data-testid="button-scan-all"
               >
                 <ScanSearch className="w-4 h-4 mr-2" />
@@ -472,83 +348,113 @@ export default function Dashboard() {
               </Button>
             </div>
           </div>
-          
-          <div className="flex gap-2 flex-wrap">
+
+          {/* Row 2: filters + sort */}
+          <div className="flex gap-2 flex-wrap items-center">
             <Select value={selectedChain} onValueChange={setSelectedChain}>
-              <SelectTrigger className="w-[160px]" data-testid="select-chain">
-                <SelectValue placeholder="Filter by chain" />
+              <SelectTrigger className="w-[150px] text-[11px] uppercase tracking-wider border-[#1a1a1a] bg-[#080808] h-9" data-testid="select-chain">
+                <SelectValue placeholder="All Chains" />
               </SelectTrigger>
-              <SelectContent>
-                {chains.map((chain) => (
-                  <SelectItem key={chain} value={chain} data-testid={`option-chain-${chain}`}>
-                    {chain === 'all' ? 'All Chains' : chain.charAt(0).toUpperCase() + chain.slice(1)}
+              <SelectContent className="bg-[#0d0d0d] border-[#2a2a2a]">
+                {chains.map(c => (
+                  <SelectItem key={c} value={c} className="text-[11px] uppercase tracking-wider" data-testid={`option-chain-${c}`}>
+                    {c === 'all' ? 'All Chains' : c.charAt(0).toUpperCase() + c.slice(1)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
+
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[160px]" data-testid="select-category">
-                <SelectValue placeholder="Category" />
+              <SelectTrigger className="w-[160px] text-[11px] uppercase tracking-wider border-[#1a1a1a] bg-[#080808] h-9" data-testid="select-category">
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category} data-testid={`option-category-${category}`}>
-                    {category === 'all' ? 'All Categories' : category}
+              <SelectContent className="bg-[#0d0d0d] border-[#2a2a2a]">
+                {categories.map(c => (
+                  <SelectItem key={c} value={c} className="text-[11px] uppercase tracking-wider" data-testid={`option-category-${c}`}>
+                    {c === 'all' ? 'All Categories' : c}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
-            <Button
-              variant={sortBy === 'tvl' ? 'default' : 'outline'}
-              size="sm"
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-[#1a1a1a] hidden sm:block" />
+
+            <button
               onClick={() => setSortBy('tvl')}
+              className={[
+                'flex items-center gap-2 h-9 px-4 text-[11px] font-bold tracking-widest uppercase border transition-colors',
+                sortBy === 'tvl'
+                  ? 'border-[#E8C15A]/50 text-[#E8C15A] bg-[#E8C15A]/5'
+                  : 'border-[#1a1a1a] text-white/40 hover:border-[#2a2a2a] hover:text-white/60',
+              ].join(' ')}
               data-testid="button-sort-tvl"
             >
-              <DollarSign className="w-4 h-4 mr-2" />
+              <DollarSign className="w-3.5 h-3.5" />
               Rank by TVL
-            </Button>
-            
-            <Button
-              variant={sortBy === 'security' ? 'default' : 'outline'}
-              size="sm"
+            </button>
+
+            <button
               onClick={() => setSortBy('security')}
+              className={[
+                'flex items-center gap-2 h-9 px-4 text-[11px] font-bold tracking-widest uppercase border transition-colors',
+                sortBy === 'security'
+                  ? 'border-[#E8C15A]/50 text-[#E8C15A] bg-[#E8C15A]/5'
+                  : 'border-[#1a1a1a] text-white/40 hover:border-[#2a2a2a] hover:text-white/60',
+              ].join(' ')}
               data-testid="button-sort-security"
             >
-              <Shield className="w-4 h-4 mr-2" />
+              <Shield className="w-3.5 h-3.5" />
               Rank by Security
-            </Button>
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LatestThreatsWidget />
-          <SecurityRatingLegend />
+        {/* ── INFO CALLOUT ───────────────────────────────────────────── */}
+        <div className="border border-[#1a1a1a] bg-[#080808] px-5 py-4">
+          <p className="text-[9px] font-black tracking-[0.2em] uppercase text-[#E8C15A]/70 mb-3">
+            Data Sources &amp; Methodology
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-[11px] text-white/40 leading-relaxed">
+            <p><span className="text-white/60 font-semibold">Security scores</span> — audit coverage (CertiK, Code4rena, Sherlock), incident history, bug bounty programs, governance &amp; TVL signals.</p>
+            <p><span className="text-white/60 font-semibold">Incident History</span> — all known hacks and exploits sourced from DeFiLlama's database.</p>
+            <p><span className="text-white/60 font-semibold">Bug Bounty Tracking</span> — active Immunefi programs surface responsible-disclosure investment.</p>
+            <p><span className="text-white/60 font-semibold">Submit a Protocol</span> — use "+ Protocol" to add any DeFi protocol for tracking.</p>
+          </div>
         </div>
 
+        {/* ── PROTOCOL TABLE ─────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="trending" data-testid="tab-trending">
-              <Sparkles className="w-4 h-4 mr-2" />
+          <TabsList className="bg-transparent border-b border-[#1a1a1a] rounded-none gap-0 p-0 h-auto w-full justify-start">
+            <TabsTrigger
+              value="trending"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#E8C15A] data-[state=active]:text-[#E8C15A] data-[state=active]:bg-transparent text-white/40 text-[11px] font-black tracking-[0.18em] uppercase px-5 py-3 h-auto"
+              data-testid="tab-trending"
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-2" />
               Trending
             </TabsTrigger>
-            <TabsTrigger value="new" data-testid="tab-new">
-              <AlertCircle className="w-4 h-4 mr-2" />
+            <TabsTrigger
+              value="new"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#E8C15A] data-[state=active]:text-[#E8C15A] data-[state=active]:bg-transparent text-white/40 text-[11px] font-black tracking-[0.18em] uppercase px-5 py-3 h-auto"
+              data-testid="tab-new"
+            >
+              <AlertCircle className="w-3.5 h-3.5 mr-2" />
               New Protocols
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value={activeTab} className="mt-6">
+          <TabsContent value={activeTab} className="mt-0">
             {isProcessing && (
-              <div className="fixed top-4 right-4 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm font-medium">Processing...</span>
+              <div className="fixed top-4 right-4 z-50 bg-[#E8C15A] text-black px-4 py-2 flex items-center gap-2 text-[11px] font-black tracking-widest uppercase animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                Processing
               </div>
             )}
+
             {displayProtocols.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No protocols found</p>
+              <div className="border border-[#1a1a1a] py-16 text-center">
+                <p className="text-sm text-white/30 uppercase tracking-widest">No protocols found</p>
               </div>
             ) : (
               <>
@@ -558,34 +464,30 @@ export default function Dashboard() {
                   securityScans={securityScans}
                   onBlacklist={handleBlacklist}
                 />
-                
-                {/* Load More Button - Available for all filter states */}
+
                 {hasMore && activeTab === 'trending' && !debouncedSearch && (
                   <div className="mt-8 flex flex-col items-center gap-3">
-                    <Button
+                    <button
                       onClick={handleLoadMore}
                       disabled={isLoadingMore || !isOnline}
-                      size="lg"
-                      className="min-w-[200px]"
+                      className="border border-[#1a1a1a] hover:border-[#E8C15A]/40 text-white/50 hover:text-[#E8C15A] text-[11px] font-black tracking-[0.2em] uppercase px-8 py-3 transition-colors disabled:opacity-40 flex items-center gap-3"
                       data-testid="button-load-more"
                     >
                       {isLoadingMore ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2"></div>
+                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                           Loading...
                         </>
                       ) : (
                         <>
-                          <Database className="w-4 h-4 mr-2" />
+                          <Database className="w-3.5 h-3.5" />
                           Load More Protocols
                         </>
                       )}
-                    </Button>
-                    <p className="text-sm text-muted-foreground">
-                      Showing {allProtocols.length} of {initialData?.total || allProtocols.length}+ protocols
-                      {(selectedCategory !== 'all' || selectedChain !== 'all') && (
-                        <span className="ml-1">(filtered)</span>
-                      )}
+                    </button>
+                    <p className="text-[10px] text-white/25 tracking-wider">
+                      Showing {allProtocols.length.toLocaleString()} of {(initialData?.total ?? allProtocols.length).toLocaleString()}+ protocols
+                      {(selectedCategory !== 'all' || selectedChain !== 'all') && <span className="ml-1">(filtered)</span>}
                     </p>
                   </div>
                 )}

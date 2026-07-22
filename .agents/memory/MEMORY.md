@@ -1,3 +1,4 @@
+- [Design System](design-system.md) — "Watchtower" redesign: pure black #060606, gold #E8C15A, zero radius, Barlow Condensed display font, grid-bg texture.
 - [Schema-DB alignment](schema-db-alignment.md) — always verify actual DB columns before rewriting schema.ts; regex surgery on storage.ts leaves mangled stubs.
 - [Bounty & audit firm tables](bounty-audit-schema.md) — new tables created via raw SQL (drizzle-kit push hangs on interactive rename prompts for new tables).
 - [DFJ v2.3 Scoring Methodology](scoring-methodology.md) — higher=better (0–97), Foundation 45 + Active 55 − Penalties 30; all score displays use green≥80 blue≥65 yellow≥50 orange≥30 red<30.

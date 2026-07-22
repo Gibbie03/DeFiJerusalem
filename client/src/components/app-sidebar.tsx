@@ -1,5 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, AlertOctagon, MessageSquare, Search, Users, Briefcase, ChevronDown, Trophy, Award, Bot, BarChart3, Bug } from "lucide-react";
+import {
+  Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon,
+  Star, Lock, BookOpen, Upload, AlertTriangle, Library,
+  AlertOctagon, MessageSquare, Search, Users, Briefcase,
+  ChevronDown, Trophy, Award, Bot, BarChart3, Bug,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -24,55 +29,55 @@ const menuGroups = [
     title: "Discover",
     icon: Search,
     items: [
-      { title: "Home", url: "/", icon: Home },
-      { title: "Categories", url: "/categories", icon: BarChart3 },
-      { title: "New Protocols", url: "/new", icon: Clock },
-      { title: "Trending", url: "/trending", icon: TrendingUp },
-      { title: "Ask AI", url: "/chat", icon: Bot },
-    ]
+      { title: "Home",          url: "/",           icon: Home },
+      { title: "Categories",    url: "/categories", icon: BarChart3 },
+      { title: "New Protocols", url: "/new",        icon: Clock },
+      { title: "Trending",      url: "/trending",   icon: TrendingUp },
+      { title: "Ask AI",        url: "/chat",       icon: Bot },
+    ],
   },
   {
     title: "Security",
     icon: Shield,
     items: [
-      { title: "Flagged Protocols", url: "/blacklist", icon: Lock },
-      { title: "Threat Intelligence", url: "/threats", icon: AlertTriangle },
-      { title: "Threat Encyclopedia", url: "/threats/encyclopedia", icon: Library },
-      { title: "Protocol Bug Bounties", url: "/bug-bounties", icon: Bug },
-    ]
+      { title: "Flagged Protocols",  url: "/blacklist",             icon: Lock },
+      { title: "Threat Intelligence",url: "/threats",               icon: AlertTriangle },
+      { title: "Threat Encyclopedia",url: "/threats/encyclopedia",  icon: Library },
+      { title: "Protocol Bug Bounties", url: "/bug-bounties",       icon: Bug },
+    ],
   },
   {
     title: "Education",
     icon: BookOpen,
     items: [
       { title: "Our Methodology", url: "/security-methodology", icon: BookOpen },
-      { title: "Tutorials", url: "/tutorials", icon: Video },
-    ]
+      { title: "Tutorials",       url: "/tutorials",            icon: Video },
+    ],
   },
   {
     title: "Community",
     icon: Users,
     items: [
-      { title: "Contribute & Earn", url: "/bounties", icon: Trophy },
-      { title: "Report Protocol", url: "/report-scam", icon: AlertOctagon },
-      { title: "Community Reports", url: "/community-reports", icon: MessageSquare },
-    ]
+      { title: "Contribute & Earn",  url: "/bounties",          icon: Trophy },
+      { title: "Report Protocol",    url: "/report-scam",       icon: AlertOctagon },
+      { title: "Community Reports",  url: "/community-reports", icon: MessageSquare },
+    ],
   },
   {
     title: "Audit Firms",
     icon: Award,
     items: [
-      { title: "Firm Directory", url: "/audit-firms", icon: Shield },
-      { title: "Register Firm", url: "/audit-firms/register", icon: Upload },
-    ]
+      { title: "Firm Directory", url: "/audit-firms",          icon: Shield },
+      { title: "Register Firm",  url: "/audit-firms/register", icon: Upload },
+    ],
   },
   {
     title: "Partners",
     icon: Briefcase,
     items: [
       { title: "Submit Protocol", url: "/submit-protocol", icon: Upload },
-      { title: "Sponsorship", url: "/sponsorship", icon: Star },
-    ]
+      { title: "Sponsorship",     url: "/sponsorship",     icon: Star },
+    ],
   },
 ] as const;
 
@@ -88,89 +93,98 @@ function AppSidebarComponent({ side = "left" }: AppSidebarProps) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const { setOpenMobile, isMobile } = useSidebar();
-  
-  // Track which groups are expanded (default all expanded)
+
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    Discover: true,
-    Security: true,
-    Education: true,
-    Community: true,
-    Partners: true,
+    Discover:    true,
+    Security:    true,
+    Education:   true,
+    Community:   true,
+    Partners:    true,
   });
 
   useEffect(() => {
     const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (stored) {
-      setTheme(stored);
-      document.documentElement.classList.toggle('dark', stored === 'dark');
-    }
+    const active = stored ?? 'dark';
+    setTheme(active);
+    document.documentElement.classList.toggle('dark', active === 'dark');
   }, []);
 
-  // Auto-close sidebar when route changes (mobile only)
   useEffect(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
+    if (isMobile) setOpenMobile(false);
   }, [location, isMobile, setOpenMobile]);
 
   const toggleTheme = useCallback(() => {
-    setTheme(prevTheme => {
-      const newTheme = prevTheme === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('theme', newTheme);
-      document.documentElement.classList.toggle('dark', newTheme === 'dark');
-      return newTheme;
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      return next;
     });
   }, []);
-  
-  const toggleGroup = useCallback((groupTitle: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupTitle]: !prev[groupTitle]
-    }));
+
+  const toggleGroup = useCallback((title: string) => {
+    setExpandedGroups(prev => ({ ...prev, [title]: !prev[title] }));
   }, []);
 
-  const themeIcon = useMemo(() => 
-    theme === 'dark' ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />,
-    [theme]
-  );
-
-  const themeLabel = useMemo(() => 
-    theme === 'dark' ? 'Light Mode' : 'Dark Mode',
-    [theme]
-  );
+  const themeIcon  = useMemo(() => theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />, [theme]);
+  const themeLabel = useMemo(() => theme === 'dark' ? 'Light Mode' : 'Dark Mode', [theme]);
 
   return (
-    <Sidebar side={side} collapsible="offcanvas" className="border-l">
-      <SidebarContent className="pt-8">
-        <SidebarGroup>
+    <Sidebar
+      side={side}
+      collapsible="offcanvas"
+      className="border-l border-[#1a1a1a] bg-[#060606]"
+    >
+      <SidebarContent className="pt-6 bg-[#060606]">
+        <SidebarGroup className="px-0">
           <SidebarMenu>
             {menuGroups.map((group) => {
               const GroupIcon = group.icon;
               const isExpanded = expandedGroups[group.title];
-              const hasActiveItem = group.items.some(item => location === item.url);
-              
+              const hasActive = group.items.some(item => location === item.url);
+
               return (
                 <SidebarMenuItem key={group.title}>
-                  <SidebarMenuButton 
+                  {/* Group header */}
+                  <SidebarMenuButton
                     tooltip={group.title}
                     data-testid={`nav-group-${group.title.toLowerCase()}`}
                     onClick={() => toggleGroup(group.title)}
-                    className={hasActiveItem ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}
+                    className={[
+                      "flex items-center gap-2.5 px-4 py-2.5 w-full text-left transition-colors",
+                      "text-xs font-bold tracking-[0.18em] uppercase",
+                      hasActive
+                        ? "text-[#E8C15A]"
+                        : "text-white/35 hover:text-white/65",
+                    ].join(" ")}
                   >
-                    <GroupIcon className="w-4 h-4" />
-                    <span>{group.title}</span>
-                    <ChevronDown className={`ml-auto w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                    <GroupIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="flex-1">{group.title}</span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                    />
                   </SidebarMenuButton>
+
+                  {/* Sub-items */}
                   {isExpanded && (
-                    <SidebarMenuSub>
+                    <SidebarMenuSub className="border-l border-[#1a1a1a] ml-5 pl-0">
                       {group.items.map((item) => {
                         const ItemIcon = item.icon;
                         const isActive = location === item.url;
                         return (
                           <SidebarMenuSubItem key={item.title}>
                             <SidebarMenuSubButton asChild isActive={isActive}>
-                              <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                                <ItemIcon className="w-4 h-4" />
+                              <Link
+                                href={item.url}
+                                data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                                className={[
+                                  "flex items-center gap-2.5 px-4 py-2 text-[11px] font-medium tracking-wide transition-colors",
+                                  isActive
+                                    ? "text-[#E8C15A] border-l-2 border-[#E8C15A] -ml-px pl-[calc(1rem-1px)]"
+                                    : "text-white/45 hover:text-white/75",
+                                ].join(" ")}
+                              >
+                                <ItemIcon className="w-3.5 h-3.5 shrink-0" />
                                 <span>{item.title}</span>
                               </Link>
                             </SidebarMenuSubButton>
@@ -182,16 +196,23 @@ function AppSidebarComponent({ side = "left" }: AppSidebarProps) {
                 </SidebarMenuItem>
               );
             })}
-            
-            {/* Admin section (not collapsible) */}
+
+            {/* Admin (non-collapsible) */}
             {adminItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.url;
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive}>
-                    <Link href={item.url} data-testid={`nav-${item.title.toLowerCase()}`}>
-                      <Icon className="w-4 h-4" />
+                    <Link
+                      href={item.url}
+                      data-testid="nav-admin"
+                      className={[
+                        "flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold tracking-[0.18em] uppercase transition-colors",
+                        isActive ? "text-[#E8C15A]" : "text-white/30 hover:text-white/60",
+                      ].join(" ")}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -202,17 +223,15 @@ function AppSidebarComponent({ side = "left" }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <Button 
-          variant="ghost" 
-          size="sm"
+      <SidebarFooter className="border-t border-[#1a1a1a] p-4 bg-[#060606]">
+        <button
           onClick={toggleTheme}
-          className="w-full justify-start"
+          className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.18em] uppercase text-white/30 hover:text-white/60 transition-colors w-full"
           data-testid="button-theme-toggle"
         >
           {themeIcon}
           {themeLabel}
-        </Button>
+        </button>
       </SidebarFooter>
     </Sidebar>
   );

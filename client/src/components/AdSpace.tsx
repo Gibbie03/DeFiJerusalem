@@ -121,31 +121,32 @@ export default function AdSpace({ position }: AdSpaceProps) {
   );
 
   return (
-    <div 
-      className="w-full bg-muted/20 border-y border-border py-4"
+    <div
+      className="w-full border-b border-[#1a1a1a] bg-[#060606] py-3"
       data-testid={`ad-space-${position}`}
     >
-      <div className="max-w-screen-2xl mx-auto px-6">
-        <div 
+      <div className="max-w-screen-2xl mx-auto px-5 sm:px-8">
+        <div
           ref={containerRef}
-          className="flex items-center justify-center min-h-[90px] bg-background/50 rounded-md"
-          style={{ 
-            maxWidth: config?.bitmedia?.width || config?.coinzilla?.width || 728, 
-            margin: '0 auto' 
+          className="flex items-center justify-center min-h-[72px]"
+          style={{
+            maxWidth: config?.bitmedia?.width || config?.coinzilla?.width || 728,
+            margin: '0 auto',
           }}
         >
           {/* Placeholder shown when ads are not configured */}
           {!isConfigured && (
-            <div className="text-center p-4 border border-dashed border-muted-foreground/20 rounded">
-              <p className="text-sm text-muted-foreground font-medium">
-                Put your banner here
+            <div className="text-center border border-dashed border-white/10 px-8 py-3">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/25">
+                Partner Banner
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Contact <a 
-                  href="https://t.me/gibbie03" 
-                  target="_blank" 
+              <p className="text-[10px] text-white/20 mt-1">
+                Contact{' '}
+                <a
+                  href="https://t.me/gibbie03"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline font-medium"
+                  className="text-[#E8C15A]/60 hover:text-[#E8C15A] transition-colors font-semibold"
                   data-testid="link-contact-telegram"
                 >
                   admin

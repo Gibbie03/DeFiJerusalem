@@ -1,131 +1,119 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import type { Protocol } from '@shared/schema';
-import { TrendingUp } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 const formatTVL = (tvl: number): string => {
   if (tvl === 0) return 'No Data';
-  if (tvl >= 1_000_000_000_000) {
-    return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
-  } else if (tvl >= 1_000_000_000) {
-    return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
-  } else if (tvl >= 1_000_000) {
-    return `$${(tvl / 1_000_000).toFixed(2)}M`;
-  } else if (tvl >= 1_000) {
-    return `$${(tvl / 1_000).toFixed(2)}K`;
-  }
+  if (tvl >= 1_000_000_000_000) return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
+  if (tvl >= 1_000_000_000)     return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
+  if (tvl >= 1_000_000)         return `$${(tvl / 1_000_000).toFixed(2)}M`;
+  if (tvl >= 1_000)             return `$${(tvl / 1_000).toFixed(2)}K`;
   return `$${tvl.toFixed(2)}`;
 };
+
+/** Map a 24h change magnitude to a severity label */
+function getSeverityLabel(change: number): { label: string; color: string } {
+  const abs = Math.abs(change);
+  if (abs >= 20)  return { label: 'CRITICAL', color: 'text-red-500' };
+  if (abs >= 10)  return { label: 'HIGH',     color: 'text-orange-400' };
+  if (abs >= 5)   return { label: 'MEDIUM',   color: 'text-yellow-400' };
+  return           { label: 'LOW',      color: 'text-white/40' };
+}
 
 export default function TrendingTicker() {
   const { data: protocols = [] } = useQuery<Protocol[]>({
     queryKey: ['/api/protocols/trending'],
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 60000,
   });
 
-  const mobileTickerRef = useRef<HTMLDivElement>(null);
-  const desktopTickerRef = useRef<HTMLDivElement>(null);
+  const mobileRef  = useRef<HTMLDivElement>(null);
+  const desktopRef = useRef<HTMLDivElement>(null);
 
-  // Ensure protocols is always an array
-  const protocolsArray = Array.isArray(protocols) ? protocols : [];
-  
-  // Top 10 trending protocols
-  const trending = protocolsArray.slice(0, 10);
-  
+  const list = (Array.isArray(protocols) ? protocols : []).slice(0, 10);
 
-  // Calculate animation duration: scroll all content completely off screen
   useEffect(() => {
-    // Use setTimeout to ensure elements are rendered before measuring
-    const timeoutId = setTimeout(() => {
-      const mobileElement = mobileTickerRef.current;
-      const desktopElement = desktopTickerRef.current;
-
-      // Calculate duration: entire content width scrolls past
-      const calculateDuration = (element: HTMLElement, pixelsPerSecond: number) => {
-        const totalWidth = element.scrollWidth; // Full width of all protocols
-        const duration = totalWidth / pixelsPerSecond;
-        return duration;
+    const id = setTimeout(() => {
+      const calc = (el: HTMLElement, pps: number) => {
+        const dur = el.scrollWidth / pps;
+        el.style.animationDuration = `${dur}s`;
       };
-
-      if (mobileElement && mobileElement.scrollWidth > 0) {
-        // Mobile (Redmi Note 12): 30 pixels/second for very slow, readable scrolling
-        const duration = calculateDuration(mobileElement, 30);
-        mobileElement.style.animationDuration = `${duration}s`;
-      }
-
-      if (desktopElement && desktopElement.scrollWidth > 0) {
-        // Desktop: 60 pixels/second for comfortable reading
-        const duration = calculateDuration(desktopElement, 60);
-        desktopElement.style.animationDuration = `${duration}s`;
-      }
+      if (mobileRef.current?.scrollWidth)  calc(mobileRef.current, 30);
+      if (desktopRef.current?.scrollWidth) calc(desktopRef.current, 55);
     }, 100);
+    return () => clearTimeout(id);
+  }, [list]);
 
-    return () => clearTimeout(timeoutId);
-  }, [trending]);
+  if (list.length === 0) return null;
 
-  if (trending.length === 0) return null;
-
-  const renderProtocol = (protocol: Protocol, index: number, totalLength: number) => {
-    const rank = (index % totalLength) + 1;
+  const renderItem = (p: Protocol, idx: number, total: number) => {
+    const rank = (idx % total) + 1;
+    const { label, color } = getSeverityLabel(p.change24h);
     return (
       <Link
-        key={`${protocol.id}-${index}`}
-        href={`/protocol/${protocol.id}`}
-        className="inline-flex items-center gap-1.5 sm:gap-2 hover-elevate active-elevate-2 px-1.5 sm:px-2 py-1 rounded transition-colors text-xs sm:text-sm"
-        data-testid={`trending-protocol-${protocol.id}`}
+        key={`${p.id}-${idx}`}
+        href={`/protocol/${p.id}`}
+        className="inline-flex items-center gap-2 px-3 py-0.5 hover:bg-white/5 transition-colors"
+        data-testid={`trending-protocol-${p.id}`}
       >
-        <span className="font-bold text-primary/60 min-w-[1.2rem] sm:min-w-[1.5rem]">#{rank}</span>
-        <span className="font-semibold text-foreground">{protocol.name}</span>
-        <span className={`font-semibold ${protocol.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-          {protocol.change24h >= 0 ? '+' : ''}{protocol.change24h.toFixed(2)}%
+        {/* rank */}
+        <span className="text-[10px] font-bold text-white/25 min-w-[1.4rem]">#{rank}</span>
+        {/* name */}
+        <span className="text-[11px] font-semibold text-white/80 whitespace-nowrap">{p.name}</span>
+        {/* severity badge */}
+        <span className={`text-[9px] font-black tracking-wider ${color}`}>{label}</span>
+        {/* separator */}
+        <span className="text-white/15 text-xs">—</span>
+        {/* change */}
+        <span className={`text-[11px] font-bold tabular-nums ${p.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {p.change24h >= 0 ? '+' : ''}{p.change24h.toFixed(2)}%
         </span>
-        <span className="text-muted-foreground font-medium hidden xs:inline">
-          {formatTVL(protocol.tvl)}
+        {/* TVL */}
+        <span className="text-[10px] text-white/30 font-medium hidden xs:inline">
+          {formatTVL(p.tvl)}
         </span>
+        {/* item divider */}
+        <span className="text-[#E8C15A]/25 ml-3">◆</span>
       </Link>
     );
   };
 
   return (
-    <div className="bg-muted/30 border-b border-border overflow-hidden">
-      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2.5">
-        <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0 hidden sm:inline">Trending</span>
-        
-        {/* Mobile version: Scroll all 10 protocols completely, then reset */}
+    <div className="bg-[#060606] border-b border-[#1a1a1a] overflow-hidden">
+      <div className="flex items-stretch">
+
+        {/* Label pill */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-r border-[#1a1a1a] bg-[#0a0a0a] shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#E8C15A] animate-gold-pulse shrink-0" />
+          <span className="text-[9px] font-black tracking-[0.25em] text-[#E8C15A] uppercase whitespace-nowrap">
+            Exploit Wire
+          </span>
+        </div>
+
+        {/* Mobile scroll */}
         <div className="flex-1 overflow-hidden sm:hidden relative">
           <div className="flex">
-            <div ref={mobileTickerRef} className="animate-ticker-mobile flex gap-3 whitespace-nowrap" data-testid="trending-ticker">
-              {trending.map((protocol, index) => 
-                renderProtocol(protocol, index, trending.length)
-              )}
+            <div ref={mobileRef} className="animate-ticker-mobile flex whitespace-nowrap items-center" data-testid="trending-ticker">
+              {list.map((p, i) => renderItem(p, i, list.length))}
             </div>
-            {/* Duplicate for seamless loop appearance */}
-            <div className="flex gap-3 whitespace-nowrap ml-3">
-              {trending.slice(0, 3).map((protocol, index) => 
-                renderProtocol(protocol, index, trending.length)
-              )}
+            <div className="flex whitespace-nowrap items-center ml-3">
+              {list.slice(0, 3).map((p, i) => renderItem(p, i, list.length))}
             </div>
           </div>
         </div>
 
-        {/* Desktop version: Scroll all 10 protocols completely, then reset */}
+        {/* Desktop scroll */}
         <div className="flex-1 overflow-hidden hidden sm:block relative">
           <div className="flex">
-            <div ref={desktopTickerRef} className="animate-ticker-desktop flex gap-6 whitespace-nowrap" data-testid="trending-ticker">
-              {trending.map((protocol, index) => 
-                renderProtocol(protocol, index, trending.length)
-              )}
+            <div ref={desktopRef} className="animate-ticker-desktop flex whitespace-nowrap items-center" data-testid="trending-ticker">
+              {list.map((p, i) => renderItem(p, i, list.length))}
             </div>
-            {/* Duplicate for seamless loop appearance */}
-            <div className="flex gap-6 whitespace-nowrap ml-6">
-              {trending.slice(0, 3).map((protocol, index) => 
-                renderProtocol(protocol, index, trending.length)
-              )}
+            <div className="flex whitespace-nowrap items-center ml-4">
+              {list.slice(0, 3).map((p, i) => renderItem(p, i, list.length))}
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

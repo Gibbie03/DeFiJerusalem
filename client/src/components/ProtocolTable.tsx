@@ -96,123 +96,115 @@ const ProtocolRow = memo(({
   };
 
   const getSecurityBadge = (score: number) => {
-    // DFJ v2.3: HIGHER IS BETTER (97 = safest, 0 = most dangerous)
-    if (score >= 80) {
-      return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">{score}</Badge>;
-    } else if (score >= 65) {
-      return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">{score}</Badge>;
-    } else if (score >= 50) {
-      return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">{score}</Badge>;
-    } else if (score >= 30) {
-      return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">{score}</Badge>;
-    }
-    return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">{score}</Badge>;
+    // DFJ v2.3: HIGHER IS BETTER
+    const style =
+      score >= 80 ? 'border-green-500/40 text-green-400'  :
+      score >= 65 ? 'border-blue-500/40 text-blue-400'    :
+      score >= 50 ? 'border-yellow-400/40 text-yellow-400':
+      score >= 30 ? 'border-orange-400/40 text-orange-400':
+                    'border-red-500/40 text-red-400';
+    return (
+      <span className={`inline-block border px-1.5 py-0.5 text-[10px] font-black tabular-nums ${style}`}>
+        {score}
+      </span>
+    );
   };
 
   const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case 'CRITICAL':
-        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5 py-0">Critical Risk</Badge>;
-      case 'HIGH':
-        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 text-[10px] px-1.5 py-0">High Risk</Badge>;
-      case 'MEDIUM':
-        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">Moderate</Badge>;
-      case 'LOW':
-        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0">Low Risk</Badge>;
-      default:
-        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] px-1.5 py-0">Safe</Badge>;
-    }
+    const map: Record<string, string> = {
+      CRITICAL: 'text-red-400',
+      HIGH:     'text-orange-400',
+      MEDIUM:   'text-yellow-400',
+      LOW:      'text-blue-400',
+      SAFE:     'text-green-400',
+    };
+    const color = map[severity] ?? 'text-white/30';
+    return (
+      <span className={`text-[9px] font-black tracking-wider ${color}`}>{severity}</span>
+    );
   };
 
   return (
-    <tr 
-      className="border-b border-border hover:bg-muted/50 transition-colors"
+    <tr
+      className="border-b border-[#111] hover:bg-white/[0.018] transition-colors group"
       data-testid={`protocol-row-${protocol.id}`}
     >
       {/* Watchlist Star */}
-      <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
+      <td className="px-3 py-3.5" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => onToggleWatchlist(protocol.id)}
-          className="hover-elevate p-1 rounded"
+          className="p-1 transition-colors"
           data-testid={`button-watchlist-${protocol.id}`}
         >
-          <Star 
-            className={`w-4 h-4 ${isWatchlisted ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`}
-          />
+          <Star className={`w-3.5 h-3.5 ${isWatchlisted ? 'fill-[#E8C15A] text-[#E8C15A]' : 'text-white/20 group-hover:text-white/40'}`} />
         </button>
       </td>
 
       {/* Rank */}
-      <td className="px-3 py-4 text-sm font-semibold text-muted-foreground">
+      <td className="px-3 py-3.5 text-[11px] font-bold text-white/25 tabular-nums">
         {index + 1}
       </td>
-      
+
       {/* Name & Logo */}
-      <td className="px-3 py-4">
+      <td className="px-3 py-3.5">
         <Link href={`/protocol/${protocol.id}`}>
-          <div className="flex items-center gap-3 cursor-pointer hover-elevate">
+          <div className="flex items-center gap-3 cursor-pointer">
             {protocol.logo ? (
-              <img 
-                src={protocol.logo} 
+              <img
+                src={protocol.logo}
                 alt={protocol.name}
-                className="w-6 h-6 rounded-full"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                className="w-5 h-5 shrink-0"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <Shield className="w-3 h-3 text-primary" />
+              <div className="w-5 h-5 border border-[#2a2a2a] flex items-center justify-center shrink-0">
+                <Shield className="w-3 h-3 text-white/20" />
               </div>
             )}
             <div>
-              <div className="font-semibold text-sm">{protocol.name}</div>
-              <div className="text-xs text-muted-foreground">{protocol.category}</div>
+              <div className="text-sm font-semibold text-white/85 group-hover:text-white transition-colors">{protocol.name}</div>
+              <div className="text-[10px] text-white/30 tracking-wide">{protocol.category}</div>
             </div>
           </div>
         </Link>
       </td>
-      
-      {/* Price (TVL) */}
-      <td className="px-3 py-4 text-right">
+
+      {/* TVL */}
+      <td className="px-3 py-3.5 text-right">
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="font-semibold cursor-help">{formatTVL(protocol.tvl)}</div>
+            <div className="text-sm font-bold tabular-nums text-white/80 cursor-help">{formatTVL(protocol.tvl)}</div>
           </TooltipTrigger>
-          <TooltipContent side="left">
-            <p className="font-mono">{formatExactTVL(protocol.tvl)}</p>
+          <TooltipContent side="left" className="bg-[#111] border-[#2a2a2a]">
+            <p className="font-mono text-xs">{formatExactTVL(protocol.tvl)}</p>
           </TooltipContent>
         </Tooltip>
       </td>
 
       {/* Volume 24h */}
-      <td className="px-3 py-4 text-right">
+      <td className="px-3 py-3.5 text-right">
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="font-semibold cursor-help text-muted-foreground">{formatTVL(Number(protocol.volume24h) || 0)}</div>
+            <div className="text-sm tabular-nums text-white/40 cursor-help">{formatTVL(Number(protocol.volume24h) || 0)}</div>
           </TooltipTrigger>
-          <TooltipContent side="left">
-            <p className="font-mono">{formatExactTVL(Number(protocol.volume24h) || 0)}</p>
+          <TooltipContent side="left" className="bg-[#111] border-[#2a2a2a]">
+            <p className="font-mono text-xs">{formatExactTVL(Number(protocol.volume24h) || 0)}</p>
           </TooltipContent>
         </Tooltip>
       </td>
 
       {/* 24h Change */}
-      <td className="px-3 py-4 text-right">
-        <div className={`font-semibold ${
-          isPositiveChange ? 'text-green-500' : 'text-red-500'
-        }`}>
+      <td className="px-3 py-3.5 text-right">
+        <span className={`text-sm font-bold tabular-nums ${isPositiveChange ? 'text-green-400' : 'text-red-400'}`}>
           {isPositiveChange ? '+' : ''}{protocol.change24h.toFixed(2)}%
-        </div>
+        </span>
       </td>
 
       {/* 7d Change */}
-      <td className="px-3 py-4 text-right">
-        <div className={`font-semibold ${
-          sevenDayChange >= 0 ? 'text-green-500' : 'text-red-500'
-        }`}>
+      <td className="px-3 py-3.5 text-right">
+        <span className={`text-sm font-bold tabular-nums ${sevenDayChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
           {sevenDayChange >= 0 ? '+' : ''}{sevenDayChange.toFixed(2)}%
-        </div>
+        </span>
       </td>
 
       {/* Sparkline Chart */}
@@ -298,41 +290,39 @@ const ProtocolTable = memo(function ProtocolTable({
 
   return (
     <TooltipProvider>
-      <div className="space-y-4">
-        <div className="overflow-x-auto bg-card rounded-lg border border-border">
-          <table className="w-full" data-testid="protocol-table">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground w-12"></th>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">#</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Name</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">TVL</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Volume 24h</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">24h %</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">7d %</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Last 7 Days (TVL)</th>
-                <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Security</th>
-                {isAdmin && onBlacklist && (
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {protocols.map((protocol, index) => (
-                <ProtocolRow
-                  key={protocol.id}
-                  protocol={protocol}
-                  index={index}
-                  scan={securityScans[protocol.id]}
-                  isWatchlisted={watchlist.has(protocol.id)}
-                  onToggleWatchlist={toggleWatchlist}
-                  onBlacklist={onBlacklist}
-                  isAdmin={isAdmin}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="overflow-x-auto border border-[#1a1a1a] bg-[#080808]">
+        <table className="w-full" data-testid="protocol-table">
+          <thead>
+            <tr className="border-b border-[#1a1a1a] bg-[#0a0a0a]">
+              <th className="text-left px-3 py-3 w-10"></th>
+              <th className="text-left px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">#</th>
+              <th className="text-left px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">Name</th>
+              <th className="text-right px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">TVL</th>
+              <th className="text-right px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">Vol 24h</th>
+              <th className="text-right px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">24h %</th>
+              <th className="text-right px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">7d %</th>
+              <th className="text-right px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">7d Chart</th>
+              <th className="text-center px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">Security</th>
+              {isAdmin && onBlacklist && (
+                <th className="text-center px-3 py-3 text-[9px] font-black tracking-[0.2em] uppercase text-white/25">Actions</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {protocols.map((protocol, index) => (
+              <ProtocolRow
+                key={protocol.id}
+                protocol={protocol}
+                index={index}
+                scan={securityScans[protocol.id]}
+                isWatchlisted={watchlist.has(protocol.id)}
+                onToggleWatchlist={toggleWatchlist}
+                onBlacklist={onBlacklist}
+                isAdmin={isAdmin}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
     </TooltipProvider>
   );

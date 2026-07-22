@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Footer } from "@/components/Footer";
-import { Landmark, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
@@ -35,21 +35,40 @@ import SharedChatPage from "@/pages/SharedChatPage";
 import CategoriesPage from "@/pages/CategoriesPage";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
+import { Link } from "wouter";
 
 function CustomSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
-
   return (
     <Button
       variant="ghost"
       size="icon"
-      className="h-7 w-7 text-muted-foreground hover-elevate"
+      className="h-8 w-8 text-white/50 hover:text-white hover:bg-white/5 transition-colors"
       onClick={toggleSidebar}
       data-testid="button-sidebar-toggle"
     >
       <Menu className="w-4 h-4" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
+  );
+}
+
+/* ── DeFiJerusalem geometric logo icon ──────────────────────────── */
+function LogoIcon() {
+  return (
+    <div className="relative w-9 h-9 flex items-center justify-center border border-[#E8C15A]/70 shrink-0">
+      {/* Corner accents */}
+      <span className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-[#E8C15A]" />
+      <span className="absolute top-0 right-0 w-1.5 h-1.5 border-t border-r border-[#E8C15A]" />
+      <span className="absolute bottom-0 left-0 w-1.5 h-1.5 border-b border-l border-[#E8C15A]" />
+      <span className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b border-r border-[#E8C15A]" />
+      {/* Centre crosshair */}
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="w-2.5 h-2.5 border border-[#E8C15A]/60" />
+      </span>
+      <span className="absolute top-1/2 left-0 right-0 h-px bg-[#E8C15A]/20" />
+      <span className="absolute left-1/2 top-0 bottom-0 w-px bg-[#E8C15A]/20" />
+    </div>
   );
 }
 
@@ -61,28 +80,34 @@ function Router() {
 
   return (
     <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
-      <div className="flex flex-col h-screen w-full">
-        {/* Top Header */}
-        <header className="border-b bg-card/50 backdrop-blur-sm z-50 shrink-0">
-          <div className="flex items-center justify-between px-6 py-3">
-            {/* Logo - Left */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary via-accent to-primary rounded-lg flex items-center justify-center shadow-lg">
-                <Landmark className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+      <div className="flex flex-col h-screen w-full bg-[#060606]">
+
+        {/* ── Top Header ─────────────────────────────────────────────── */}
+        <header className="border-b border-[#1a1a1a] bg-[#060606] z-50 shrink-0">
+          <div className="flex items-center justify-between px-5 sm:px-6 py-3.5">
+
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 group">
+              <LogoIcon />
+              <span className="text-[13px] font-bold tracking-[0.22em] text-white uppercase select-none">
                 DeFiJerusalem
-              </h1>
+              </span>
+            </Link>
+
+            {/* Right controls */}
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 border border-white/12 px-3.5 py-1.5 text-[10px] font-bold tracking-[0.18em] text-white/55 uppercase hover:border-white/25 hover:text-white/80 transition-colors cursor-default select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-gold-pulse" />
+                LIVE FEED
+              </div>
+              <CustomSidebarTrigger />
             </div>
 
-            {/* Sidebar Toggle - Right */}
-            <CustomSidebarTrigger />
           </div>
         </header>
 
-        {/* Main Container below header */}
+        {/* Main Container */}
         <div className="flex flex-1 overflow-hidden relative">
-          {/* Main Content */}
           <main className="flex-1 overflow-y-auto flex flex-col">
             <div className="flex-1">
               <Switch>
@@ -120,7 +145,7 @@ function Router() {
             <Footer />
           </main>
 
-          {/* Sidebar on the Right - overlays on top */}
+          {/* Sidebar — right overlay */}
           <AppSidebar side="right" />
         </div>
       </div>

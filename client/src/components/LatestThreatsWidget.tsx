@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Clock, ArrowRight, TrendingUp } from 'lucide-react';
+import { AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react';
 import { Link } from 'wouter';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -16,173 +15,140 @@ interface ThreatEntry {
   detectedAt: string;
 }
 
-function getSeverityColor(severity: string) {
+function getSeverityStyle(severity: string): { bar: string; badge: string; text: string } {
   switch (severity) {
-    case 'CRITICAL':
-      return 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30';
-    case 'HIGH':
-      return 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30';
-    case 'MEDIUM':
-      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30';
-    case 'LOW':
-      return 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30';
-    default:
-      return 'bg-muted text-muted-foreground';
+    case 'CRITICAL': return { bar: 'bg-red-500',    badge: 'bg-red-500/10 text-red-400 border-red-500/30',    text: 'text-red-400' };
+    case 'HIGH':     return { bar: 'bg-orange-400', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/30', text: 'text-orange-400' };
+    case 'MEDIUM':   return { bar: 'bg-yellow-400', badge: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30', text: 'text-yellow-400' };
+    case 'LOW':      return { bar: 'bg-blue-400',   badge: 'bg-blue-500/10 text-blue-400 border-blue-500/30',   text: 'text-blue-400' };
+    default:         return { bar: 'bg-white/20',   badge: 'bg-white/5 text-white/40 border-white/10',          text: 'text-white/40' };
   }
 }
 
 function formatTimeAgo(timestamp: string): string {
-  const now = new Date();
-  const then = new Date(timestamp);
-  const diffMs = now.getTime() - then.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return then.toLocaleDateString();
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(diff / 86400000);
+  if (m < 1)  return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (d < 7)  return `${d}d ago`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
 export function LatestThreatsWidget() {
   const { data, isLoading } = useQuery<{ threats: ThreatEntry[] }>({
     queryKey: ['/api/threats', { limit: '5' }],
-    refetchInterval: 120000, // Refresh every 2 minutes
+    refetchInterval: 120000,
   });
-  
-  const threats = data?.threats || [];
 
+  const threats = data?.threats ?? [];
+
+  /* ── Loading ───────────────────────────────────────────────────── */
   if (isLoading) {
     return (
-      <Card className="border-destructive/20">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-20" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!threats || threats.length === 0) {
-    return (
-      <Card className="border-destructive/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
-            Latest Threats
-          </CardTitle>
-          <CardDescription>Real-time security alerts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">No threats detected recently</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="border-destructive/20" data-testid="widget-latest-threats">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
-            Latest Threats
-          </CardTitle>
-          <Badge variant="outline" className="gap-1">
-            <TrendingUp className="w-3 h-3" />
-            Live
-          </Badge>
+      <div className="border border-[#1a1a1a] bg-[#080808]">
+        <div className="border-b border-[#1a1a1a] px-5 py-4 flex items-center justify-between">
+          <Skeleton className="h-4 w-40 bg-white/5" />
+          <Skeleton className="h-4 w-16 bg-white/5" />
         </div>
-        <CardDescription>Real-time security alerts from our scanners</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {threats.map((threat, index) => (
-          <div
-            key={threat.id}
-            className="p-3 rounded-lg border bg-card hover-elevate"
-            data-testid={`threat-entry-${index}`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="p-5 space-y-3">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 bg-white/5" />)}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Empty ─────────────────────────────────────────────────────── */
+  if (threats.length === 0) {
+    return (
+      <div className="border border-[#1a1a1a] bg-[#080808]">
+        <div className="border-b border-[#1a1a1a] px-5 py-4 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-[#E8C15A]" />
+          <span className="text-[10px] font-black tracking-[0.2em] uppercase text-white/60">Threat Intelligence</span>
+        </div>
+        <p className="px-5 py-8 text-sm text-white/30 text-center">No threats detected recently</p>
+      </div>
+    );
+  }
+
+  /* ── Main ──────────────────────────────────────────────────────── */
+  return (
+    <div className="border border-[#1a1a1a] bg-[#080808]" data-testid="widget-latest-threats">
+
+      {/* Header */}
+      <div className="border-b border-[#1a1a1a] px-5 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-[#E8C15A] shrink-0" />
+          <span className="text-[10px] font-black tracking-[0.2em] uppercase text-white/70">
+            Threat Intelligence
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 border border-[#2a2a2a] px-2.5 py-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#E8C15A] animate-gold-pulse" />
+          <span className="text-[9px] font-bold tracking-widest text-[#E8C15A]/80 uppercase">Live</span>
+        </div>
+      </div>
+
+      {/* Threat rows */}
+      <div className="divide-y divide-[#111]">
+        {threats.map((threat, i) => {
+          const style = getSeverityStyle(threat.severity);
+          return (
+            <div
+              key={threat.id}
+              className="flex items-start gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors group"
+              data-testid={`threat-entry-${i}`}
+            >
+              {/* Severity bar */}
+              <div className={`w-0.5 self-stretch mt-0.5 shrink-0 ${style.bar}`} />
+
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-sm truncate" data-testid={`threat-name-${index}`}>
-                  {threat.name}
-                </h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge
-                    className={`text-xs ${getSeverityColor(threat.severity)}`}
-                    data-testid={`threat-severity-${index}`}
-                  >
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h4 className="text-sm font-semibold text-white/85 truncate leading-snug" data-testid={`threat-name-${i}`}>
+                    {threat.name}
+                  </h4>
+                  <span className={`text-[9px] font-black tracking-wider shrink-0 ${style.text}`} data-testid={`threat-severity-${i}`}>
                     {threat.severity}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {formatTimeAgo(threat.detectedAt)}
                   </span>
                 </div>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-xs font-semibold text-destructive">
-                  {threat.threatCount} {threat.threatCount === 1 ? 'Threat' : 'Threats'}
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-[10px] text-white/30">{formatTimeAgo(threat.detectedAt)}</span>
+                  <span className={`text-[10px] font-bold ${style.text}`}>
+                    {threat.threatCount} {threat.threatCount === 1 ? 'threat' : 'threats'}
+                  </span>
+                  {threat.topThreats?.slice(0, 2).map((t, j) => (
+                    <span key={j} className="text-[10px] text-white/30 border border-[#1a1a1a] px-1.5 py-0.5">
+                      {t}
+                    </span>
+                  ))}
                 </div>
               </div>
+
+              {/* Arrow */}
+              <Link href={threat.type === 'protocol' ? `/protocol/${threat.id}` : `/blacklist/${threat.id}`}>
+                <ArrowRight className="w-3.5 h-3.5 text-white/20 group-hover:text-[#E8C15A]/60 transition-colors mt-0.5 shrink-0" data-testid={`button-view-threat-${i}`} />
+              </Link>
             </div>
-            
-            {threat.topThreats && threat.topThreats.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {threat.topThreats.slice(0, 3).map((type, i) => (
-                  <Badge
-                    key={i}
-                    variant="outline"
-                    className="text-xs"
-                    data-testid={`threat-type-${index}-${i}`}
-                  >
-                    {type}
-                  </Badge>
-                ))}
-                {threat.topThreats.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{threat.topThreats.length - 3} more
-                  </Badge>
-                )}
-              </div>
-            )}
+          );
+        })}
+      </div>
 
-            <Link
-              href={threat.type === 'protocol' ? `/protocol/${threat.id}` : `/blacklist/${threat.id}`}
-            >
-              <Button
-                size="sm"
-                variant="ghost"
-                className="w-full justify-between text-xs h-7"
-                data-testid={`button-view-threat-${index}`}
-              >
-                View Details
-                <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </div>
-        ))}
-
+      {/* Footer */}
+      <div className="border-t border-[#1a1a1a] px-5 py-3">
         <Link href="/threats">
-          <Button
-            variant="outline"
-            className="w-full mt-2"
+          <button
+            className="w-full flex items-center justify-between text-[10px] font-bold tracking-widest uppercase text-white/35 hover:text-[#E8C15A]/80 transition-colors py-1"
             data-testid="button-view-all-threats"
           >
             View All Threats
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
+            <ArrowRight className="w-3 h-3" />
+          </button>
         </Link>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
