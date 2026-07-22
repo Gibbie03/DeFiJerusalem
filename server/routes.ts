@@ -2338,6 +2338,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/reset-password - Reset any admin password without knowing the current one.
+  // Gated by ADMIN_BOOTSTRAP_SECRET so no session is required — covers lockout scenarios.
+  app.post("/api/admin/reset-password", authLimiter, async (req: Request, res: Response) => {
+    try {
+      const { username, newPassword, bootstrapSecret } = req.body;
+
+      // Require the same bootstrap secret used by /api/admin/init
+      const requiredBootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET || 'CHANGE_THIS_IN_PRODUCTION_OR_ADMIN_CREATION_DISABLED';
+
+      if (requiredBootstrapSecret === 'CHANGE_THIS_IN_PRODUCTION_OR_ADMIN_CREATION_DISABLED') {
+        auditLogger.logFromRequest(req, 'ADMIN_RESET_PASSWORD_NO_BOOTSTRAP_SECRET', false);
+        return res.status(403).json({
+          success: false,
+          message: 'Password reset is disabled. Set ADMIN_BOOTSTRAP_SECRET environment variable to enable.',
+        });
+      }
+
+      if (!bootstrapSecret || bootstrapSecret !== requiredBootstrapSecret) {
+        auditLogger.logFromRequest(req, 'ADMIN_RESET_PASSWORD_INVALID_BOOTSTRAP_SECRET', false, { username });
+        return res.status(403).json({ success: false, message: 'Invalid bootstrap secret' });
+      }
+
+      if (!username || !newPassword ||
+          typeof username !== 'string' || typeof newPassword !== 'string') {
+        return res.status(400).json({ success: false, message: 'username and newPassword are required' });
+      }
+
+      // Enforce minimum password strength (letters + numbers, 8+ chars)
+      if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be at least 8 characters and contain letters and numbers',
+        });
+      }
+
+      const admin = await storage.getAdminByUsername(username.trim().toLowerCase());
+      if (!admin) {
+        auditLogger.logFromRequest(req, 'ADMIN_RESET_PASSWORD_USER_NOT_FOUND', false, { username });
+        return res.status(404).json({ success: false, message: 'Admin account not found' });
+      }
+
+      const newPasswordHash = await bcryptjs.hash(newPassword, 12);
+      await storage.updateAdminPassword(admin.id, newPasswordHash);
+
+      auditLogger.logFromRequest(req, 'ADMIN_RESET_PASSWORD_SUCCESS', true, { username: admin.username });
+
+      res.json({ success: true, message: `Password reset successfully for admin '${admin.username}'` });
+    } catch (error) {
+      console.error('Error resetting admin password:', error);
+      auditLogger.logFromRequest(req, 'ADMIN_RESET_PASSWORD_ERROR', false, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      res.status(500).json({ success: false, message: 'Failed to reset password' });
+    }
+  });
+
   // PUT /api/admin/protocols/:id - Update protocol information (requires admin authentication with audit logging)
   app.put("/api/admin/protocols/:id", async (req: Request, res: Response) => {
     try {
