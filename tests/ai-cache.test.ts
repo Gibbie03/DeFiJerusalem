@@ -279,4 +279,142 @@ describe('AI response cache', () => {
     // Clean up MAX_CACHE_ENTRIES between tests.
     delete process.env.MAX_CACHE_ENTRIES;
   });
+
+  // ── 8. Multi-round: tool call followed by final answer ───────────────────────
+
+  /**
+   * Simulates the two-round agentic loop:
+   *   Round 1 — OpenAI requests a tool call (finish_reason: 'tool_calls').
+   *   Round 2 — OpenAI uses the tool result and returns the final answer.
+   *
+   * Verifies:
+   *   a) The tool result message is included in the messages array sent on the
+   *      second OpenAI call (i.e. the thread is threaded correctly).
+   *   b) The final answer — not the intermediate tool-call assistant message —
+   *      is what gets cached and returned to the caller.
+   *   c) A subsequent identical call returns the cached final answer without
+   *      calling OpenAI again.
+   */
+  it('threads tool results into the second call and caches the final answer', async () => {
+    const TOOL_CALL_ID = 'call_abc123';
+    const TOOL_NAME = 'get_security_stats';
+
+    // Round 1 response: assistant requests a tool call
+    const toolCallResponse = {
+      choices: [
+        {
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: TOOL_CALL_ID,
+                type: 'function',
+                function: {
+                  name: TOOL_NAME,
+                  arguments: '{}',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    // Round 2 response: assistant provides the final answer
+    const finalResponse = makeOpenAIResponse(
+      'There are 42 protocols tracked; average security score is 78.'
+    );
+
+    mockCreate
+      .mockResolvedValueOnce(toolCallResponse)
+      .mockResolvedValueOnce(finalResponse);
+
+    const question = 'Give me an overview of DeFi security stats.';
+    const result = await runChatAgent(question, []);
+
+    // (a) OpenAI must have been called exactly twice
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+
+    // (b) The second call's messages array must contain a tool-role message
+    //     whose tool_call_id matches the one the agent requested
+    const secondCallMessages: Array<{ role: string; tool_call_id?: string }> =
+      mockCreate.mock.calls[1][0].messages;
+
+    const toolResultMsg = secondCallMessages.find(
+      (m) => m.role === 'tool' && m.tool_call_id === TOOL_CALL_ID
+    );
+    expect(toolResultMsg).toBeDefined();
+
+    // (c) The return value must be the final answer, not the tool-call message
+    expect(result).toBe(
+      'There are 42 protocols tracked; average security score is 78.'
+    );
+
+    // (d) A repeated call must hit the cache (no third OpenAI call)
+    const cached = await runChatAgent(question, []);
+    expect(mockCreate).toHaveBeenCalledTimes(2); // still 2
+    expect(cached).toBe(result);
+  });
+
+  // ── 9. Multi-round: tool result content is present in the second call ─────────
+
+  /**
+   * Verifies that the actual JSON content returned by the tool dispatcher
+   * is included verbatim in the tool-role message threaded into round 2.
+   *
+   * The storage mock returns an empty protocols/blacklist list, so
+   * getSecurityStats will produce a deterministic JSON payload we can
+   * assert against.
+   */
+  it('includes the tool result content in the messages sent on the second round', async () => {
+    const TOOL_CALL_ID = 'call_def456';
+
+    const toolCallResponse = {
+      choices: [
+        {
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: TOOL_CALL_ID,
+                type: 'function',
+                function: {
+                  name: 'get_security_stats',
+                  arguments: '{}',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockCreate
+      .mockResolvedValueOnce(toolCallResponse)
+      .mockResolvedValueOnce(makeOpenAIResponse('Stats delivered.'));
+
+    await runChatAgent('Show security stats.', []);
+
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+
+    const secondCallMessages: Array<{ role: string; content?: string; tool_call_id?: string }> =
+      mockCreate.mock.calls[1][0].messages;
+
+    const toolMsg = secondCallMessages.find(
+      (m) => m.role === 'tool' && m.tool_call_id === TOOL_CALL_ID
+    );
+
+    // The content must be valid JSON (the serialised tool result)
+    expect(toolMsg).toBeDefined();
+    expect(() => JSON.parse(toolMsg!.content!)).not.toThrow();
+
+    // The parsed payload must have the shape returned by getSecurityStats
+    const parsed = JSON.parse(toolMsg!.content!);
+    expect(parsed).toHaveProperty('totalProtocols');
+    expect(parsed).toHaveProperty('flaggedProtocols');
+  });
 });
