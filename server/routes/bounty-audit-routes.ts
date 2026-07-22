@@ -17,6 +17,8 @@ import { z } from 'zod';
 import { auditLogger } from '../lib/audit-logger';
 import { apiLimiter } from '../index';
 
+import { ENRICHABLE_FIELDS } from '@shared/bounty-fields';
+
 function uid(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -24,16 +26,6 @@ function uid(prefix: string) {
 // ─── Data-enrichment write-back ───────────────────────────────────────────────
 // Called when an admin approves a data-enrichment submission.
 // Writes the submitted value into the protocol record then triggers a rescore.
-
-const ENRICHABLE_FIELDS: Record<string, { col: string; label: string; points: number }> = {
-  audit_links:       { col: 'audit_links',        label: 'Audit report URL',    points: 50 },
-  github:            { col: 'github',              label: 'GitHub repo URL',     points: 30 },
-  website:           { col: 'website',             label: 'Official website',    points: 10 },
-  twitter:           { col: 'twitter',             label: 'Twitter / X handle',  points: 15 },
-  defi_has_multisig: { col: 'defi_has_multisig',   label: 'Multisig confirmed',  points: 40 },
-  defi_has_timelock: { col: 'defi_has_timelock',   label: 'Timelock confirmed',  points: 40 },
-  bug_bounty_url:    { col: 'audit_links',         label: 'Bug bounty URL',      points: 35 },
-};
 
 async function applyEnrichmentValue(
   protocolId: string,

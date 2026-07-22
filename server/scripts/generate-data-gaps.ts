@@ -9,16 +9,7 @@
 import { db } from '../db';
 import { protocols, bountyTasks } from '@shared/schema';
 import { gt, desc, eq, and } from 'drizzle-orm';
-
-const ENRICHABLE_FIELDS: Record<string, { label: string; points: number; dataType: string }> = {
-  audit_links:       { label: 'Audit report URL',   points: 50, dataType: 'url'     },
-  github:            { label: 'GitHub repo URL',     points: 30, dataType: 'url'     },
-  website:           { label: 'Official website',    points: 10, dataType: 'url'     },
-  twitter:           { label: 'Twitter / X handle',  points: 15, dataType: 'url'     },
-  defi_has_multisig: { label: 'Multisig confirmed',  points: 40, dataType: 'boolean' },
-  defi_has_timelock: { label: 'Timelock confirmed',  points: 40, dataType: 'boolean' },
-  bug_bounty_url:    { label: 'Bug bounty URL',      points: 35, dataType: 'url'     },
-};
+import { ENRICHABLE_FIELDS } from '@shared/bounty-fields';
 
 function uid(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

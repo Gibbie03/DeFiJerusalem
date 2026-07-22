@@ -36,7 +36,11 @@ interface PaginatedResponse {
 export default function Dashboard() {
   const [searchValue, setSearchValue] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    // Pre-select from ?category= query param (e.g. links from Categories page)
+    const param = new URLSearchParams(window.location.search).get('category');
+    return param ? decodeURIComponent(param) : 'all';
+  });
   const [sortBy, setSortBy] = useState<'tvl' | 'security'>('security');
   const [activeTab, setActiveTab] = useState('trending');
   const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
