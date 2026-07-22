@@ -283,10 +283,10 @@ export default function BountiesPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-primary" /> Bounty Board
+            <Trophy className="w-8 h-8 text-primary" /> Contribute & Earn
           </h1>
           <p className="text-muted-foreground mt-1">
-            Earn points by completing security tasks and submitting findings. Points exchange for DFJ tokens after launch.
+            Complete DeFiJerusalem security tasks and submit findings to earn points. Points exchange for DFJ tokens after launch.
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">

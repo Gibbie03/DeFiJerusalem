@@ -159,9 +159,20 @@ export default function BugBountiesDirectory() {
           Bug Bounty Programs
         </h1>
         <p className="text-muted-foreground mt-1">
-          Active bug bounty programs from leading DeFi protocols, sourced from Immunefi.
-          Report vulnerabilities responsibly and earn rewards.
+          A directory of active bug bounty programs run by DeFi protocols on Immunefi.
+          Click any program to open its page on Immunefi and submit your report there.
         </p>
+      </div>
+
+      {/* Clarifying callout */}
+      <div className="flex items-start gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-sm text-blue-300">
+        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+        <span>
+          <strong className="font-semibold text-blue-200">This is a read-only directory.</strong>{' '}
+          DeFiJerusalem does not manage these programs or accept vulnerability reports.
+          All submissions go directly to the protocol via{' '}
+          <a href="https://immunefi.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-100">Immunefi</a>.
+        </span>
       </div>
 
       {/* Stats bar */}

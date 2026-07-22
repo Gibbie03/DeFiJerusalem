@@ -38,7 +38,7 @@ const menuGroups = [
       { title: "Flagged Protocols", url: "/blacklist", icon: Lock },
       { title: "Threat Intelligence", url: "/threats", icon: AlertTriangle },
       { title: "Threat Encyclopedia", url: "/threats/encyclopedia", icon: Library },
-      { title: "Bug Bounty Programs", url: "/bug-bounties", icon: Bug },
+      { title: "Protocol Bug Bounties", url: "/bug-bounties", icon: Bug },
     ]
   },
   {
@@ -53,7 +53,7 @@ const menuGroups = [
     title: "Community",
     icon: Users,
     items: [
-      { title: "Bounty Board", url: "/bounties", icon: Trophy },
+      { title: "Contribute & Earn", url: "/bounties", icon: Trophy },
       { title: "Report Protocol", url: "/report-scam", icon: AlertOctagon },
       { title: "Community Reports", url: "/community-reports", icon: MessageSquare },
     ]
