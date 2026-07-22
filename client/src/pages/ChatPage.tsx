@@ -173,13 +173,20 @@ export default function ChatPage() {
     [input, isLoading, messages, toast]
   );
 
-  // Auto-send message from ?q= URL parameter (e.g. from protocol detail page)
+  // Auto-send message from ?q= URL parameter (e.g. from protocol detail page).
+  // After reading the param we immediately strip it from the URL via
+  // history.replaceState so that a hard-refresh or back-navigation does not
+  // re-trigger the auto-send.
   useEffect(() => {
     if (autoSentRef.current || !isConfigured || statusData === undefined) return;
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     if (q) {
       autoSentRef.current = true;
+      // Remove ?q= so a page refresh can't re-send the same message
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("q");
+      history.replaceState(null, "", cleanUrl.pathname + (cleanUrl.search || ""));
       sendMessage(q);
     }
   }, [isConfigured, statusData, sendMessage]);

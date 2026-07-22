@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     testTimeout: 30000,
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     exclude: ['arm-oeth/**', 'node_modules/**', 'dist/**'],
   },
   resolve: {
