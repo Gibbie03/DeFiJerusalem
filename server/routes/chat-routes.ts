@@ -97,6 +97,17 @@ export function registerChatRoutes(app: Express): void {
     }
   });
 
+  // GET /api/admin/chat/sessions/stats — return total and expired chat session counts
+  app.get("/api/admin/chat/sessions/stats", async (_req: Request, res: Response) => {
+    try {
+      const counts = await storage.countChatSessions();
+      res.json(counts);
+    } catch (err) {
+      console.error("[AI-CHAT] Stats error:", err);
+      res.status(500).json({ error: "Failed to fetch chat session stats" });
+    }
+  });
+
   // POST /api/admin/chat/cleanup — manually trigger expired chat session cleanup (admin only)
   app.post("/api/admin/chat/cleanup", async (req: Request, res: Response) => {
     try {

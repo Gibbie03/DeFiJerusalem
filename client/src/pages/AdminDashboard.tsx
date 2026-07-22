@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle, KeyRound, Clock } from 'lucide-react';
+import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle, KeyRound, Clock, Trash2, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -969,6 +969,33 @@ export default function AdminDashboard() {
     enabled: session?.authenticated,
   });
 
+  const { data: chatStats, isLoading: chatStatsLoading, refetch: refetchChatStats } = useQuery<{ total: number; expired: number }>({
+    queryKey: ['/api/admin/chat/sessions/stats'],
+    enabled: session?.authenticated,
+    refetchOnWindowFocus: true,
+  });
+
+  const cleanupChatMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/chat/cleanup', {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Cleanup Complete',
+        description: data.message || `Deleted ${data.deleted} expired chat session(s)`,
+      });
+      refetchChatStats();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Cleanup Failed',
+        description: error instanceof Error ? error.message : 'Failed to clean up expired sessions',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const sponsoredProtocols = protocols.filter(
     p => p.sponsorshipTier && p.sponsorshipTier !== 'free'
   );
@@ -1362,6 +1389,56 @@ export default function AdminDashboard() {
                 <KeyRound className="w-4 h-4 mr-2" />
                 {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-4 h-4" />
+              Chat Session Health
+            </CardTitle>
+            <CardDescription>Shared conversation links stored in the database</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <div className="flex gap-8">
+                <div data-testid="chat-stats-total">
+                  <p className="text-sm text-muted-foreground">Total sessions</p>
+                  <p className="text-2xl font-bold">
+                    {chatStatsLoading ? '…' : (chatStats?.total ?? 0)}
+                  </p>
+                </div>
+                <div data-testid="chat-stats-expired">
+                  <p className="text-sm text-muted-foreground">Expired (stale)</p>
+                  <p className={`text-2xl font-bold ${(chatStats?.expired ?? 0) > 0 ? 'text-amber-500' : ''}`}>
+                    {chatStatsLoading ? '…' : (chatStats?.expired ?? 0)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 sm:ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchChatStats()}
+                  disabled={chatStatsLoading}
+                  data-testid="button-refresh-chat-stats"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${chatStatsLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => cleanupChatMutation.mutate()}
+                  disabled={cleanupChatMutation.isPending || (chatStats?.expired ?? 0) === 0}
+                  data-testid="button-run-cleanup"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {cleanupChatMutation.isPending ? 'Cleaning up…' : 'Run Cleanup Now'}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
