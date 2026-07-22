@@ -3335,6 +3335,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Admin: Full Data Pipeline ─────────────────────────────────────────────
+  // Runs all stages: llama-bulk → llama-detail → immunefi → hacks → rescore
+  // Responds immediately with a 202 and streams progress to server logs.
+  // Poll /api/admin/pipeline-status for live updates.
+  let pipelineRunning = false;
+  let lastPipelineResult: any = null;
+
+  app.get('/api/admin/pipeline-status', (req, res) => {
+    if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    res.json({ running: pipelineRunning, lastResult: lastPipelineResult });
+  });
+
+  app.post('/api/admin/run-pipeline', async (req, res) => {
+    if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    if (pipelineRunning) return res.status(409).json({ error: 'Pipeline already running' });
+
+    const enrichLimit = parseInt(req.query.limit as string) || 500;
+    const skip = req.query.skip ? String(req.query.skip).split(',') : [];
+
+    pipelineRunning = true;
+    lastPipelineResult = null;
+    res.json({ ok: true, message: 'Pipeline started', enrichLimit, skip });
+
+    // Run in background — client polls /api/admin/pipeline-status
+    import('./lib/data-pipeline').then(({ runFullPipeline }) => {
+      return runFullPipeline({ enrichLimit, skip });
+    }).then(result => {
+      lastPipelineResult = result;
+      pipelineRunning = false;
+      clearCache('protocols');
+      clearCache('security-stats');
+      console.log(`[PIPELINE] Completed in ${(result.totalDurationMs / 1000).toFixed(1)}s`);
+    }).catch(err => {
+      pipelineRunning = false;
+      lastPipelineResult = { error: String(err) };
+      console.error('[PIPELINE] Failed:', err);
+    });
+  });
+
   // Bounty system + audit firm pipeline
   registerBountyAuditRoutes(app);
 

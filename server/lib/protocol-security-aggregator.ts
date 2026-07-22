@@ -55,23 +55,24 @@ export async function fetchAllHacks(): Promise<ProtocolHack[]> {
 
   try {
     console.log('[AGGREGATOR] Fetching hacks from DeFiLlama...');
-    const res = await fetch('https://defillama-datasets.llama.fi/v2/hacksByDate', {
-      headers: { 'User-Agent': 'DeFiJerusalem-SecurityAggregator/1.0' },
+    const res = await fetch('https://api.llama.fi/hacks', {
+      headers: { 'User-Agent': 'DeFiJerusalem-SecurityAggregator/1.0', 'Accept': 'application/json' },
       signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) throw new Error(`DeFiLlama hacks API returned ${res.status}`);
 
     const raw = await res.json();
-    // Response shape: { hacks: Array<{ date, name, amount, chain, category, technique, link }> }
-    const hacks: ProtocolHack[] = (raw?.hacks ?? raw ?? []).map((h: any) => ({
-      date: h.date ?? '',
+    // Response is a flat array: [{ date (unix), name, amount, chain (array), classification, technique, ... }]
+    const items: any[] = Array.isArray(raw) ? raw : (raw?.hacks ?? []);
+    const hacks: ProtocolHack[] = items.map((h: any) => ({
+      date: h.date ? new Date(h.date * 1000).toISOString().slice(0, 10) : '',
       name: h.name ?? '',
       amount: typeof h.amount === 'number' ? h.amount : 0,
-      chain: h.chain ?? h.chains ?? '',
-      category: h.category ?? '',
+      chain: Array.isArray(h.chain) ? h.chain.join(', ') : (h.chain ?? h.chains ?? ''),
+      category: h.classification ?? h.targetType ?? h.category ?? '',
       technique: h.technique ?? h.type ?? '',
-      link: h.link ?? h.url ?? '',
+      link: h.source ?? h.link ?? h.url ?? '',
     }));
 
     memSet(HACKS_CACHE_KEY, hacks, HACKS_TTL_MS);
@@ -101,10 +102,10 @@ export async function fetchBugBounties(): Promise<BugBountyProgram[]> {
 
   try {
     console.log('[AGGREGATOR] Fetching bug bounties from Immunefi...');
-    // Immunefi public API
-    const res = await fetch('https://immunefi.com/api/bounty/all', {
+    // Immunefi killed their public API — try the endpoint but expect failure
+    const res = await fetch('https://immunefi.com/api/bounty/all/', {
       headers: { 'User-Agent': 'DeFiJerusalem-SecurityAggregator/1.0' },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!res.ok) throw new Error(`Immunefi API returned ${res.status}`);

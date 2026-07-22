@@ -126,14 +126,16 @@ export async function enrichProtocols(limit = ENRICH_TOP_N): Promise<{
           updates.audited = llamaCount > 0;
         }
 
-        if (Object.keys(updates).length === 0) return;
+        // Always stamp defi_data_fetched_at so completeness tracking works
+        updates.defiDataFetchedAt = new Date();
 
         await db.update(protocols)
           .set({
-            ...(updates.age        !== undefined && { age: updates.age }),
-            ...(updates.auditLinks !== undefined && { auditLinks: updates.auditLinks }),
-            ...(updates.auditCount !== undefined && { auditCount: updates.auditCount }),
-            ...(updates.audited    !== undefined && { audited: updates.audited }),
+            ...(updates.age               !== undefined && { age: updates.age }),
+            ...(updates.auditLinks        !== undefined && { auditLinks: updates.auditLinks }),
+            ...(updates.auditCount        !== undefined && { auditCount: updates.auditCount }),
+            ...(updates.audited           !== undefined && { audited: updates.audited }),
+            defiDataFetchedAt: updates.defiDataFetchedAt,
           })
           .where(eq(protocols.id, p.id));
         updated++;
