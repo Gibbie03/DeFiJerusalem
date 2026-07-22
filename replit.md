@@ -94,6 +94,8 @@ Run `npm run db:check` to validate that `shared/schema.ts` is compatible with th
 
 This check does **not** require a live database connection. Run it before deploying or after upgrading any drizzle-\* package.
 
+**Pre-deploy gate**: `npm run db:check` is wired as a `prebuild` npm lifecycle hook, so it runs automatically before every `npm run build`. If the schema check fails, the build is aborted immediately with a clear error message — a broken schema cannot reach production by forgetting to run the check manually.
+
 To also detect drift between `shared/schema.ts` and the **live database**, run `npm run db:push` — drizzle-kit will report any DDL it would apply and prompt before making changes.
 
 ## External Dependencies
