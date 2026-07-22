@@ -40,6 +40,11 @@ export class DAppDiscovery {
         if (retries > 0) return this.fetchWithRetry(url, retries - 1);
         throw new Error('Rate limit exceeded');
       }
+
+      // 402 / 404 are permanent failures — no point retrying
+      if (response.status === 402 || response.status === 404) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText} (permanent, not retrying)`);
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
