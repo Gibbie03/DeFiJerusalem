@@ -479,9 +479,14 @@ export default function ProtocolDetail() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-muted-foreground" />Multisig</span>
-                  {protocol.defiHasMultisig
-                    ? <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    : <XCircle className="w-5 h-5 text-muted-foreground" />}
+                  <span className="flex items-center gap-1.5">
+                    {protocol.defiHasMultisig
+                      ? <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      : <XCircle className="w-5 h-5 text-muted-foreground" />}
+                    {protocol.defiHasMultisig && protocol.auditNote?.toLowerCase().includes('independently verified on-chain') && (
+                      <span className="text-[10px] font-medium text-blue-400 border border-blue-400/30 rounded px-1 py-0.5 leading-none">on-chain ✓</span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-muted-foreground" />Timelock</span>
@@ -499,9 +504,14 @@ export default function ProtocolDetail() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-muted-foreground" />Open source</span>
-                  {protocol.github
-                    ? <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    : <XCircle className="w-5 h-5 text-muted-foreground" />}
+                  <span className="flex items-center gap-1.5">
+                    {protocol.github
+                      ? <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      : <XCircle className="w-5 h-5 text-muted-foreground" />}
+                    {protocol.github && protocol.auditNote?.toLowerCase().includes('defisafety') && (
+                      <span className="text-[10px] font-medium text-blue-400 border border-blue-400/30 rounded px-1 py-0.5 leading-none">DeFiSafety ✓</span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm flex items-center gap-1.5"><Siren className="w-3.5 h-3.5 text-muted-foreground" />Known incidents</span>

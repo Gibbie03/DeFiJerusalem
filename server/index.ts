@@ -199,6 +199,35 @@ app.use((req, res, next) => {
     log('✓ Immunefi daily refresh scheduled (every 24 h)');
   }
 
+  // Schedule weekly security data enrichment (DeFiSafety + GitHub enrichment)
+  {
+    const { spawn } = await import('child_process');
+    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+    const runSecurityEnrichment = async (label: string, script: string) => {
+      log(`[SECURITY-PIPELINE] Starting ${label}…`);
+      const proc = spawn(
+        process.execPath,
+        ['node_modules/.bin/tsx', script],
+        { stdio: 'pipe', cwd: process.cwd() },
+      );
+      const lines: string[] = [];
+      proc.stdout?.on('data', (d: Buffer) => lines.push(d.toString().trim()));
+      proc.stderr?.on('data', (d: Buffer) => lines.push(d.toString().trim()));
+      proc.on('close', (code: number | null) => {
+        if (code === 0) {
+          log(`[SECURITY-PIPELINE] ✓ ${label} succeeded`);
+        } else {
+          log(`[SECURITY-PIPELINE] ✗ ${label} exited ${code}`);
+          lines.slice(-3).forEach(l => log(`[SECURITY-PIPELINE]   ${l}`));
+        }
+      });
+    };
+    // Stagger runs: DeFiSafety first, GitHub enrichment 5 min later
+    setInterval(() => runSecurityEnrichment('DeFiSafety scores', 'server/scripts/fetch-defisafety-scores.ts'), ONE_WEEK);
+    setInterval(() => runSecurityEnrichment('GitHub enrichment', 'server/scripts/enrich-github-from-defillama.ts'), ONE_WEEK);
+    log('✓ Weekly security enrichment scheduled (DeFiSafety + GitHub, every 7 days)');
+  }
+
   // Schedule periodic cleanup of expired chat sessions (every 6 hours)
   {
     const { storage } = await import('./storage');
