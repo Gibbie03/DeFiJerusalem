@@ -109,7 +109,7 @@ export default function SharedChatPage() {
                 {session?.title ?? "Shared Conversation"}
               </h1>
               <p className="text-xs text-muted-foreground">
-                DeFiJerusalem Security AI · Read-only
+                Dada the Defender · Read-only
               </p>
             </div>
           </div>

@@ -296,7 +296,7 @@ export default function ChatPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground leading-tight">
-                Security AI
+                Dada the Defender
               </h1>
               <p className="text-xs text-muted-foreground">
                 Ask anything about DeFi protocol security
@@ -406,7 +406,7 @@ export default function ChatPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-foreground mb-2">
-                  DeFiJerusalem Security AI
+                  Dada the Defender
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-md">
                   Ask me about DeFi protocol security — audits, TVL, risk
