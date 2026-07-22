@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Database, Shield, TrendingUp, AlertCircle, Sparkles,
-  ScanSearch, DollarSign, Activity, ArrowRight, Search as SearchIcon,
+  ScanSearch, DollarSign, Activity, Search as SearchIcon,
+  Layers, ArrowRight,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -16,13 +16,9 @@ import StatsCard from '@/components/StatsCard';
 import SearchBar from '@/components/SearchBar';
 import ProtocolTable from '@/components/ProtocolTable';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import AddDAppByUrlDialog from '@/components/AddDAppByUrlDialog';
 import TrendingTicker from '@/components/TrendingTicker';
 import AdSpace from '@/components/AdSpace';
-import SecurityRatingLegend from '@/components/SecurityRatingLegend';
-import { LatestThreatsWidget } from '@/components/LatestThreatsWidget';
 import type { Protocol, SecurityScan, BlacklistEntry } from '@shared/schema';
-import { Link } from 'wouter';
 
 interface PaginatedResponse {
   protocols: Protocol[];
@@ -35,24 +31,79 @@ interface PaginatedResponse {
   hasMore: boolean;
 }
 
+// ── Category accent colours ──────────────────────────────────────────────────
+const CAT_COLOR: Record<string, { border: string; text: string; bg: string; icon: string }> = {
+  'DEX':                { border: 'border-cyan-500/40',   text: 'text-cyan-400',    bg: 'bg-cyan-500/5',   icon: '⚡' },
+  'Lending':            { border: 'border-emerald-500/40',text: 'text-emerald-400', bg: 'bg-emerald-500/5',icon: '💸' },
+  'Bridge':             { border: 'border-orange-500/40', text: 'text-orange-400',  bg: 'bg-orange-500/5', icon: '🌉' },
+  'Yield':              { border: 'border-purple-500/40', text: 'text-purple-400',  bg: 'bg-purple-500/5', icon: '📈' },
+  'Derivatives':        { border: 'border-red-500/40',    text: 'text-red-400',     bg: 'bg-red-500/5',    icon: '📊' },
+  'Liquid Staking':     { border: 'border-sky-500/40',    text: 'text-sky-400',     bg: 'bg-sky-500/5',    icon: '💧' },
+  'CDP':                { border: 'border-amber-500/40',  text: 'text-amber-400',   bg: 'bg-amber-500/5',  icon: '🏛️' },
+  'NFT':                { border: 'border-pink-500/40',   text: 'text-pink-400',    bg: 'bg-pink-500/5',   icon: '🖼️' },
+  'Gaming':             { border: 'border-green-500/40',  text: 'text-green-400',   bg: 'bg-green-500/5',  icon: '🎮' },
+  'RWA':                { border: 'border-stone-400/40',  text: 'text-stone-300',   bg: 'bg-stone-500/5',  icon: '🏢' },
+  'DAO':                { border: 'border-[#E8C15A]/40',  text: 'text-[#E8C15A]',   bg: 'bg-[#E8C15A]/5',  icon: '🗳️' },
+  'Stablecoin':         { border: 'border-teal-500/40',   text: 'text-teal-400',    bg: 'bg-teal-500/5',   icon: '⚖️' },
+  'Insurance':          { border: 'border-indigo-500/40', text: 'text-indigo-400',  bg: 'bg-indigo-500/5', icon: '🛡️' },
+  'Options':            { border: 'border-rose-500/40',   text: 'text-rose-400',    bg: 'bg-rose-500/5',   icon: '📉' },
+  'Launchpad':          { border: 'border-yellow-500/40', text: 'text-yellow-400',  bg: 'bg-yellow-500/5', icon: '🚀' },
+  'Liquid Restaking':   { border: 'border-blue-500/40',   text: 'text-blue-400',    bg: 'bg-blue-500/5',   icon: '🔄' },
+};
+const CAT_DESC: Record<string, string> = {
+  'DEX':            'Non-custodial token swaps and AMM liquidity pools',
+  'Lending':        'Borrow and supply crypto assets on-chain',
+  'Bridge':         'Cross-chain asset transfers and messaging protocols',
+  'Yield':          'Automated yield strategies, vaults, and optimisers',
+  'Derivatives':    'Perpetuals, options, and synthetic exposure',
+  'Liquid Staking': 'Stake assets and receive transferable receipt tokens',
+  'CDP':            'Collateralized debt positions and stablecoin issuance',
+  'NFT':            'NFT marketplaces, lending, and infrastructure',
+  'Gaming':         'Blockchain gaming and GameFi protocols',
+  'RWA':            'Real-world asset tokenization on-chain',
+  'DAO':            'Governance frameworks and on-chain voting',
+  'Stablecoin':     'Algorithmic and asset-backed stablecoin systems',
+  'Insurance':      'DeFi insurance and smart-contract risk coverage',
+  'Options':        'On-chain options protocols and structured products',
+  'Launchpad':      'Token launch platforms and IDO infrastructure',
+  'Liquid Restaking':'Restaked ETH and liquid restaking token protocols',
+};
+
+// ── Category hero banner (shown when a category filter is active) ────────────
+function CategoryBanner({ category, count }: { category: string; count: number }) {
+  const c = CAT_COLOR[category] ?? { border: 'border-white/20', text: 'text-white/60', bg: 'bg-white/3', icon: '🔷' };
+  const desc = CAT_DESC[category] ?? `Protocols in the ${category} sector`;
+  return (
+    <div className={`border ${c.border} ${c.bg} px-5 sm:px-7 py-4 flex items-center gap-4`}>
+      <span className="text-2xl shrink-0">{c.icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className={`text-[11px] font-black tracking-[0.2em] uppercase ${c.text} mb-0.5`}>
+          {category} · {count} protocols
+        </div>
+        <p className="text-[11px] text-white/35 truncate">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const [searchValue, setSearchValue]         = useState('');
-  const [selectedChain, setSelectedChain]     = useState('all');
+  const [searchValue, setSearchValue]           = useState('');
+  const [selectedChain, setSelectedChain]       = useState('all');
   const [selectedCategory, setSelectedCategory] = useState(() => {
     const p = new URLSearchParams(window.location.search).get('category');
     return p ? decodeURIComponent(p) : 'all';
   });
-  const [sortBy, setSortBy]                   = useState<'tvl' | 'security'>('security');
-  const [activeTab, setActiveTab]             = useState('trending');
-  const [securityScans, setSecurityScans]     = useState<Record<string, SecurityScan>>({});
-  const [isProcessing, setIsProcessing]       = useState(false);
-  const [allProtocols, setAllProtocols]       = useState<Protocol[]>([]);
-  const [currentOffset, setCurrentOffset]     = useState(0);
-  const [hasMore, setHasMore]                 = useState(true);
-  const [isLoadingMore, setIsLoadingMore]     = useState(false);
+  const [sortBy, setSortBy]     = useState<'tvl' | 'security'>('security');
+  const [activeTab, setActiveTab] = useState('trending');
+  const [securityScans, setSecurityScans] = useState<Record<string, SecurityScan>>({});
+  const [isProcessing, setIsProcessing]   = useState(false);
+  const [allProtocols, setAllProtocols]   = useState<Protocol[]>([]);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [hasMore, setHasMore]             = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const isOnline     = useOnlineStatus();
-  const { toast }    = useToast();
+  const isOnline    = useOnlineStatus();
+  const { toast }   = useToast();
   const debouncedSearch = useDebounce(searchValue, 300);
   useScrollRestoration('dashboard');
 
@@ -167,9 +218,9 @@ export default function Dashboard() {
   }, [protocols]);
 
   const filteredProtocols = useMemo(() => protocols.filter(p => {
-    const chainMatch    = selectedChain    === 'all' || p.chains.includes(selectedChain);
-    const catMatch      = selectedCategory === 'all' || p.category === selectedCategory;
-    const searchMatch   = !debouncedSearch ||
+    const chainMatch  = selectedChain    === 'all' || p.chains.includes(selectedChain);
+    const catMatch    = selectedCategory === 'all' || p.category === selectedCategory;
+    const searchMatch = !debouncedSearch ||
       p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
       p.category.toLowerCase().includes(debouncedSearch.toLowerCase());
     return chainMatch && catMatch && searchMatch;
@@ -198,25 +249,21 @@ export default function Dashboard() {
 
   const stats = useMemo(() => ({
     total:       initialData?.total       || protocols.length,
-    chains:      126,
     audited:     initialData?.auditedCount || 0,
     blacklisted: blacklist.filter(b => b.status === 'ACTIVE').length,
     totalTVL:    initialData?.totalTVL    || protocols.reduce((s, p) => s + p.tvl, 0),
-    totalVolume: initialData?.totalVolume || protocols.reduce((s, p) => s + (Number(p.volume24h) || 0), 0),
   }), [protocols, blacklist, initialData]);
 
   const fmtCurrency = (n: number) => {
     if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
     if (n >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`;
     if (n >= 1e6)  return `$${(n / 1e6).toFixed(2)}M`;
-    if (n >= 1e3)  return `$${(n / 1e3).toFixed(2)}K`;
     return `$${n.toFixed(2)}`;
   };
 
   const handleScan      = useCallback((p: Protocol) => scanMutation.mutate([p.id]), [scanMutation]);
   const handleBlacklist = useCallback((p: Protocol) => blacklistMutation.mutate(p.id), [blacklistMutation]);
 
-  /* ── Offline ────────────────────────────────────────────────────── */
   if (!isOnline) {
     return (
       <div className="min-h-screen bg-[#060606] flex items-center justify-center">
@@ -229,130 +276,37 @@ export default function Dashboard() {
     );
   }
 
-  /* ── Loading ────────────────────────────────────────────────────── */
   if (isLoading) {
-    return (
-      <LoadingSpinner
-        message="Loading Protocols"
-        subtitle="Fetching DeFi protocols across 126+ chains..."
-      />
-    );
+    return <LoadingSpinner message="Loading Protocols" subtitle="Fetching DeFi protocols across 126+ chains..." />;
   }
 
-  /* ── Main render ────────────────────────────────────────────────── */
   return (
     <div className="bg-[#060606] min-h-screen">
-      <AdSpace position="top" />
       <TrendingTicker />
 
-      {/* ── HERO ─────────────────────────────────────────────────────── */}
-      <section className="relative bg-[#060606] border-b border-[#1a1a1a] overflow-hidden">
-        {/* Grid background */}
-        <div className="absolute inset-0 grid-bg" />
-        {/* Subtle gold gradient wash */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#E8C15A]/[0.03] via-transparent to-transparent" />
-
-        <div className="relative max-w-screen-2xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
-          {/* Tagline */}
-          <p className="text-[10px] sm:text-xs font-black tracking-[0.35em] text-[#E8C15A] mb-5 sm:mb-7 uppercase">
-            /// The Watchtower of Web3
-          </p>
-
-          {/* Hero headline */}
-          <h1 className="font-display font-black uppercase leading-[0.9] tracking-tight text-white">
-            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Every</span>
-            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Exploit.</span>
-            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Every</span>
-            <span className="block text-[clamp(3rem,10vw,8.5rem)]">Audit.</span>
-            <span className="block text-[clamp(3rem,10vw,8.5rem)] text-[#E8C15A]">One Ledger.</span>
-          </h1>
-
-          {/* Sub-copy + CTA */}
-          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-12">
-            <p className="text-sm text-white/40 max-w-sm leading-relaxed">
-              Aggregated security intelligence across{' '}
-              <span className="text-white/70 font-semibold">126+ blockchains</span> and{' '}
-              <span className="text-white/70 font-semibold">{stats.total.toLocaleString()}+ protocols</span>.
-              Real-time threat detection, audit coverage, and exploit history — all in one place.
-            </p>
-            <div className="flex gap-3 shrink-0">
-              <Link href="/threats">
-                <button className="border border-[#E8C15A]/50 text-[#E8C15A] text-[11px] font-bold tracking-[0.18em] uppercase px-5 py-2.5 hover:bg-[#E8C15A]/10 transition-colors">
-                  Threat Intel
-                </button>
-              </Link>
-              <Link href="/bug-bounties">
-                <button className="border border-white/15 text-white/55 text-[11px] font-bold tracking-[0.18em] uppercase px-5 py-2.5 hover:border-white/30 hover:text-white/80 transition-colors">
-                  Bug Bounties
-                </button>
-              </Link>
-            </div>
-          </div>
+      {/* ── COMPACT STATS STRIP ──────────────────────────────────────────── */}
+      <div className="border-b border-[#1a1a1a] bg-[#060606]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-[#1a1a1a]">
+          <div className="bg-[#060606]"><StatsCard label="Protocols"  value={stats.total.toLocaleString()}    icon={Database}      /></div>
+          <div className="bg-[#060606]"><StatsCard label="Total TVL"  value={fmtCurrency(stats.totalTVL)}     icon={DollarSign}    /></div>
+          <div className="bg-[#060606]"><StatsCard label="Audited"    value={stats.audited.toLocaleString()}   icon={Shield}        /></div>
+          <div className="bg-[#060606]"><StatsCard label="Blacklisted"value={stats.blacklisted}               icon={AlertCircle}   /></div>
         </div>
-      </section>
+      </div>
 
-      {/* ── STATS BAR ────────────────────────────────────────────────── */}
-      <section className="border-b border-[#1a1a1a]">
-        <div className="max-w-screen-2xl mx-auto px-5 sm:px-8 py-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-[#1a1a1a]">
-            {/* Each card sits on the gap colour, creating hairline dividers */}
-            <div className="bg-[#060606]">
-              <StatsCard label="Total Protocols" value={stats.total.toLocaleString()} icon={Database} />
-            </div>
-            <div className="bg-[#060606]">
-              <StatsCard label="Total TVL" value={fmtCurrency(stats.totalTVL)} icon={DollarSign} tooltip="Total Value Locked across all tracked protocols" />
-            </div>
-            <div className="bg-[#060606]">
-              <StatsCard label="Total Volume" value={fmtCurrency(stats.totalVolume)} icon={Activity} tooltip="Total 24h trading volume across all tracked protocols" />
-            </div>
-            <div className="bg-[#060606]">
-              <StatsCard label="Chains" value="126+" icon={TrendingUp} tooltip="Tracks DeFi protocols across 126+ blockchain networks" />
-            </div>
-            <div className="bg-[#060606]">
-              <StatsCard label="Audited" value={stats.audited.toLocaleString()} icon={Shield} tooltip="Total protocols with audit data from DeFiLlama." />
-            </div>
-            <div className="bg-[#060606]">
-              <StatsCard label="Blacklisted" value={stats.blacklisted} icon={AlertCircle} tooltip="Protocols that reached a CRITICAL risk score." />
-            </div>
-          </div>
-        </div>
-      </section>
+      <main className="max-w-screen-2xl mx-auto px-5 sm:px-8 py-6 space-y-4">
 
-      <main className="max-w-screen-2xl mx-auto px-5 sm:px-8 py-8 space-y-8">
-
-        {/* ── THREAT INTEL + LEGEND ──────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-[#1a1a1a]">
-          <div className="bg-[#060606]"><LatestThreatsWidget /></div>
-          <div className="bg-[#060606]"><SecurityRatingLegend /></div>
-        </div>
-
-        {/* ── SEARCH + FILTERS ───────────────────────────────────────── */}
+        {/* ── SEARCH BAR — prominent, at the very top ─────────────────────── */}
         <div className="space-y-3">
-          {/* Row 1: search + action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-              <SearchBar value={searchValue} onChange={setSearchValue} />
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <AddDAppByUrlDialog />
-              <Button
-                onClick={handleScanAll}
-                disabled={scanMutation.isPending || protocols.length === 0}
-                variant="default"
-                className="font-bold tracking-widest uppercase text-[11px] h-9 px-4"
-                data-testid="button-scan-all"
-              >
-                <ScanSearch className="w-4 h-4 mr-2" />
-                {scanMutation.isPending ? 'Scanning...' : 'Scan All'}
-              </Button>
-            </div>
+          <div className="relative">
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none z-10" />
+            <SearchBar value={searchValue} onChange={setSearchValue} />
           </div>
 
-          {/* Row 2: filters + sort */}
+          {/* Filters + actions row */}
           <div className="flex gap-2 flex-wrap items-center">
             <Select value={selectedChain} onValueChange={setSelectedChain}>
-              <SelectTrigger className="w-[150px] text-[11px] uppercase tracking-wider border-[#1a1a1a] bg-[#080808] h-9" data-testid="select-chain">
+              <SelectTrigger className="w-[140px] text-[11px] uppercase tracking-wider border-[#1a1a1a] bg-[#080808] h-9" data-testid="select-chain">
                 <SelectValue placeholder="All Chains" />
               </SelectTrigger>
               <SelectContent className="bg-[#0d0d0d] border-[#2a2a2a]">
@@ -365,7 +319,7 @@ export default function Dashboard() {
             </Select>
 
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[160px] text-[11px] uppercase tracking-wider border-[#1a1a1a] bg-[#080808] h-9" data-testid="select-category">
+              <SelectTrigger className="w-[155px] text-[11px] uppercase tracking-wider border-[#1a1a1a] bg-[#080808] h-9" data-testid="select-category">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent className="bg-[#0d0d0d] border-[#2a2a2a]">
@@ -377,7 +331,6 @@ export default function Dashboard() {
               </SelectContent>
             </Select>
 
-            {/* Divider */}
             <div className="h-6 w-px bg-[#1a1a1a] hidden sm:block" />
 
             <button
@@ -407,23 +360,28 @@ export default function Dashboard() {
               <Shield className="w-3.5 h-3.5" />
               Rank by Security
             </button>
+
+            {/* Scan All — right-aligned */}
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={handleScanAll}
+                disabled={scanMutation.isPending || protocols.length === 0}
+                className="flex items-center gap-2 h-9 px-4 text-[11px] font-bold tracking-widest uppercase border border-[#1a1a1a] text-white/40 hover:border-[#E8C15A]/30 hover:text-white/60 disabled:opacity-30 transition-colors"
+                data-testid="button-scan-all"
+              >
+                <ScanSearch className="w-3.5 h-3.5" />
+                {scanMutation.isPending ? 'Scanning…' : 'Scan All'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── INFO CALLOUT ───────────────────────────────────────────── */}
-        <div className="border border-[#1a1a1a] bg-[#080808] px-5 py-4">
-          <p className="text-[9px] font-black tracking-[0.2em] uppercase text-[#E8C15A]/70 mb-3">
-            Data Sources &amp; Methodology
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-[11px] text-white/40 leading-relaxed">
-            <p><span className="text-white/60 font-semibold">Security scores</span> — audit coverage (CertiK, Code4rena, Sherlock), incident history, bug bounty programs, governance &amp; TVL signals.</p>
-            <p><span className="text-white/60 font-semibold">Incident History</span> — all known hacks and exploits sourced from DeFiLlama's database.</p>
-            <p><span className="text-white/60 font-semibold">Bug Bounty Tracking</span> — active Immunefi programs surface responsible-disclosure investment.</p>
-            <p><span className="text-white/60 font-semibold">Submit a Protocol</span> — use "+ Protocol" to add any DeFi protocol for tracking.</p>
-          </div>
-        </div>
+        {/* ── CATEGORY BANNER (shown when a category is active) ──────────── */}
+        {selectedCategory !== 'all' && (
+          <CategoryBanner category={selectedCategory} count={filteredProtocols.length} />
+        )}
 
-        {/* ── PROTOCOL TABLE ─────────────────────────────────────────── */}
+        {/* ── PROTOCOL TABLE ───────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-transparent border-b border-[#1a1a1a] rounded-none gap-0 p-0 h-auto w-full justify-start">
             <TabsTrigger
@@ -474,15 +432,9 @@ export default function Dashboard() {
                       data-testid="button-load-more"
                     >
                       {isLoadingMore ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          Loading...
-                        </>
+                        <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />Loading...</>
                       ) : (
-                        <>
-                          <Database className="w-3.5 h-3.5" />
-                          Load More Protocols
-                        </>
+                        <><Database className="w-3.5 h-3.5" />Load More Protocols</>
                       )}
                     </button>
                     <p className="text-[10px] text-white/25 tracking-wider">

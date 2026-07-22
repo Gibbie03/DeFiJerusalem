@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Footer } from "@/components/Footer";
 import { Menu, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import NewDApps from "@/pages/NewDApps";
 import TrendingDApps from "@/pages/TrendingDApps";
@@ -119,7 +120,7 @@ function Router() {
           <div className="flex items-center justify-between px-5 sm:px-6 py-3.5">
 
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
+            <Link href="/home" className="flex items-center gap-3 group">
               <LogoIcon />
               <span className="text-[13px] font-bold tracking-[0.22em] text-white uppercase select-none">
                 DeFiJerusalem
@@ -143,7 +144,8 @@ function Router() {
           <main className="flex-1 overflow-y-auto flex flex-col">
             <div className="flex-1">
               <Switch>
-                <Route path="/" component={Dashboard} />
+                <Route path="/" component={LandingPage} />
+                <Route path="/home" component={Dashboard} />
                 <Route path="/new" component={NewDApps} />
                 <Route path="/trending" component={TrendingDApps} />
                 <Route path="/protocol/:id" component={ProtocolDetail} />

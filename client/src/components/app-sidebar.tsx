@@ -29,7 +29,7 @@ const menuGroups = [
     title: "Discover",
     icon: Search,
     items: [
-      { title: "Home",          url: "/",           icon: Home },
+      { title: "Home",          url: "/home",        icon: Home },
       { title: "Categories",    url: "/categories", icon: BarChart3 },
       { title: "New Protocols", url: "/new",        icon: Clock },
       { title: "Trending",      url: "/trending",   icon: TrendingUp },
