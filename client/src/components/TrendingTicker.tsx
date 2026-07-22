@@ -3,14 +3,7 @@ import { Link } from 'wouter';
 import type { Protocol } from '@shared/schema';
 import { useEffect, useRef } from 'react';
 
-const formatTVL = (tvl: number): string => {
-  if (tvl === 0) return 'No Data';
-  if (tvl >= 1_000_000_000_000) return `$${(tvl / 1_000_000_000_000).toFixed(2)}T`;
-  if (tvl >= 1_000_000_000)     return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
-  if (tvl >= 1_000_000)         return `$${(tvl / 1_000_000).toFixed(2)}M`;
-  if (tvl >= 1_000)             return `$${(tvl / 1_000).toFixed(2)}K`;
-  return `$${tvl.toFixed(2)}`;
-};
+import { formatTVL } from '@/lib/format';
 
 /** Map the DFJ security score (0–97) to a display badge — same scale used everywhere else */
 function getSecurityBadge(score: number | null | undefined): { label: string; color: string } {

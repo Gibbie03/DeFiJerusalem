@@ -1,5 +1,5 @@
-import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, Insert, ProtocolWhitelist, InsertProtocolWhitelist, Insert, CertikAudit, InsertCertikAudit, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ScammerAddress, InsertScammerAddress, AlertSubscription, InsertAlertSubscription, WebhookEndpoint, InsertWebhookEndpoint, ChatSession } from "@shared/schema";
-import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, protocolWhitelist, certikAudits, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints, chatSessions } from "@shared/schema";
+import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProtocol, InsertTutorialVideo, AdminUser, ProtocolCustomization, InsertProtocolCustomization, ProtocolWhitelist, InsertProtocolWhitelist, CertikAudit, InsertCertikAudit, ProtocolSubmission, InsertProtocolSubmission, AILearnedPattern, AIScanHistory, UserReport, InsertUserReport, ReportVote, InsertReportVote, UserReputation, InsertUserReputation, ChatSession } from "@shared/schema";
+import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, protocolWhitelist, certikAudits, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, chatSessions } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
 import { invalidateAICache } from "./lib/ai-chat-agent";
@@ -129,18 +129,6 @@ export interface IStorage {
   getUserReputation(userIdentifier: string): Promise<import("@shared/schema").UserReputation | undefined>;
   updateUserReputation(userIdentifier: string, updates: Partial<import("@shared/schema").UserReputation>): Promise<void>;
   
-  // Phase 5: Intelligence Sharing methods
-  addScammerAddress(address: import("@shared/schema").InsertScammerAddress): Promise<import("@shared/schema").ScammerAddress>;
-  getScammerAddresses(filters?: { chain?: string; category?: string; isActive?: boolean; limit?: number }): Promise<import("@shared/schema").ScammerAddress[]>;
-  searchScammerAddress(address: string, chain: string): Promise<import("@shared/schema").ScammerAddress | undefined>;
-  updateScammerAddress(id: string, updates: Partial<import("@shared/schema").ScammerAddress>): Promise<void>;
-  addAlertSubscription(subscription: import("@shared/schema").InsertAlertSubscription): Promise<import("@shared/schema").AlertSubscription>;
-  getAlertSubscriptions(filters?: { subscriptionType?: string; active?: boolean }): Promise<import("@shared/schema").AlertSubscription[]>;
-  updateAlertSubscription(id: string, updates: Partial<import("@shared/schema").AlertSubscription>): Promise<void>;
-  addWebhookEndpoint(webhook: import("@shared/schema").InsertWebhookEndpoint): Promise<import("@shared/schema").WebhookEndpoint>;
-  getWebhookEndpoints(filters?: { active?: boolean }): Promise<import("@shared/schema").WebhookEndpoint[]>;
-  updateWebhookEndpoint(id: string, updates: Partial<import("@shared/schema").WebhookEndpoint>): Promise<void>;
-
   // Chat session methods
   createChatSession(messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>, title: string): Promise<import("@shared/schema").ChatSession>;
   getChatSession(id: string): Promise<import("@shared/schema").ChatSession | undefined>;
@@ -1400,130 +1388,6 @@ export class DatabaseStorage implements IStorage {
           ...updates,
         });
     }
-  }
-
-  // Phase 5: Intelligence Sharing implementations
-  async addScammerAddress(address: InsertScammerAddress): Promise<ScammerAddress> {
-    const id = `scammer_${address.chain}_${address.address}_${Date.now()}`;
-    
-    const [created] = await db
-      .insert(scammerAddresses)
-      .values({ id, ...address as any })
-      .returning();
-    
-    return created;
-  }
-
-  async getScammerAddresses(filters?: { chain?: string; category?: string; isActive?: boolean; limit?: number }): Promise<ScammerAddress[]> {
-    let query = db.select().from(scammerAddresses);
-
-    const conditions = [];
-    if (filters?.chain) {
-      conditions.push(eq(scammerAddresses.chain, filters.chain));
-    }
-    if (filters?.category) {
-      conditions.push(eq(scammerAddresses.category, filters.category));
-    }
-    if (filters?.isActive !== undefined) {
-      conditions.push(eq(scammerAddresses.isActive, filters.isActive));
-    }
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    query = query.orderBy(desc(scammerAddresses.addedAt)) as any;
-
-    if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
-    }
-
-    return await query;
-  }
-
-  async searchScammerAddress(address: string, chain: string): Promise<ScammerAddress | undefined> {
-    const [found] = await db
-      .select()
-      .from(scammerAddresses)
-      .where(
-        and(
-          eq(scammerAddresses.address, address.toLowerCase()),
-          eq(scammerAddresses.chain, chain)
-        )
-      );
-    
-    return found;
-  }
-
-  async updateScammerAddress(id: string, updates: Partial<ScammerAddress>): Promise<void> {
-    await db
-      .update(scammerAddresses)
-      .set(updates)
-      .where(eq(scammerAddresses.id, id));
-  }
-
-  async addAlertSubscription(subscription: InsertAlertSubscription): Promise<AlertSubscription> {
-    const id = `subscription_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
-    const [created] = await db
-      .insert(alertSubscriptions)
-      .values({ id, ...subscription as any })
-      .returning();
-    
-    return created;
-  }
-
-  async getAlertSubscriptions(filters?: { subscriptionType?: string; active?: boolean }): Promise<AlertSubscription[]> {
-    let query = db.select().from(alertSubscriptions);
-
-    const conditions = [];
-    if (filters?.subscriptionType) {
-      conditions.push(eq(alertSubscriptions.subscriptionType, filters.subscriptionType));
-    }
-    if (filters?.active !== undefined) {
-      conditions.push(eq(alertSubscriptions.active, filters.active));
-    }
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    return await query;
-  }
-
-  async updateAlertSubscription(id: string, updates: Partial<AlertSubscription>): Promise<void> {
-    await db
-      .update(alertSubscriptions)
-      .set(updates)
-      .where(eq(alertSubscriptions.id, id));
-  }
-
-  async addWebhookEndpoint(webhook: InsertWebhookEndpoint): Promise<WebhookEndpoint> {
-    const id = `webhook_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
-    const [created] = await db
-      .insert(webhookEndpoints)
-      .values({ id, ...webhook as any })
-      .returning();
-    
-    return created;
-  }
-
-  async getWebhookEndpoints(filters?: { active?: boolean }): Promise<WebhookEndpoint[]> {
-    let query = db.select().from(webhookEndpoints);
-
-    if (filters?.active !== undefined) {
-      query = query.where(eq(webhookEndpoints.active, filters.active)) as any;
-    }
-
-    return await query;
-  }
-
-  async updateWebhookEndpoint(id: string, updates: Partial<WebhookEndpoint>): Promise<void> {
-    await db
-      .update(webhookEndpoints)
-      .set(updates)
-      .where(eq(webhookEndpoints.id, id));
   }
 
   // ── Chat session methods ──────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import SecurityBadge from './SecurityBadge';
 
 import type { Protocol } from '@shared/schema';
+import { formatTVL } from '@/lib/format';
 
 interface AdminSession {
   authenticated: boolean;
@@ -31,13 +32,6 @@ export default function ProtocolCard({ protocol, onViewDetails, onScan, onBlackl
   });
 
   const isAdmin = session?.authenticated === true;
-
-  const formatTVL = (num: number) => {
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
-  };
 
   return (
     <Card className="p-6 hover-elevate" data-testid={`card-protocol-${protocol.id}`}>

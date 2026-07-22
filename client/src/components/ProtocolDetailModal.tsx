@@ -10,6 +10,7 @@ import SecurityBadge from './SecurityBadge';
 import SeverityIndicator from './SeverityIndicator';
 import { getThreatAdvice, getSeverityIcon } from '@/lib/threatAdvice';
 import type { Protocol, TutorialVideo } from '@shared/schema';
+import { formatTVL } from '@/lib/format';
 
 interface ScanResult {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -42,14 +43,6 @@ export default function ProtocolDetailModal({ protocol, scanResult, isOpen, onCl
 
   // Removed tutorial fetching to improve performance
   const relatedTutorials: TutorialVideo[] = [];
-
-  const formatTVL = (num: number | undefined | null) => {
-    if (num === undefined || num === null || isNaN(num)) return 'N/A';
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
-  };
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return 'N/A';

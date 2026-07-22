@@ -1,4 +1,5 @@
 import { useState, useMemo, memo, useCallback } from 'react';
+import { formatTVL, formatExactUSD } from '@/lib/format';
 import { Star, Shield, Ban } from 'lucide-react';
 import { Link } from 'wouter';
 import { Badge } from '@/components/ui/badge';
@@ -73,27 +74,7 @@ const ProtocolRow = memo(({
   );
   const sevenDayChange = protocol.change24h * 1.2;
   
-  const formatTVL = (tvl: number): string => {
-    if (tvl === 0) return 'No Data';
-    if (tvl >= 1_000_000_000) {
-      return `$${(tvl / 1_000_000_000).toFixed(2)}B`;
-    } else if (tvl >= 1_000_000) {
-      return `$${(tvl / 1_000_000).toFixed(2)}M`;
-    } else if (tvl >= 1_000) {
-      return `$${(tvl / 1_000).toFixed(2)}K`;
-    }
-    return `$${tvl.toFixed(2)}`;
-  };
-
-  const formatExactTVL = (tvl: number): string => {
-    if (tvl === 0) return '$0';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(tvl);
-  };
+  const formatExactTVL = (tvl: number) => formatExactUSD(tvl);
 
   const getSecurityBadge = (score: number) => {
     // DFJ v2.3: HIGHER IS BETTER

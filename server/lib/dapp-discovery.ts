@@ -1,6 +1,5 @@
 import type { Protocol } from '@shared/schema';
 import { apiCache } from './api-cache';
-// Inline chain name normalizer (contract-extractor removed — not needed for protocol aggregation)
 function normalizeChainName(chain: string): string {
   const map: Record<string, string> = {
     ethereum: 'Ethereum', eth: 'Ethereum',
@@ -28,14 +27,10 @@ export class DAppDiscovery {
 
   async fetchWithRetry(url: string, retries = this.maxRetries): Promise<any> {
     try {
-      // Server-side: Call APIs directly (no CORS proxy needed)
-      console.log(`[FETCH] Attempting to fetch: ${url}`);
       const response = await fetch(url);
-      
-      console.log(`[FETCH] Response status: ${response.status} for ${url}`);
-      
+
       if (response.status === 429) {
-        console.warn(`[FETCH] Rate limited, waiting 5s before retry...`);
+        console.warn(`[FETCH] Rate limited on ${url}, waiting 5s...`);
         await new Promise(resolve => setTimeout(resolve, 5000));
         if (retries > 0) return this.fetchWithRetry(url, retries - 1);
         throw new Error('Rate limit exceeded');
@@ -45,18 +40,14 @@ export class DAppDiscovery {
       if (response.status === 402 || response.status === 404) {
         throw new Error(`HTTP ${response.status}: ${response.statusText} (permanent, not retrying)`);
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
-      const data = await response.json();
-      console.log(`[FETCH] Successfully fetched data from ${url}`);
-      return data;
+
+      return await response.json();
     } catch (error) {
-      console.error(`[FETCH] Error fetching ${url}:`, error);
       if (retries > 0) {
-        console.log(`[FETCH] Retrying... (${retries} attempts left)`);
         await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         return this.fetchWithRetry(url, retries - 1);
       }
@@ -65,10 +56,8 @@ export class DAppDiscovery {
   }
 
   async fetchVolumeData(): Promise<Record<string, number>> {
-    console.log('[VOLUME] Starting volume data fetch from DeFiLlama...');
     const volumeData: Record<string, number> = {};
-    
-    // List of volume endpoints to fetch
+
     const endpoints = [
       'dexs',
       'derivatives',
@@ -76,8 +65,6 @@ export class DAppDiscovery {
       'aggregators',
       'fees',  // Includes lending, liquid staking, etc.
     ];
-    
-    console.log(`[VOLUME] Fetching from ${endpoints.length} DeFiLlama endpoints...`);
     
     // Fetch all endpoints in parallel with individual error handling
     const results = await Promise.allSettled(
