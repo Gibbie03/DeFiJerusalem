@@ -1,278 +1,339 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
+import { Bug, ExternalLink, Search, TrendingUp, Shield, DollarSign, ArrowUpDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ExternalLink, Search, Shield, DollarSign, AlertCircle } from 'lucide-react';
 
-interface BugBountyProgram {
-  slug: string;
+interface BountyProgram {
+  id: string;
   name: string;
-  url: string;
+  logo: string | null;
+  category: string;
+  tvl: number;
+  securityScore: number;
   maxBounty: number;
-  highestBountyLabel: string;
-  assets: string[];
+  bountyUrl: string;
+  platform: 'Immunefi' | 'HackerOne' | 'Other';
 }
 
-function bountyTier(max: number): { label: string; color: string } {
-  if (max >= 5_000_000)  return { label: 'Critical', color: 'bg-red-500/15 text-red-400 border-red-500/30' };
-  if (max >= 1_000_000)  return { label: 'High',     color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' };
-  if (max >= 250_000)    return { label: 'Medium',   color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' };
-  return                        { label: 'Low',       color: 'bg-blue-500/15 text-blue-400 border-blue-500/30' };
+type SortKey = 'maxBounty' | 'tvl' | 'securityScore';
+
+function scoreColor(score: number): string {
+  if (score >= 80) return 'text-green-400';
+  if (score >= 65) return 'text-blue-400';
+  if (score >= 50) return 'text-yellow-400';
+  if (score >= 30) return 'text-orange-400';
+  return 'text-red-400';
 }
 
-function formatBounty(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toLocaleString()}`;
+function scoreBg(score: number): string {
+  if (score >= 80) return 'bg-green-500/10 border-green-500/30 text-green-400';
+  if (score >= 65) return 'bg-blue-500/10 border-blue-500/30 text-blue-400';
+  if (score >= 50) return 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400';
+  if (score >= 30) return 'bg-orange-500/10 border-orange-500/30 text-orange-400';
+  return 'bg-red-500/10 border-red-500/30 text-red-400';
 }
 
-function ProgramCard({ program }: { program: BugBountyProgram }) {
-  const tier = bountyTier(program.maxBounty);
+function scoreLabel(score: number): string {
+  if (score >= 80) return 'SAFE';
+  if (score >= 65) return 'LOW RISK';
+  if (score >= 50) return 'MEDIUM';
+  if (score >= 30) return 'HIGH RISK';
+  return 'CRITICAL';
+}
+
+function formatTvl(tvl: number): string {
+  if (tvl >= 1e12) return `$${(tvl / 1e12).toFixed(1)}T`;
+  if (tvl >= 1e9)  return `$${(tvl / 1e9).toFixed(1)}B`;
+  if (tvl >= 1e6)  return `$${(tvl / 1e6).toFixed(0)}M`;
+  if (tvl >= 1e3)  return `$${(tvl / 1e3).toFixed(0)}K`;
+  return `$${tvl}`;
+}
+
+function formatBounty(amount: number): string {
+  if (amount <= 0) return 'Available';
+  if (amount >= 1e6) return `$${(amount / 1e6).toFixed(1)}M`;
+  if (amount >= 1e3) return `$${(amount / 1e3).toFixed(0)}K`;
+  return `$${amount.toLocaleString()}`;
+}
+
+function PlatformBadge({ platform }: { platform: string }) {
+  if (platform === 'Immunefi') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-sm bg-orange-500/15 text-orange-400 border border-orange-500/25">
+        Immunefi
+      </span>
+    );
+  }
+  if (platform === 'HackerOne') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-sm bg-red-500/15 text-red-400 border border-red-500/25">
+        HackerOne
+      </span>
+    );
+  }
   return (
-    <a
-      href={program.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block group"
-    >
-      <Card className="hover:border-primary/50 transition-all duration-200 hover:shadow-md hover:shadow-primary/5 cursor-pointer h-full">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* Avatar placeholder using first char */}
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
-                {program.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <div className="font-semibold text-sm leading-tight truncate group-hover:text-primary transition-colors">
-                  {program.name}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                  <span>via Immunefi</span>
-                  <ExternalLink className="w-2.5 h-2.5" />
-                </div>
-              </div>
-            </div>
-            <div className="shrink-0 text-right">
-              <div className="font-bold text-base tabular-nums">
-                {program.highestBountyLabel || formatBounty(program.maxBounty)}
-              </div>
-              <div className="text-xs text-muted-foreground">max reward</div>
-            </div>
-          </div>
-          <div className="mt-3">
-            <Badge variant="outline" className={`text-[10px] px-2 py-0 ${tier.color}`}>
-              {tier.label} tier
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-    </a>
+    <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-sm bg-gray-500/15 text-gray-400 border border-gray-500/25">
+      Bug Bounty
+    </span>
   );
 }
 
-function SkeletonCard() {
+function BountyCard({ program }: { program: BountyProgram }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-9 h-9 rounded-lg shrink-0" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-20" />
+    <Card className="bg-[#0d0d0d] border border-white/8 hover:border-white/20 transition-colors group">
+      <CardContent className="p-4 space-y-3">
+        {/* Header: logo + name + platform */}
+        <div className="flex items-start gap-3">
+          {program.logo ? (
+            <img
+              src={program.logo}
+              alt={program.name}
+              className="w-10 h-10 rounded object-contain bg-white/5 shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-gray-500" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-white text-sm leading-tight">{program.name}</span>
+              <PlatformBadge platform={program.platform} />
+            </div>
+            <span className="text-xs text-gray-500 mt-0.5 block">{program.category}</span>
           </div>
-          <Skeleton className="h-6 w-16" />
+          {/* DFJ score badge */}
+          <div className={`shrink-0 text-right px-2.5 py-1 rounded border text-xs font-bold ${scoreBg(program.securityScore)}`}>
+            <div className="text-base leading-none tabular-nums">{Math.round(program.securityScore)}</div>
+            <div className="text-[9px] mt-0.5 tracking-wider">{scoreLabel(program.securityScore)}</div>
+          </div>
         </div>
-        <Skeleton className="h-5 w-20 mt-3" />
+
+        {/* Max bounty — big green number */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold text-green-400 tabular-nums">
+            {formatBounty(program.maxBounty)}
+          </span>
+          <span className="text-xs text-gray-500">max payout</span>
+        </div>
+
+        {/* TVL */}
+        <div className="text-xs text-gray-400">
+          TVL: <span className="text-white font-medium">{formatTvl(program.tvl)}</span>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2 pt-1">
+          {program.bountyUrl ? (
+            <a
+              href={program.bountyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded bg-green-500/10 border border-green-500/25 text-green-400 hover:bg-green-500/20 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="w-3 h-3" />
+              View Program
+            </a>
+          ) : (
+            <span className="flex-1 flex items-center justify-center text-xs text-gray-600 py-1.5 px-3 rounded border border-white/5">
+              No URL
+            </span>
+          )}
+          <Link href={`/protocol/${program.id}`}>
+            <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-colors">
+              Details
+            </button>
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-const SORT_OPTIONS = [
-  { value: 'bounty_desc', label: 'Highest bounty first' },
-  { value: 'bounty_asc',  label: 'Lowest bounty first' },
-  { value: 'name_asc',    label: 'Name (A–Z)' },
-  { value: 'name_desc',   label: 'Name (Z–A)' },
-];
-
-const TIER_OPTIONS = [
-  { value: 'all',      label: 'All tiers' },
-  { value: 'critical', label: 'Critical (≥$5M)' },
-  { value: 'high',     label: 'High (≥$1M)' },
-  { value: 'medium',   label: 'Medium (≥$250K)' },
-  { value: 'low',      label: 'Low (<$250K)' },
-];
-
-function tierMatch(max: number, tier: string): boolean {
-  if (tier === 'all')      return true;
-  if (tier === 'critical') return max >= 5_000_000;
-  if (tier === 'high')     return max >= 1_000_000 && max < 5_000_000;
-  if (tier === 'medium')   return max >= 250_000   && max < 1_000_000;
-  if (tier === 'low')      return max < 250_000;
-  return true;
-}
-
 export default function BugBountiesDirectory() {
-  const [search, setSearch]   = useState('');
-  const [sort, setSort]       = useState('bounty_desc');
-  const [tierFilter, setTier] = useState('all');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('maxBounty');
 
-  const { data: programs = [], isLoading, isError } = useQuery<BugBountyProgram[]>({
+  const { data: programs = [], isLoading, error } = useQuery<BountyProgram[]>({
     queryKey: ['/api/bug-bounties'],
-    queryFn: () => fetch('/api/bug-bounties').then(r => r.json()),
-    staleTime: 1000 * 60 * 30, // 30 min
   });
 
-  const filtered = useMemo(() => {
-    let list = programs.filter(p => {
-      if (search) {
-        const q = search.toLowerCase();
-        if (!p.name.toLowerCase().includes(q)) return false;
-      }
-      return tierMatch(p.maxBounty, tierFilter);
-    });
+  // Derived stats
+  const totalPool = programs.reduce((sum, p) => sum + p.maxBounty, 0);
+  const topPayout = programs.length > 0 ? Math.max(...programs.map(p => p.maxBounty)) : 0;
+  const immunefiCount = programs.filter(p => p.platform === 'Immunefi').length;
+  const hackeroneCount = programs.filter(p => p.platform === 'HackerOne').length;
 
-    list = [...list].sort((a, b) => {
-      if (sort === 'bounty_desc') return b.maxBounty - a.maxBounty;
-      if (sort === 'bounty_asc')  return a.maxBounty - b.maxBounty;
-      if (sort === 'name_asc')    return a.name.localeCompare(b.name);
-      if (sort === 'name_desc')   return b.name.localeCompare(a.name);
+  const filtered = programs
+    .filter(p => p.name.toLowerCase().includes(search.toLowerCase()) ||
+                 p.category.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'maxBounty') return b.maxBounty - a.maxBounty || b.tvl - a.tvl;
+      if (sortBy === 'tvl') return b.tvl - a.tvl;
+      if (sortBy === 'securityScore') return b.securityScore - a.securityScore;
       return 0;
     });
-    return list;
-  }, [programs, search, sort, tierFilter]);
-
-  // Stats
-  const totalPool = programs.reduce((s, p) => s + p.maxBounty, 0);
-  const criticalCount = programs.filter(p => p.maxBounty >= 5_000_000).length;
 
   return (
-    <div className="container mx-auto p-6 space-y-6 max-w-5xl">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Shield className="w-8 h-8 text-primary" />
-          Bug Bounty Programs
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          A directory of active bug bounty programs run by DeFi protocols on Immunefi.
-          Click any program to open its page on Immunefi and submit your report there.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="max-w-7xl mx-auto px-4 py-8">
 
-      {/* Clarifying callout */}
-      <div className="flex items-start gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-sm text-blue-300">
-        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
-        <span>
-          <strong className="font-semibold text-blue-200">This is a read-only directory.</strong>{' '}
-          DeFiJerusalem does not manage these programs or accept vulnerability reports.
-          All submissions go directly to the protocol via{' '}
-          <a href="https://immunefi.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-100">Immunefi</a>.
-        </span>
-      </div>
-
-      {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Active Programs', value: programs.length, icon: Shield },
-          { label: 'Combined Rewards', value: `$${(totalPool / 1_000_000).toFixed(0)}M+`, icon: DollarSign },
-          { label: 'Critical Tier (≥$5M)', value: criticalCount, icon: AlertCircle },
-        ].map(({ label, value, icon: Icon }) => (
-          <Card key={label}>
-            <CardContent className="pt-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <div className="text-xl font-bold">{value}</div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search programs…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Bug className="w-7 h-7 text-green-400" />
+            <h1 className="text-3xl font-bold tracking-tight">Bug Bounty Programs</h1>
+          </div>
+          <p className="text-gray-400 text-sm max-w-2xl">
+            DeFi protocols with active bug bounty programs. Discover which protocols reward security researchers
+            and how much they pay for critical vulnerabilities.
+          </p>
         </div>
-        <Select value={tierFilter} onValueChange={setTier}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="All tiers" />
-          </SelectTrigger>
-          <SelectContent>
-            {TIER_OPTIONS.map(o => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+
+        {/* Stats header */}
+        {!isLoading && programs.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+            {[
+              { label: 'Active Programs', value: programs.length.toString(), icon: Bug, color: 'text-green-400' },
+              { label: 'Combined Pool', value: formatBounty(totalPool), icon: DollarSign, color: 'text-yellow-400' },
+              { label: 'Top Payout', value: formatBounty(topPayout), icon: TrendingUp, color: 'text-green-400' },
+              { label: 'Platforms', value: `${immunefiCount} Immunefi · ${hackeroneCount} HackerOne`, icon: Shield, color: 'text-blue-400' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <Card key={label} className="bg-[#0d0d0d] border border-white/8">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon className={`w-4 h-4 ${color}`} />
+                    <span className="text-xs text-gray-500 uppercase tracking-wider">{label}</span>
+                  </div>
+                  <div className={`text-lg font-bold tabular-nums ${color}`}>{value}</div>
+                </CardContent>
+              </Card>
             ))}
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger className="w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map(o => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          </div>
+        )}
+
+        {/* Search + Sort */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Input
+              className="pl-9 bg-[#0d0d0d] border-white/10 text-white placeholder:text-gray-600 focus:border-white/25"
+              placeholder="Search by protocol name or category…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-gray-500 shrink-0" />
+            <div className="flex gap-1">
+              {([
+                { key: 'maxBounty', label: 'Highest Bounty' },
+                { key: 'tvl',       label: 'Highest TVL' },
+                { key: 'securityScore', label: 'Best Score' },
+              ] as { key: SortKey; label: string }[]).map(({ key, label }) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant={sortBy === key ? 'default' : 'outline'}
+                  className={sortBy === key
+                    ? 'bg-white/10 text-white border-white/20 text-xs h-8'
+                    : 'bg-transparent text-gray-400 border-white/8 hover:border-white/20 hover:text-white text-xs h-8'}
+                  onClick={() => setSortBy(key)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Loading skeleton */}
+        {isLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-52 bg-white/5" />
             ))}
-          </SelectContent>
-        </Select>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="text-red-400 text-center py-12">
+            Failed to load bug bounty programs.
+          </div>
+        )}
+
+        {/* Results */}
+        {!isLoading && !error && (
+          <>
+            {filtered.length === 0 ? (
+              <Card className="bg-[#0d0d0d] border border-white/8">
+                <CardContent className="py-20 text-center">
+                  <Bug className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                  <div className="text-lg font-semibold text-gray-300 mb-1">
+                    {programs.length === 0 ? 'No bug bounty programs found' : `No results for "${search}"`}
+                  </div>
+                  <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                    {programs.length === 0
+                      ? 'Bug bounty program data is populated from protocol audit notes. Add bounty info to a protocol to see it here.'
+                      : 'Try a different search term or clear your filter.'}
+                  </p>
+                  {search && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 border-white/15 text-gray-300 hover:text-white"
+                      onClick={() => setSearch('')}
+                    >
+                      Clear search
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="text-xs text-gray-500 mb-4">
+                  {filtered.length} program{filtered.length !== 1 ? 's' : ''} found
+                  {search && ` for "${search}"`}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filtered.map(program => (
+                    <BountyCard key={program.id} program={program} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Score legend */}
+        {!isLoading && filtered.length > 0 && (
+          <div className="mt-10 p-4 bg-[#0d0d0d] border border-white/8 rounded-lg">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">DFJ Score Legend</div>
+            <div className="flex flex-wrap gap-4 text-xs">
+              {([
+                ['SAFE',     '≥80', 'text-green-400'],
+                ['LOW RISK', '65–79', 'text-blue-400'],
+                ['MEDIUM',   '50–64', 'text-yellow-400'],
+                ['HIGH RISK','30–49', 'text-orange-400'],
+                ['CRITICAL', '<30',  'text-red-400'],
+              ] as [string, string, string][]).map(([label, range, color]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <span className={`font-bold ${color}`}>{label}</span>
+                  <span className="text-gray-600">{range}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Results count */}
-      {!isLoading && (
-        <p className="text-sm text-muted-foreground">
-          Showing {filtered.length} of {programs.length} programs
-        </p>
-      )}
-
-      {/* Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      ) : isError ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="w-10 h-10 text-destructive mx-auto mb-3" />
-            <div className="font-semibold">Failed to load programs</div>
-            <p className="text-sm text-muted-foreground mt-1">Please try again later.</p>
-          </CardContent>
-        </Card>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Shield className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <div className="font-semibold">No programs match your filters</div>
-            <p className="text-sm text-muted-foreground mt-1">Try adjusting the search or tier filter.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((program, i) => (
-            <ProgramCard key={program.slug ?? i} program={program} />
-          ))}
-        </div>
-      )}
-
-      {/* Footer note */}
-      <p className="text-xs text-muted-foreground text-center pb-2">
-        Data sourced from{' '}
-        <a href="https://immunefi.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
-          Immunefi
-        </a>
-        . Always verify program details directly before submitting a report. Updated daily.
-      </p>
     </div>
   );
 }

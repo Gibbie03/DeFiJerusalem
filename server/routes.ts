@@ -3383,18 +3383,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/bug-bounties - All Immunefi bug bounty programs
-  app.get("/api/bug-bounties", apiLimiter, async (req: Request, res: Response) => {
-    try {
-      const { fetchBugBounties } = await import("./lib/protocol-security-aggregator");
-      const bounties = await fetchBugBounties();
-      bounties.sort((a, b) => b.maxBounty - a.maxBounty);
-      res.json(bounties);
-    } catch (error) {
-      console.error("[BOUNTIES] Error:", error);
-      res.status(500).json({ message: "Failed to fetch bug bounties" });
-    }
-  });
+  // GET /api/bug-bounties - Bug bounty programs from protocols DB
+  {
+    const BOUNTIES_DB_CACHE_KEY = 'bug-bounties-db';
+    const BOUNTIES_DB_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    const bountiesDbCache = new Map<string, { data: unknown; expiresAt: number }>();
+
+    app.get("/api/bug-bounties", apiLimiter, async (req: Request, res: Response) => {
+      try {
+        const cached = bountiesDbCache.get(BOUNTIES_DB_CACHE_KEY);
+        if (cached && Date.now() < cached.expiresAt) {
+          return res.json(cached.data);
+        }
+
+        // Query protocols that have bug bounty signals in audit_note or audit_links
+        const rows = await db.execute(sql`
+          SELECT
+            id, name, logo, category, tvl, security_score,
+            audit_note, audit_links
+          FROM protocols
+          WHERE
+            (audit_note ILIKE '%immunefi%'
+              OR audit_note ILIKE '%hackerone%'
+              OR audit_note ILIKE '%bug bounty%'
+              OR audit_links::text ILIKE '%immunefi.com%'
+              OR audit_links::text ILIKE '%hackerone.com%')
+          ORDER BY tvl DESC
+        `);
+
+        interface BountyRow {
+          id: string;
+          name: string;
+          logo: string | null;
+          category: string;
+          tvl: number;
+          security_score: number;
+          audit_note: string | null;
+          audit_links: string | null;
+        }
+
+        const bounties = (rows.rows as BountyRow[]).map((row) => {
+          const note = (row.audit_note ?? '').toLowerCase();
+          const links: string[] = (() => {
+            try {
+              return Array.isArray(row.audit_links)
+                ? row.audit_links
+                : JSON.parse(row.audit_links ?? '[]');
+            } catch { return []; }
+          })();
+          const linksText = links.join(' ').toLowerCase();
+
+          // Parse max bounty dollar amount from audit_note
+          const amountMatch = note.match(/\$([0-9,]+(?:\.[0-9]+)?)\s*(m(?:illion)?|k(?:ilo)?)?/);
+          let maxBounty = 0;
+          if (amountMatch) {
+            const num = parseFloat(amountMatch[1].replace(/,/g, ''));
+            const suffix = (amountMatch[2] ?? '').toLowerCase();
+            maxBounty = suffix.startsWith('m') ? num * 1_000_000
+                      : suffix.startsWith('k') ? num * 1_000
+                      : num;
+          }
+
+          // Determine platform and bountyUrl
+          const immunefiUrl = links.find(u => /immunefi\.com/i.test(u));
+          const hackeroneUrl = links.find(u => /hackerone\.com/i.test(u));
+          const bountyUrl = immunefiUrl ?? hackeroneUrl ?? '';
+          const platform = immunefiUrl ? 'Immunefi'
+                         : hackeroneUrl ? 'HackerOne'
+                         : linksText.includes('immunefi') || note.includes('immunefi') ? 'Immunefi'
+                         : note.includes('hackerone') ? 'HackerOne'
+                         : 'Other';
+
+          return {
+            id: row.id,
+            name: row.name,
+            logo: row.logo,
+            category: row.category,
+            tvl: row.tvl,
+            securityScore: row.security_score,
+            maxBounty,
+            bountyUrl,
+            platform,
+          };
+        });
+
+        // Sort by maxBounty desc, then tvl desc
+        bounties.sort((a, b) => {
+          if (b.maxBounty !== a.maxBounty) return b.maxBounty - a.maxBounty;
+          return b.tvl - a.tvl;
+        });
+
+        bountiesDbCache.set(BOUNTIES_DB_CACHE_KEY, { data: bounties, expiresAt: Date.now() + BOUNTIES_DB_TTL_MS });
+        res.json(bounties);
+      } catch (error) {
+        console.error("[BOUNTIES] Error:", error);
+        res.status(500).json({ message: "Failed to fetch bug bounties" });
+      }
+    });
+  }
 
   // ── Admin: Protocol Enrichment + Batch Rescore ───────────────────────────
 
