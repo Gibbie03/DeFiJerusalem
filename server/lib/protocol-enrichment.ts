@@ -27,16 +27,22 @@ import { eq, sql } from 'drizzle-orm';
  * in both cases it hits the loopback-only endpoint.  Failures are swallowed
  * (the server may not be running when a script executes standalone).
  */
-export async function flushServerCache(keys = ['protocols', 'security-stats']): Promise<void> {
+/**
+ * Flush the server's entire in-memory cache after a rescore or bulk DB write.
+ * Calling with no arguments triggers a full cache.clear() on the server so that
+ * trending, new, per-protocol, protocols-full, security-stats — everything —
+ * is rebuilt from the DB on the next request.
+ */
+export async function flushServerCache(): Promise<void> {
   try {
     const port = process.env.PORT ?? '5000';
-    const qs = keys.length ? `?keys=${keys.join(',')}` : '';
-    const res = await fetch(`http://127.0.0.1:${port}/api/internal/flush-cache${qs}`, {
+    // No ?keys= → server calls clearCache() with no prefix → cache.clear()
+    const res = await fetch(`http://127.0.0.1:${port}/api/internal/flush-cache`, {
       method: 'POST',
       signal: AbortSignal.timeout(3000),
     });
     if (res.ok) {
-      console.log(`[CACHE] Server cache flushed (${keys.join(', ')})`);
+      console.log('[CACHE] Full server cache flushed');
     }
   } catch {
     // Server not running (script context) — DB is source of truth, no action needed

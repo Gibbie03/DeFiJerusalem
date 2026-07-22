@@ -228,7 +228,8 @@ export class DatabaseStorage implements IStorage {
         set: {
           tvl: protocol.tvl,
           change24h: protocol.change24h,
-          securityScore: protocol.securityScore,
+          // Never overwrite a DFJ v2.3 score with the legacy estimate
+          securityScore: sql`CASE WHEN protocols.security_score > 0 THEN protocols.security_score ELSE ${protocol.securityScore} END`,
           lastUpdated: new Date(),
         },
       })
@@ -257,7 +258,10 @@ export class DatabaseStorage implements IStorage {
             auditCount: sql`EXCLUDED.audit_count`,
             auditNote: sql`EXCLUDED.audit_note`,
             auditLinks: sql`EXCLUDED.audit_links`,
-            securityScore: sql`EXCLUDED.security_score`,
+            // Preserve DFJ v2.3 scores — only fall back to legacy estimate when
+            // no score has been set yet (NULL or 0). Background refreshes must
+            // never overwrite a score that batchRescore() already computed.
+            securityScore: sql`CASE WHEN protocols.security_score > 0 THEN protocols.security_score ELSE EXCLUDED.security_score END`,
             logo: sql`EXCLUDED.logo`,
             website: sql`EXCLUDED.website`,
             twitter: sql`EXCLUDED.twitter`,
