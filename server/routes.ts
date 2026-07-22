@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import bcryptjs from "bcryptjs";
 import { storage } from "./storage";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import { DAppDiscovery } from "./lib/dapp-discovery";
 import { getProtocolSecurityData } from "./lib/protocol-security-aggregator";
 import { BlacklistManager } from "./lib/blacklist-manager";
@@ -1896,6 +1898,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to update submission",
         message: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // GET /api/categories - Aggregated stats per category for the categories page
+  app.get("/api/categories", apiLimiter, async (req, res) => {
+    try {
+      const cached = getCache('categories');
+      if (cached) {
+        res.set('Content-Type', 'application/json');
+        return res.send(cached.serialized);
+      }
+
+      const [rows, topRows] = await Promise.all([
+        db.execute(sql.raw(`
+          SELECT
+            category,
+            COUNT(*)                                      AS count,
+            ROUND(AVG(security_score))::int               AS avg_score,
+            SUM(tvl)                                      AS total_tvl,
+            SUM(CASE WHEN audited THEN 1 ELSE 0 END)      AS audited_count
+          FROM protocols
+          WHERE tvl > 0 AND category IS NOT NULL AND category != ''
+          GROUP BY category
+          ORDER BY SUM(tvl) DESC
+        `)),
+        db.execute(sql.raw(`
+          SELECT category, id, name, security_score
+          FROM (
+            SELECT category, id, name, security_score,
+                   ROW_NUMBER() OVER (PARTITION BY category ORDER BY security_score DESC NULLS LAST) AS rn
+            FROM protocols
+            WHERE tvl > 0 AND category IS NOT NULL AND category != ''
+          ) ranked
+          WHERE rn <= 3
+          ORDER BY category, rn
+        `)),
+      ]);
+
+      // Group top protocols by category
+      const topMap: Record<string, { id: string; name: string; score: number }[]> = {};
+      for (const r of topRows.rows as any[]) {
+        if (!topMap[r.category]) topMap[r.category] = [];
+        topMap[r.category].push({ id: r.id, name: r.name, score: Number(r.security_score) || 0 });
+      }
+
+      const result = (rows.rows as any[]).map(r => ({
+        category:      r.category,
+        count:         Number(r.count),
+        avgScore:      Number(r.avg_score) || 0,
+        totalTvl:      Number(r.total_tvl) || 0,
+        auditedCount:  Number(r.audited_count) || 0,
+        topProtocols:  topMap[r.category] ?? [],
+      }));
+
+      setCache('categories', result, 5 * 60 * 1000);
+      const entry = getCache('categories');
+      if (entry) {
+        res.set('Content-Type', 'application/json');
+        return res.send(entry.serialized);
+      }
+      res.json(result);
+    } catch (err) {
+      console.error('[/api/categories]', err);
+      res.status(500).json({ error: 'Failed to fetch categories' });
     }
   });
 

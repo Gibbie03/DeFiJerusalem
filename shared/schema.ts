@@ -49,6 +49,11 @@ export const protocols = pgTable('protocols', {
   rankByActivity: integer('rank_by_activity'),
   rankByTvl: integer('rank_by_tvl'),
   rankByVolume: integer('rank_by_volume'),
+  // CEX-specific security fields (DFJ-CEX v1.0)
+  cexProofOfReserves: text('cex_proof_of_reserves'),        // 'merkle' | 'attested' | 'dashboard' | 'none'
+  cexInsuranceFund: boolean('cex_insurance_fund'),           // SAFU / insurance fund confirmed
+  cexWithdrawalHaltHistory: boolean('cex_withdrawal_halt_history'), // ever froze withdrawals
+  cexLicensedJurisdictions: json('cex_licensed_jurisdictions').$type<string[]>(), // e.g. ['US','EU','SG']
 });
 
 export const securityScans = pgTable('security_scans', {

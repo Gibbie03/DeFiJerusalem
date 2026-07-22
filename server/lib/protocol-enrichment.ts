@@ -160,9 +160,11 @@ export async function enrichProtocols(limit = ENRICH_TOP_N): Promise<{
 
 // ── Batch rescore ─────────────────────────────────────────────────────────────
 
+const CEX_CATEGORIES = new Set(['CEX', 'Centralized Exchange', 'CeFi']);
+
 /**
- * Re-score every protocol in the DB using the full DFJ v2.3 model
- * (Foundation + simplified Active without GoPlus, to keep it fast).
+ * Re-score every protocol in the DB using the full DFJ v2.3 model for DeFi
+ * and DFJ-CEX v1.0 for centralized exchanges.
  * Updates security_score for all protocols.
  */
 export async function batchRescore(): Promise<{
@@ -170,6 +172,7 @@ export async function batchRescore(): Promise<{
   safe: number; low: number; medium: number; high: number; critical: number;
   flagged: number;
 }> {
+  const { scoreCex } = await import('./cex-security-scorer');
   const all = await storage.getProtocols();
   const counts = { total: all.length, safe: 0, low: 0, medium: 0, high: 0, critical: 0, flagged: 0 };
 
@@ -177,10 +180,17 @@ export async function batchRescore(): Promise<{
   const updates: { id: string; score: number }[] = [];
 
   for (const p of all) {
-    const { score: foundationScore } = calculateFoundationScore(p);
-    const activeScore = computeFastActive(p);
-    const gross = Math.min(foundationScore + activeScore, 100);
-    const final = Math.max(0, Math.min(97, gross));
+    let final: number;
+
+    if (CEX_CATEGORIES.has(p.category ?? '')) {
+      // DFJ-CEX v1.0 — custody, reserves, regulatory, track record
+      final = scoreCex(p as any).score;
+    } else {
+      const { score: foundationScore } = calculateFoundationScore(p);
+      const activeScore = computeFastActive(p);
+      const gross = Math.min(foundationScore + activeScore, 100);
+      final = Math.max(0, Math.min(97, gross));
+    }
 
     updates.push({ id: p.id, score: final });
 
@@ -210,7 +220,6 @@ export async function batchRescore(): Promise<{
 
   // Auto-flag genuinely risky DeFi protocols:
   //   score < 30, TVL > $10M, not CEX / institutional RWA
-  const CEX_CATEGORIES = new Set(['CEX', 'Centralized Exchange', 'CeFi']);
   const toFlag = updates.filter(u => {
     const p = all.find(x => x.id === u.id);
     if (!p) return false;
