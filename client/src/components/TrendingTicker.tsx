@@ -12,19 +12,20 @@ const formatTVL = (tvl: number): string => {
   return `$${tvl.toFixed(2)}`;
 };
 
-/** Map a 24h change magnitude to a severity label */
-function getSeverityLabel(change: number): { label: string; color: string } {
-  const abs = Math.abs(change);
-  if (abs >= 20)  return { label: 'CRITICAL', color: 'text-red-500' };
-  if (abs >= 10)  return { label: 'HIGH',     color: 'text-orange-400' };
-  if (abs >= 5)   return { label: 'MEDIUM',   color: 'text-yellow-400' };
-  return           { label: 'LOW',      color: 'text-white/40' };
+/** Map the DFJ security score (0–97) to a display badge — same scale used everywhere else */
+function getSecurityBadge(score: number | null | undefined): { label: string; color: string } {
+  const s = score ?? 0;
+  if (s >= 80) return { label: 'SAFE',   color: 'text-green-400'  };
+  if (s >= 65) return { label: 'LOW',    color: 'text-blue-400'   };
+  if (s >= 50) return { label: 'MEDIUM', color: 'text-yellow-400' };
+  if (s >= 30) return { label: 'HIGH',   color: 'text-orange-400' };
+  return            { label: 'CRIT',   color: 'text-red-500'    };
 }
 
 export default function TrendingTicker() {
   const { data: protocols = [] } = useQuery<Protocol[]>({
     queryKey: ['/api/protocols/trending'],
-    refetchInterval: 60000,
+    refetchInterval: 60_000,
   });
 
   const mobileRef  = useRef<HTMLDivElement>(null);
@@ -48,7 +49,7 @@ export default function TrendingTicker() {
 
   const renderItem = (p: Protocol, idx: number, total: number) => {
     const rank = (idx % total) + 1;
-    const { label, color } = getSeverityLabel(p.change24h);
+    const { label, color } = getSecurityBadge(p.securityScore);
     return (
       <Link
         key={`${p.id}-${idx}`}
@@ -60,11 +61,11 @@ export default function TrendingTicker() {
         <span className="text-[10px] font-bold text-white/25 min-w-[1.4rem]">#{rank}</span>
         {/* name */}
         <span className="text-[11px] font-semibold text-white/80 whitespace-nowrap">{p.name}</span>
-        {/* severity badge */}
+        {/* real security badge */}
         <span className={`text-[9px] font-black tracking-wider ${color}`}>{label}</span>
         {/* separator */}
         <span className="text-white/15 text-xs">—</span>
-        {/* change */}
+        {/* 24h TVL change */}
         <span className={`text-[11px] font-bold tabular-nums ${p.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
           {p.change24h >= 0 ? '+' : ''}{p.change24h.toFixed(2)}%
         </span>
