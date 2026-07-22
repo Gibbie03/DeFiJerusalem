@@ -172,6 +172,33 @@ app.use((req, res, next) => {
     log(`✗ Failed to initialize AI Learning: ${error.message}`);
   }
 
+  // Schedule daily Immunefi bug bounty refresh via Playwright scraper
+  {
+    const { spawn } = await import('child_process');
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    const runImmunefiScrape = () => {
+      log('[IMMUNEFI] Starting daily bounty scrape…');
+      const proc = spawn(
+        process.execPath,
+        ['node_modules/.bin/tsx', 'server/scripts/scrape-immunefi-bounties.ts'],
+        { stdio: 'pipe', cwd: process.cwd() },
+      );
+      const lines: string[] = [];
+      proc.stdout?.on('data', (d: Buffer) => lines.push(d.toString().trim()));
+      proc.stderr?.on('data', (d: Buffer) => lines.push(d.toString().trim()));
+      proc.on('close', (code: number | null) => {
+        if (code === 0) {
+          log('[IMMUNEFI] ✓ Daily scrape succeeded');
+        } else {
+          log(`[IMMUNEFI] ✗ Daily scrape exited ${code} — keeping existing data`);
+          lines.slice(-3).forEach(l => log(`[IMMUNEFI]   ${l}`));
+        }
+      });
+    };
+    setInterval(runImmunefiScrape, ONE_DAY);
+    log('✓ Immunefi daily refresh scheduled (every 24 h)');
+  }
+
   // Schedule periodic cleanup of expired chat sessions (every 6 hours)
   {
     const { storage } = await import('./storage');

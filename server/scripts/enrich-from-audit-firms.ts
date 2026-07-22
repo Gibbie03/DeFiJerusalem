@@ -28,8 +28,11 @@ const DRY_RUN = process.argv.includes('--dry-run');
 // ─── Firm definitions ─────────────────────────────────────────────────────────
 
 interface FirmConfig {
-  name: string;       // as it should appear in audit_note text
-  apiUrl: string;     // GitHub contents API URL
+  name: string;           // as it should appear in audit_note text
+  apiUrl: string;         // GitHub contents API URL
+  /** 'files' = list files and parse filenames (default).
+   *  'subdirs' = list subdirectories and treat dir names as protocol names. */
+  fetchStrategy?: 'files' | 'subdirs';
   parseFilename: (filename: string) => string | null;  // returns slug or null
 }
 
@@ -49,6 +52,7 @@ function removeDateAndSuffix(name: string): string {
 }
 
 const FIRMS: FirmConfig[] = [
+  // ── Original three ─────────────────────────────────────────────────────────
   {
     name: 'Trail of Bits',
     apiUrl: 'https://api.github.com/repos/trailofbits/publications/contents/reviews',
@@ -77,17 +81,123 @@ const FIRMS: FirmConfig[] = [
     apiUrl: 'https://api.github.com/repos/peckshield/publications/contents/audit_reports',
     parseFilename(f) {
       if (!f.endsWith('.pdf')) return null;
-      // Formats: PeckShield-Audit-Report-Protocol-v1.0.pdf
-      //          PeckShield-Audit-Protocol-v1.0.pdf
-      //          Protocol_audit_report_YYYY_MM_en_1_0.pdf
       let slug = f
         .replace(/\.pdf$/i, '')
         .replace(/^PeckShield[-_]Audit[-_](Report[-_])?/i, '')
-        .replace(/[-_](v\d[\d.]*)[-_]?.*$/i, '')  // remove version and everything after
-        .replace(/[-_]audit[-_]report.*$/i, '')     // old format suffix
-        .replace(/[-_]\d{4}[-_]\d{2}.*$/i, '')     // date suffix in old format
+        .replace(/[-_](v\d[\d.]*)[-_]?.*$/i, '')
+        .replace(/[-_]audit[-_]report.*$/i, '')
+        .replace(/[-_]\d{4}[-_]\d{2}.*$/i, '')
         .toLowerCase()
         .replace(/[_]/g, '-');
+      return slug.length >= 3 ? slug : null;
+    },
+  },
+
+  // ── Nethermind ──────────────────────────────────────────────────────────────
+  {
+    name: 'Nethermind',
+    apiUrl: 'https://api.github.com/repos/NethermindEth/PublicAuditReports/contents',
+    parseFilename(f) {
+      if (!f.endsWith('.pdf')) return null;
+      // Pattern: NM-XXXX_PROTOCOLNAME_TYPE_FINAL.pdf
+      const m = f.match(/^NM-\d+[_-]([A-Z0-9][A-Z0-9_-]+?)(?:[-_](?:SINGLE|DUAL|FINAL|PART|V\d).*)?\.pdf$/i);
+      if (!m) return null;
+      const slug = m[1].toLowerCase().replace(/_/g, '-').replace(/-+/g, '-');
+      return slug.length >= 3 ? slug : null;
+    },
+  },
+
+  // ── Pessimistic ─────────────────────────────────────────────────────────────
+  {
+    name: 'Pessimistic',
+    apiUrl: 'https://api.github.com/repos/pessimistic-io/audits/contents',
+    parseFilename(f) {
+      if (!f.endsWith('.pdf')) return null;
+      // Pattern: "Protocol Name Security Analysis by Pessimistic.pdf"
+      const m = f.match(/^(.+?)\s+[Ss]ecurity\s+[Aa]nalysis/);
+      if (!m) return null;
+      const slug = m[1]
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/-v\d+.*$/, '')
+        .replace(/^-|-$/g, '');
+      return slug.length >= 3 ? slug : null;
+    },
+  },
+
+  // ── Halborn ──────────────────────────────────────────────────────────────────
+  {
+    name: 'Halborn',
+    apiUrl: 'https://api.github.com/repos/HalbornSecurity/PublicReports/contents/Solidity%20Smart%20Contract%20Audits',
+    parseFilename(f) {
+      if (!f.endsWith('.pdf')) return null;
+      let name = f.replace(/\.pdf$/i, '');
+      // Strip "Halborn_" prefix
+      name = name.replace(/^Halborn[_-]/i, '');
+      // Take everything before _Smart_Contract, _Halborn, _Security_Audit, _EVM, _SEC_
+      const cut = name.search(/[_-](?:smart[_-]contract|halborn|security[_-]audit|evm[_-]|sec[_-])/i);
+      if (cut > 0) name = name.slice(0, cut);
+      const slug = name
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/[_\s]+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      return slug.length >= 3 ? slug : null;
+    },
+  },
+
+  // ── Pashov ───────────────────────────────────────────────────────────────────
+  {
+    name: 'Pashov',
+    apiUrl: 'https://api.github.com/repos/pashov/audits/contents/solo/pdf',
+    parseFilename(f) {
+      if (!f.endsWith('.pdf')) return null;
+      // Pattern: "Protocol-security-review.pdf", "Protocol-second-security-review.pdf"
+      const slug = f
+        .replace(/\.pdf$/i, '')
+        .replace(/[-_](?:second|third|fourth|final|\d+(?:st|nd|rd|th))?[-_]?security[-_]review.*$/i, '')
+        .replace(/[-_]security[-_]?audit.*$/i, '')
+        .replace(/[-_]audit.*$/i, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      return slug.length >= 3 ? slug : null;
+    },
+  },
+
+  // ── Dedaub (subdirectory names = protocol names) ─────────────────────────────
+  {
+    name: 'Dedaub',
+    apiUrl: 'https://api.github.com/repos/Dedaub/audits/contents',
+    fetchStrategy: 'subdirs',
+    parseFilename(dirName) {
+      const slug = dirName
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      return slug.length >= 3 ? slug : null;
+    },
+  },
+
+  // ── Oak Security (163 subdirectories, dir name = protocol) ──────────────────
+  {
+    name: 'Oak Security',
+    apiUrl: 'https://api.github.com/repos/oak-security/audit-reports/contents',
+    fetchStrategy: 'subdirs',
+    parseFilename(dirName) {
+      const slug = dirName
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
       return slug.length >= 3 ? slug : null;
     },
   },
@@ -95,7 +205,10 @@ const FIRMS: FirmConfig[] = [
 
 // ─── GitHub API fetch ─────────────────────────────────────────────────────────
 
-async function fetchFilenames(apiUrl: string): Promise<string[]> {
+async function fetchFilenames(
+  apiUrl: string,
+  strategy: 'files' | 'subdirs' = 'files',
+): Promise<string[]> {
   const res = await fetch(apiUrl, {
     headers: {
       'User-Agent': 'DeFiJerusalem-AuditEnricher/1.0',
@@ -105,6 +218,9 @@ async function fetchFilenames(apiUrl: string): Promise<string[]> {
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status} for ${apiUrl}`);
   const items: { name: string; type: string }[] = await res.json();
+  if (strategy === 'subdirs') {
+    return items.filter(i => i.type === 'dir').map(i => i.name);
+  }
   return items.filter(i => i.type === 'file').map(i => i.name);
 }
 
@@ -189,7 +305,7 @@ async function main() {
     console.log(`\n── ${firm.name} ──`);
     let filenames: string[];
     try {
-      filenames = await fetchFilenames(firm.apiUrl);
+      filenames = await fetchFilenames(firm.apiUrl, firm.fetchStrategy);
     } catch (err) {
       console.error(`  FAILED to fetch: ${err}`);
       continue;
