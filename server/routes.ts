@@ -2318,8 +2318,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
       }
 
-      // Fetch admin by username from session
-      const admin = await storage.getAdminByUsername(req.session.adminUsername!);
+      // Fetch admin record — prefer username (fast index lookup) but fall back to
+      // adminId so the endpoint still works when adminUsername is absent from the
+      // session (e.g. after a session-store migration or partial session data).
+      let admin = req.session.adminUsername
+        ? await storage.getAdminByUsername(req.session.adminUsername)
+        : undefined;
+      if (!admin) {
+        admin = await storage.getAdminById(req.session.adminId!);
+      }
       if (!admin) {
         return res.status(404).json({ success: false, message: 'Admin account not found' });
       }

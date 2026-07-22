@@ -31,6 +31,7 @@ vi.mock('../server/index', () => ({
 const mockStorage = {
   getBlacklist:           vi.fn().mockResolvedValue([]),
   getAdminByUsername:     vi.fn(),
+  getAdminById:           vi.fn(),
   updateAdminLastLogin:   vi.fn().mockResolvedValue(undefined),
   updateAdminPassword:    vi.fn().mockResolvedValue(undefined),
   getProtocols:           vi.fn().mockResolvedValue([]),
@@ -174,6 +175,7 @@ describe('PUT /api/admin/password', () => {
     vi.clearAllMocks();
     // Always return a valid admin from storage by default
     mockStorage.getAdminByUsername.mockImplementation(() => makeMockAdmin());
+    mockStorage.getAdminById.mockImplementation(() => makeMockAdmin());
     mockStorage.updateAdminLastLogin.mockResolvedValue(undefined);
     mockStorage.updateAdminPassword.mockResolvedValue(undefined);
     mockStorage.getBlacklist.mockResolvedValue([]);
@@ -256,5 +258,33 @@ describe('PUT /api/admin/password', () => {
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
     expect(mockStorage.updateAdminPassword).not.toHaveBeenCalled();
+  });
+
+  // ── 6. adminUsername absent from session → falls back to adminId ────────────
+  it('changes password successfully when adminUsername is missing from the session', async () => {
+    // Log in normally to obtain a valid session cookie
+    const cookie = await loginAndGetCookie(app);
+
+    // Simulate a session that has adminId but NOT adminUsername by making
+    // getAdminByUsername return undefined (as if the field were absent).
+    mockStorage.getAdminByUsername.mockResolvedValue(undefined);
+    // getAdminById is the fallback and should return the real admin record.
+    mockStorage.getAdminById.mockImplementation(() => makeMockAdmin());
+
+    const res = await request(app)
+      .put('/api/admin/password')
+      .set('Cookie', cookie)
+      .send({ currentPassword: CURRENT_PASSWORD, newPassword: NEW_PASSWORD });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toMatch(/updated/i);
+
+    // Storage must have been called to persist the new hash
+    expect(mockStorage.updateAdminPassword).toHaveBeenCalledOnce();
+    const [adminId, newHash] = mockStorage.updateAdminPassword.mock.calls[0];
+    expect(adminId).toBe('admin-test-id');
+    const hashMatches = await bcryptjs.compare(NEW_PASSWORD, newHash);
+    expect(hashMatches).toBe(true);
   });
 });
