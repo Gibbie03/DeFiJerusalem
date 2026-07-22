@@ -113,8 +113,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
 
-    // Refresh last-activity timestamp on every valid request
-    req.session.lastActivity = now;
+    // Refresh last-activity timestamp on every valid request.
+    // /session-status is intentionally excluded so it can read timing without
+    // side-effects (client uses it to poll the countdown without extending the
+    // idle timer — extension only happens via explicit /keepalive calls).
+    if (req.path !== '/session-status') {
+      req.session.lastActivity = now;
+    }
     next();
   });
 
@@ -2192,6 +2197,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
+  });
+
+  // GET /api/admin/session-status - Read-only timing check (does NOT bump lastActivity).
+  // Excluded from the lastActivity update in the session-guard middleware so the client
+  // can poll the countdown without inadvertently extending the idle timer.
+  app.get("/api/admin/session-status", (req: Request, res: Response) => {
+    if (!req.session.adminId) {
+      return res.status(401).json({ authenticated: false });
+    }
+    res.json({
+      authenticated: true,
+      sessionInfo: {
+        lastActivity: req.session.lastActivity ?? Date.now(),
+        loginTime: req.session.loginTime ?? Date.now(),
+        idleTimeoutMs: ADMIN_IDLE_TIMEOUT_MS,
+        maxAgeMs: ADMIN_MAX_SESSION_MS,
+      },
+    });
+  });
+
+  // GET /api/admin/keepalive - Explicit session refresh (bumps lastActivity via middleware).
+  // Called only when the admin clicks "Stay logged in" — not polled automatically.
+  app.get("/api/admin/keepalive", (req: Request, res: Response) => {
+    if (!req.session.adminId) {
+      return res.status(401).json({ ok: false, message: 'Not authenticated' });
+    }
+    res.json({
+      ok: true,
+      sessionInfo: {
+        lastActivity: req.session.lastActivity ?? Date.now(),
+        loginTime: req.session.loginTime ?? Date.now(),
+        idleTimeoutMs: ADMIN_IDLE_TIMEOUT_MS,
+        maxAgeMs: ADMIN_MAX_SESSION_MS,
+      },
+    });
   });
 
   // PUT /api/admin/password - Change admin password (requires current password verification)

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle, KeyRound } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Shield, LogOut, Edit, Save, X, RefreshCw, Twitter, CheckCircle, AlertTriangle, Download, Eye, Check, XCircle, KeyRound, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -759,6 +759,143 @@ function BlacklistReviewPanel({ session }: { session: AdminSession | undefined }
   );
 }
 
+// ── Session expiry warning ────────────────────────────────────────────────────
+const WARN_BEFORE_MS = 5 * 60 * 1000; // show banner when < 5 min remain
+
+interface SessionStatusResponse {
+  authenticated: boolean;
+  expired?: boolean;          // set by the queryFn when it receives a 401
+  sessionInfo?: {
+    lastActivity: number;
+    loginTime: number;
+    idleTimeoutMs: number;
+    maxAgeMs: number;
+  };
+}
+
+function SessionExpiryWarning() {
+  const [, setLocation] = useLocation();
+  const qc = useQueryClient();
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll the READ-ONLY status endpoint every 60 s.
+  // This endpoint does NOT bump lastActivity, so the idle countdown is accurate.
+  // Network/server errors throw (react-query retries/backs off) and do NOT redirect.
+  // Only a confirmed 401 ("not authenticated") is treated as expiry.
+  const { data } = useQuery<SessionStatusResponse>({
+    queryKey: ['/api/admin/session-status'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/session-status', { credentials: 'include' });
+      if (res.status === 401) {
+        // Confirmed auth failure — session is gone/expired.
+        return { authenticated: false, expired: true };
+      }
+      if (!res.ok) {
+        // Transient server/network error — throw so react-query can retry with backoff.
+        throw new Error(`Session status check failed: ${res.status}`);
+      }
+      return res.json() as Promise<SessionStatusResponse>;
+    },
+    refetchInterval: 60_000,
+    retry: 3,
+  });
+
+  // Explicit keep-alive mutation — only fires when admin clicks "Stay logged in".
+  const keepAliveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/admin/keepalive', { credentials: 'include' });
+      if (!res.ok) throw new Error('Keep-alive request failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      // Refresh the status so the countdown resets to the new lastActivity.
+      qc.invalidateQueries({ queryKey: ['/api/admin/session-status'] });
+      setDismissed(true);
+    },
+  });
+
+  // Redirect ONLY on a confirmed auth expiry, not on transient errors.
+  useEffect(() => {
+    if (data?.expired) {
+      setLocation('/admin/login?expired=true');
+    }
+  }, [data, setLocation]);
+
+  // Recompute countdown whenever server data changes.
+  useEffect(() => {
+    if (!data?.sessionInfo) return;
+
+    const { lastActivity, loginTime, idleTimeoutMs, maxAgeMs } = data.sessionInfo;
+    const idleExpiry = lastActivity + idleTimeoutMs;
+    const absExpiry  = loginTime   + maxAgeMs;
+    const expiresAt  = Math.min(idleExpiry, absExpiry);
+
+    if (tickRef.current) clearInterval(tickRef.current);
+
+    const update = () => {
+      const remaining = Math.floor((expiresAt - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(tickRef.current!);
+        // Trigger a status re-check which will confirm expiry and redirect.
+        qc.invalidateQueries({ queryKey: ['/api/admin/session-status'] });
+      } else {
+        setSecondsLeft(remaining);
+      }
+    };
+
+    update(); // immediate tick to avoid 1-second delay
+    tickRef.current = setInterval(update, 1000);
+
+    // Re-show the banner if the countdown falls into warning range again.
+    setDismissed(false);
+
+    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+  }, [data, qc]);
+
+  const isWarning = secondsLeft !== null && secondsLeft <= WARN_BEFORE_MS / 1000 && secondsLeft > 0;
+
+  if (!isWarning || dismissed) return null;
+
+  const mins = Math.floor(secondsLeft / 60);
+  const secs = secondsLeft % 60;
+  const countdown = mins > 0
+    ? `${mins}m ${secs.toString().padStart(2, '0')}s`
+    : `${secs}s`;
+
+  return (
+    <div
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4"
+      data-testid="session-expiry-warning"
+    >
+      <div className="flex items-center gap-3 rounded-lg border border-yellow-500/60 bg-yellow-500/10 backdrop-blur px-4 py-3 shadow-lg text-sm">
+        <Clock className="w-4 h-4 text-yellow-600 shrink-0" />
+        <span className="flex-1 text-yellow-800 dark:text-yellow-200">
+          Your session expires in <strong>{countdown}</strong>. Unsaved work may be lost.
+        </span>
+        <button
+          onClick={() => keepAliveMutation.mutate()}
+          disabled={keepAliveMutation.isPending}
+          className="ml-2 shrink-0 rounded bg-yellow-500 px-3 py-1 text-xs font-semibold text-white hover:bg-yellow-600 disabled:opacity-60 transition-colors"
+          data-testid="button-stay-logged-in"
+        >
+          {keepAliveMutation.isPending ? 'Refreshing…' : 'Stay logged in'}
+        </button>
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 text-yellow-600 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors"
+          aria-label="Dismiss"
+          data-testid="button-dismiss-warning"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -999,6 +1136,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SessionExpiryWarning />
       <div className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
