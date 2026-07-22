@@ -19,6 +19,7 @@ import { eq, sql } from 'drizzle-orm';
 import { storage } from '../storage';
 import { enrichProtocols, batchRescore, flushServerCache } from './protocol-enrichment';
 import { fetchAllHacks } from './protocol-security-aggregator';
+import { invalidateAICache } from './ai-chat-agent';
 
 export interface PipelineStageResult {
   stage: string;
@@ -93,6 +94,7 @@ async function runImmunefiStage(): Promise<PipelineStageResult> {
           .where(eq(protocols.id, u.id))
       ));
     }
+    if (updates.length > 0) invalidateAICache();
 
     return {
       stage: 'bounty-links',
@@ -152,6 +154,7 @@ async function runHacksStage(): Promise<PipelineStageResult> {
         db.update(protocols).set({ auditNote: u.auditNote }).where(eq(protocols.id, u.id))
       ));
     }
+    if (updates.length > 0) invalidateAICache();
 
     return {
       stage: 'hacks',
@@ -220,6 +223,7 @@ export async function runFullPipeline(opts: PipelineOptions = {}): Promise<Pipel
           upserted++;
         } catch { /* new protocol not yet in DB — skip */ }
       }
+      if (upserted > 0) invalidateAICache();
       return { stage: 'llama-bulk', ok: true, detail: { fetched: freshProtocols.length, updated: upserted }, durationMs: Date.now() - t0 };
     } catch (err) {
       return { stage: 'llama-bulk', ok: false, detail: {}, durationMs: Date.now() - t0, error: String(err) };

@@ -18,6 +18,7 @@ import { calculateFoundationScore } from './security-verification';
 import { db } from '../db';
 import { protocols, blacklistEntries } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
+import { invalidateAICache } from './ai-chat-agent';
 
 /**
  * Signal the running server process to flush its in-memory protocol cache.
@@ -155,6 +156,7 @@ export async function enrichProtocols(limit = ENRICH_TOP_N): Promise<{
     }
   }
 
+  if (updated > 0) invalidateAICache();
   return { enriched, updated, errors };
 }
 
@@ -217,6 +219,8 @@ export async function batchRescore(): Promise<{
   // Flush the HTTP-layer cache so the running server immediately serves
   // the updated scores without needing a restart.
   await flushServerCache();
+  // Flush the AI response cache so the next chat query fetches fresh scores.
+  invalidateAICache();
 
   // Auto-flag genuinely risky DeFi protocols:
   //   score < 30, TVL > $10M, not CEX / institutional RWA

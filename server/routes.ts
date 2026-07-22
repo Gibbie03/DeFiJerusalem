@@ -10,6 +10,7 @@ import { getProtocolSecurityData } from "./lib/protocol-security-aggregator";
 import { BlacklistManager } from "./lib/blacklist-manager";
 import { auditLogger } from "./lib/audit-logger";
 import { threatLearner } from "./lib/threat-pattern-learner";
+import { invalidateAICache } from "./lib/ai-chat-agent";
 import { insertProtocolSchema, insertTutorialVideoSchema, insertProtocolSubmissionSchema, insertUserReportSchema, type Protocol } from "@shared/schema";
 import { authLimiter, apiLimiter } from "./index";
 import { z } from "zod";
@@ -294,6 +295,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       clearCache();
       console.log('[CACHE] Full cache flush via internal endpoint');
     }
+    // Also flush the AI response cache so background-job writes (rescore,
+    // enrichment scripts) don't leave stale AI answers after DB updates.
+    invalidateAICache();
     res.json({ ok: true, flushed: keys ?? 'all', timestamp: new Date().toISOString() });
   });
 
