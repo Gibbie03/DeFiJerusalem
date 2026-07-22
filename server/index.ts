@@ -172,6 +172,26 @@ app.use((req, res, next) => {
     log(`✗ Failed to initialize AI Learning: ${error.message}`);
   }
 
+  // Schedule periodic cleanup of expired chat sessions (every 6 hours)
+  {
+    const { storage } = await import('./storage');
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    const runCleanup = async () => {
+      try {
+        const count = await storage.deleteExpiredChatSessions();
+        if (count > 0) {
+          log(`✓ Chat session cleanup: removed ${count} expired session(s)`);
+        }
+      } catch (err: any) {
+        log(`✗ Chat session cleanup failed: ${err.message}`);
+      }
+    };
+    // Run once at startup, then every 6 hours
+    runCleanup();
+    setInterval(runCleanup, SIX_HOURS);
+    log('✓ Chat session cleanup scheduler started (every 6 hours)');
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

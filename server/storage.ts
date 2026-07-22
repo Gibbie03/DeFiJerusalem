@@ -132,6 +132,7 @@ export interface IStorage {
   // Chat session methods
   createChatSession(messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>, title: string): Promise<import("@shared/schema").ChatSession>;
   getChatSession(id: string): Promise<import("@shared/schema").ChatSession | undefined>;
+  deleteExpiredChatSessions(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1468,6 +1469,15 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     return session ?? undefined;
+  }
+
+  async deleteExpiredChatSessions(): Promise<number> {
+    const result = await db
+      .delete(chatSessions)
+      .where(sql`${chatSessions.expiresAt} < NOW()`)
+      .returning({ id: chatSessions.id });
+
+    return result.length;
   }
 }
 

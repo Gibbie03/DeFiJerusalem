@@ -81,10 +81,30 @@ export function registerChatRoutes(app: Express): void {
       const { messages, title } = parsed.data;
       const session = await storage.createChatSession(messages, title);
 
+      // Fire-and-forget: purge expired rows opportunistically on each share request
+      storage.deleteExpiredChatSessions().then(count => {
+        if (count > 0) {
+          console.log(`[AI-CHAT] Cleaned up ${count} expired chat session(s)`);
+        }
+      }).catch(err => {
+        console.error("[AI-CHAT] Failed to clean up expired chat sessions:", err);
+      });
+
       res.json({ id: session.id, expiresAt: session.expiresAt });
     } catch (err) {
       console.error("[AI-CHAT] Share error:", err);
       res.status(500).json({ error: "Failed to save conversation" });
+    }
+  });
+
+  // POST /api/admin/chat/cleanup — manually trigger expired chat session cleanup (admin only)
+  app.post("/api/admin/chat/cleanup", async (req: Request, res: Response) => {
+    try {
+      const count = await storage.deleteExpiredChatSessions();
+      res.json({ deleted: count, message: `Deleted ${count} expired chat session(s)` });
+    } catch (err) {
+      console.error("[AI-CHAT] Manual cleanup error:", err);
+      res.status(500).json({ error: "Failed to clean up expired sessions" });
     }
   });
 
