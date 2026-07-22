@@ -86,6 +86,16 @@ The frontend uses React, Wouter for routing, TanStack Query for data fetching, S
 ### Dependency Vulnerability Auditing
 Run `npm run audit:check` before merging any dependency changes. This executes `npm audit --audit-level=high` and exits non-zero if any high-severity vulnerabilities are found. Contributors should run this check locally and resolve any flagged issues before they pile up.
 
+### Schema / ORM Compatibility Check
+Run `npm run db:check` to validate that `shared/schema.ts` is compatible with the currently installed `drizzle-orm` / `drizzle-kit` versions. The script runs `drizzle-kit generate` into a temporary directory (no files are written to the project) and exits non-zero if:
+- `schema.ts` contains a TypeScript error or uses a removed drizzle-orm API
+- `drizzle-kit` itself fails (e.g. after a major-version ORM upgrade)
+- Zero tables are detected (configuration problem)
+
+This check does **not** require a live database connection. Run it before deploying or after upgrading any drizzle-\* package.
+
+To also detect drift between `shared/schema.ts` and the **live database**, run `npm run db:push` — drizzle-kit will report any DDL it would apply and prompt before making changes.
+
 ## External Dependencies
 - **DeFiLlama API**: Primary data source for DeFi protocol discovery, TVL, volume, and audit information.
 - **Blockchain Explorer APIs**: Etherscan, BSCScan, Polygonscan, Arbiscan, Optimistic Etherscan, Snowtrace, FTMScan, Basescan for contract verification tracking.
