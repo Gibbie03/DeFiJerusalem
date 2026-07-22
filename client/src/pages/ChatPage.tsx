@@ -272,11 +272,18 @@ export default function ChatPage() {
   const handlePopoverOpenChange = (open: boolean) => {
     setShowSharePopover(open);
     if (!open) {
-      // Reset share state when popover is dismissed
-      setShareUrl(null);
       setCopiedInPopover(false);
+      // shareUrl is intentionally kept so re-clicking Share reopens the same link
     }
   };
+
+  const regenerateShare = useCallback(async () => {
+    setShareUrl(null);
+    setCopiedInPopover(false);
+    setShowSharePopover(false);
+    // Give React a tick to update state before calling shareChat
+    setTimeout(() => shareChat(), 0);
+  }, [shareChat]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-screen bg-background">
@@ -339,7 +346,7 @@ export default function ChatPage() {
                       {shareUrl}
                     </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -361,6 +368,16 @@ export default function ChatPage() {
                       Open
                     </Button>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                    onClick={regenerateShare}
+                    disabled={isSharing}
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Regenerate link
+                  </Button>
                 </PopoverContent>
               </Popover>
             )}
