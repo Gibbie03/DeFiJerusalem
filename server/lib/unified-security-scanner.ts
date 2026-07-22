@@ -64,10 +64,13 @@ function detectMetadataPenalties(
     }
   }
 
-  // Typosquatting
+  // Typosquatting — skip if the protocol's own canonical ID starts with the major name.
+  // A canonical DeFiLlama ID like "aave-v3" or "uniswap-v4" is a legitimate version,
+  // not an impersonator. Only flag if the ID also doesn't contain the major name.
   const nameLower = protocol.name.toLowerCase().replace(/[\s\-_]/g, '');
+  const idLower   = ((protocol as any).id ?? '').toLowerCase().replace(/[\s\-_]/g, '');
   for (const major of MAJOR_PROTOCOLS) {
-    if (nameLower !== major && nameLower.includes(major)) {
+    if (nameLower !== major && nameLower.includes(major) && !idLower.includes(major)) {
       penalties.push({ reason: `Possible typosquat of "${major}"`, deduction: 5, severity: 'MEDIUM' });
       threats.push({ type: 'POTENTIAL_TYPOSQUAT', severity: 'MEDIUM', message: `Name may be impersonating "${major}" — verify authenticity` });
       break;
