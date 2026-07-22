@@ -1,4 +1,5 @@
-import { useRoute, useLocation } from "wouter";
+import { useState } from "react";
+import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Protocol } from "@shared/schema";
+import ProtocolChatPanel from "@/components/ProtocolChatPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,7 +181,7 @@ function ScoreBar({ value, max, color }: { value: number; max: number; color: st
 
 export default function ProtocolDetail() {
   const [, params] = useRoute("/protocol/:id");
-  const [, navigate] = useLocation();
+  const [chatOpen, setChatOpen] = useState(false);
   const protocolId = params?.id;
 
   const { data: protocol, isLoading: protocolLoading } = useQuery<Protocol>({
@@ -246,8 +248,7 @@ export default function ProtocolDetail() {
   };
 
   const handleAskAI = () => {
-    const q = encodeURIComponent(`Tell me about ${protocol?.name}'s security`);
-    navigate(`/chat?q=${q}`);
+    setChatOpen(true);
   };
 
   const fmt = (n: number | null | undefined) => {
@@ -269,6 +270,14 @@ export default function ProtocolDetail() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Inline AI chat panel */}
+      {chatOpen && protocol && (
+        <ProtocolChatPanel
+          protocolName={protocol.name}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
+
       {/* Header */}
       <Card>
         <CardHeader>
