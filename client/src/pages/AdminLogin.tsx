@@ -65,7 +65,16 @@ export default function AdminLogin() {
   const handleLogin = async (data: LoginFormData) => {
     try {
       setIsLoggingIn(true);
-      const res = await apiRequest('POST', '/api/admin/login', data);
+      // Use fetch directly so we can read the JSON body regardless of HTTP status.
+      // apiRequest throws on non-2xx, which would swallow the "Invalid credentials"
+      // message returned by the server in the 401 response body.
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
       const result = await res.json();
 
       if (result.success) {
