@@ -48,7 +48,20 @@ if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(new
 const pool = new Pool({ connectionString: DATABASE_URL });
 const db = drizzle({ client: pool });
 
+async function checkDbConnectivity(): Promise<void> {
+  try {
+    await pool.query('SELECT 1');
+  } catch (err) {
+    console.error('ERROR: Cannot connect to database — check DATABASE_URL');
+    console.error(`  Detail: ${(err as Error).message}`);
+    await pool.end().catch(() => {});
+    process.exit(1);
+  }
+}
+
 async function main() {
+  await checkDbConnectivity();
+
   // Look up the admin
   const [admin] = await db
     .select()
