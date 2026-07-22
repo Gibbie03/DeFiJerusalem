@@ -12,8 +12,8 @@ import { Progress } from '@/components/ui/progress';
 
 export default function SecurityMethodology() {
   useEffect(() => {
-    document.title = 'Security Score Methodology - DFJ v2.4 - DeFiJerusalem';
-    const desc = 'DeFiJerusalem DFJ v2.4 scoring: Foundation (45) + Active (55) + Bonus (3), capped at 97, then minus penalties (−32 max). Higher = safer.';
+    document.title = 'Security Score Methodology - DeFiJerusalem';
+    const desc = 'DeFiJerusalem security scoring: Foundation (45) + Active (55) + Bonus (3), capped at 97, then minus penalties (−32 max). Higher = safer.';
     let m = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (m) { m.setAttribute('content', desc); } else { m = document.createElement('meta'); m.name = 'description'; m.content = desc; document.head.appendChild(m); }
   }, []);
@@ -27,13 +27,12 @@ export default function SecurityMethodology() {
           <Shield className="w-10 h-10 text-primary-foreground" />
         </div>
         <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-          DFJ v2.4 Security Scoring
+          Security Score Methodology
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
           Full transparency into how DeFiJerusalem scores 7,900+ DeFi protocols.{' '}
           <strong className="text-foreground">Higher score = safer protocol.</strong>
         </p>
-        <p className="text-sm text-muted-foreground">Version 2.4 · Current &amp; live · Supersedes v2.3 and all earlier drafts</p>
       </div>
 
       {/* ── Core formula ── */}
