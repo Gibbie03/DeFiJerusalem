@@ -53,22 +53,36 @@ function CustomSidebarTrigger() {
   );
 }
 
-/* ── DeFiJerusalem geometric logo icon ──────────────────────────── */
-function LogoIcon() {
+/* ── DeFiJerusalem official logo — Old City Plan SVG ─────────────── */
+function LogoIcon({ size = 36 }: { size?: number }) {
   return (
-    <div className="relative w-9 h-9 flex items-center justify-center border border-[#E8C15A]/70 shrink-0">
-      {/* Corner accents */}
-      <span className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-[#E8C15A]" />
-      <span className="absolute top-0 right-0 w-1.5 h-1.5 border-t border-r border-[#E8C15A]" />
-      <span className="absolute bottom-0 left-0 w-1.5 h-1.5 border-b border-l border-[#E8C15A]" />
-      <span className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b border-r border-[#E8C15A]" />
-      {/* Centre crosshair */}
-      <span className="absolute inset-0 flex items-center justify-center">
-        <span className="w-2.5 h-2.5 border border-[#E8C15A]/60" />
-      </span>
-      <span className="absolute top-1/2 left-0 right-0 h-px bg-[#E8C15A]/20" />
-      <span className="absolute left-1/2 top-0 bottom-0 w-px bg-[#E8C15A]/20" />
-    </div>
+    <svg
+      viewBox="0 0 120 120"
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <g transform="translate(28,28)">
+        {/* Octagonal city-wall outline */}
+        <path
+          d="M20 8 H44 L56 20 V44 L44 56 H20 L8 44 V20 Z"
+          fill="none"
+          stroke="#E8C15A"
+          strokeWidth="4"
+        />
+        {/* Inner courtyard square */}
+        <rect x="24" y="24" width="16" height="16" fill="none" stroke="#E8C15A" strokeWidth="3" />
+        {/* Centre keep */}
+        <rect x="29" y="29" width="6" height="6" fill="#E8C15A" />
+        {/* Cardinal gate towers */}
+        <rect x="30" y="4"  width="4" height="8" fill="#E8C15A" />
+        <rect x="30" y="52" width="4" height="8" fill="#E8C15A" />
+        <rect x="4"  y="30" width="8" height="4" fill="#E8C15A" />
+        <rect x="52" y="30" width="8" height="4" fill="#E8C15A" />
+      </g>
+    </svg>
   );
 }
 
