@@ -141,25 +141,82 @@ export async function fetchBugBounties(): Promise<BugBountyProgram[]> {
   }
 }
 
+const BUG_BOUNTY_SIGNALS = /bug\s*bounty|immunefi|hackerone/i;
+const IMMUNEFI_LINK     = /immunefi\.com/i;
+const HACKERONE_LINK    = /hackerone\.com/i;
+
 /**
- * Get bug bounty program for a specific protocol (fuzzy name match)
+ * Detect bug bounty from a protocol's stored fields — used as fallback when
+ * the Immunefi live API is unavailable (it has been dead since mid-2024).
  */
-export async function getBugBountyForProtocol(protocolName: string): Promise<BugBountyProgram | null> {
-  const all = await fetchBugBounties();
-  const name = protocolName.toLowerCase();
-  return all.find(b =>
-    b.name.toLowerCase().includes(name) ||
-    name.includes(b.name.toLowerCase())
-  ) ?? null;
+function detectBugBountyFromProtocol(protocol?: {
+  auditNote?: string | null;
+  auditLinks?: string[] | null;
+}): BugBountyProgram | null {
+  if (!protocol) return null;
+
+  const note  = (protocol.auditNote  ?? '').toLowerCase();
+  const links = (protocol.auditLinks ?? []).join(' ').toLowerCase();
+
+  if (!BUG_BOUNTY_SIGNALS.test(note) && !IMMUNEFI_LINK.test(links) && !HACKERONE_LINK.test(links)) {
+    return null;
+  }
+
+  // Find the Immunefi or HackerOne URL from stored links
+  const bountyUrl =
+    (protocol.auditLinks ?? []).find(u => IMMUNEFI_LINK.test(u)) ??
+    (protocol.auditLinks ?? []).find(u => HACKERONE_LINK.test(u)) ??
+    '';
+
+  // Try to parse a max-bounty figure from the note ("up to $250,000", "$1,000,000", etc.)
+  const amountMatch = note.match(/\$([0-9,]+(?:\.[0-9]+)?)\s*(m(?:illion)?|k(?:ilo)?)?/);
+  let maxBounty = 0;
+  if (amountMatch) {
+    const num = parseFloat(amountMatch[1].replace(/,/g, ''));
+    const suffix = (amountMatch[2] ?? '').toLowerCase();
+    maxBounty = suffix.startsWith('m') ? num * 1_000_000 : suffix.startsWith('k') ? num * 1_000 : num;
+  }
+
+  const highestBountyLabel = maxBounty >= 1_000_000
+    ? `$${(maxBounty / 1_000_000).toFixed(1)}M`
+    : maxBounty >= 1_000
+    ? `$${(maxBounty / 1_000).toFixed(0)}K`
+    : maxBounty > 0 ? `$${maxBounty}` : 'Available';
+
+  return { name: 'Bug Bounty', url: bountyUrl, maxBounty, assets: [], highestBountyLabel };
 }
 
 /**
- * Get combined security aggregation for a protocol
+ * Get bug bounty program for a specific protocol (fuzzy name match against live API,
+ * with DB-field fallback when the API is unavailable).
  */
-export async function getProtocolSecurityData(protocolName: string) {
+export async function getBugBountyForProtocol(
+  protocolName: string,
+  protocol?: { auditNote?: string | null; auditLinks?: string[] | null },
+): Promise<BugBountyProgram | null> {
+  const all = await fetchBugBounties();
+  const name = protocolName.toLowerCase();
+  const liveMatch = all.find(b =>
+    b.name.toLowerCase().includes(name) ||
+    name.includes(b.name.toLowerCase())
+  ) ?? null;
+
+  // Live API result wins; fall back to stored fields when API is dead/empty
+  return liveMatch ?? detectBugBountyFromProtocol(protocol);
+}
+
+/**
+ * Get combined security aggregation for a protocol.
+ * Pass the full protocol record so bug-bounty can be detected from stored fields
+ * when the Immunefi live API is unavailable.
+ */
+export async function getProtocolSecurityData(
+  protocolName: string,
+  protocol?: { auditNote?: string | null; auditLinks?: string[] | null },
+) {
   const [hacks, bounty] = await Promise.all([
     getHacksForProtocol(protocolName),
-    getBugBountyForProtocol(protocolName),
+    getBugBountyForProtocol(protocolName, protocol),
   ]);
 
   const totalLost = hacks.reduce((sum, h) => sum + h.amount, 0);

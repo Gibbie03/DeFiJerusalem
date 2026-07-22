@@ -255,10 +255,15 @@ export class DatabaseStorage implements IStorage {
             tvl: sql`EXCLUDED.tvl`,
             volume24h: sql`EXCLUDED.volume_24h`,
             change24h: sql`EXCLUDED.change_24h`,
-            audited: sql`EXCLUDED.audited`,
-            auditCount: sql`EXCLUDED.audit_count`,
-            auditNote: sql`EXCLUDED.audit_note`,
-            auditLinks: sql`EXCLUDED.audit_links`,
+            // audited: once true (from enrichment or prior scan), never regress
+            audited: sql`CASE WHEN protocols.audited = true THEN true ELSE EXCLUDED.audited END`,
+            // auditCount: keep the higher of the two — DeFiLlama often returns 2 as a default
+            auditCount: sql`GREATEST(COALESCE(protocols.audit_count, 0), COALESCE(EXCLUDED.audit_count, 0))`,
+            // auditNote: DeFiLlama never sets this — preserve our curated text
+            auditNote: sql`COALESCE(protocols.audit_note, EXCLUDED.audit_note)`,
+            // auditLinks: if we have curated audit_note, protect the matching curated links;
+            // otherwise accept whatever DeFiLlama provides
+            auditLinks: sql`CASE WHEN protocols.audit_note IS NOT NULL THEN protocols.audit_links ELSE EXCLUDED.audit_links END`,
             // Preserve DFJ v2.3 scores — only fall back to legacy estimate when
             // no score has been set yet (NULL or 0). Background refreshes must
             // never overwrite a score that batchRescore() already computed.
@@ -266,7 +271,8 @@ export class DatabaseStorage implements IStorage {
             logo: sql`EXCLUDED.logo`,
             website: sql`EXCLUDED.website`,
             twitter: sql`EXCLUDED.twitter`,
-            github: sql`EXCLUDED.github`,
+            // github: keep our enriched value; DeFiLlama frequently omits or misses it
+            github: sql`COALESCE(protocols.github, EXCLUDED.github)`,
             description: sql`EXCLUDED.description`,
             lastUpdated: new Date(),
           },

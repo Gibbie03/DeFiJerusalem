@@ -3175,7 +3175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!protocol) {
         return res.status(404).json({ message: "Protocol not found" });
       }
-      const data = await getProtocolSecurityData(protocol.name);
+      const data = await getProtocolSecurityData(protocol.name, protocol);
       res.json(data);
     } catch (error) {
       console.error("[SECURITY-AGG] Error:", error);
