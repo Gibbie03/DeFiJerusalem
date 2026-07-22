@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, AlertOctagon, MessageSquare, Search, Users, Briefcase, ChevronDown, Trophy, Award, Bot, BarChart3 } from "lucide-react";
+import { Home, Clock, TrendingUp, Video, Shield, Landmark, Sun, Moon, Star, Lock, BookOpen, Upload, AlertTriangle, Library, AlertOctagon, MessageSquare, Search, Users, Briefcase, ChevronDown, Trophy, Award, Bot, BarChart3, Bug } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -38,6 +38,7 @@ const menuGroups = [
       { title: "Flagged Protocols", url: "/blacklist", icon: Lock },
       { title: "Threat Intelligence", url: "/threats", icon: AlertTriangle },
       { title: "Threat Encyclopedia", url: "/threats/encyclopedia", icon: Library },
+      { title: "Bug Bounty Programs", url: "/bug-bounties", icon: Bug },
     ]
   },
   {
