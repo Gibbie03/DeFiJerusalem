@@ -296,4 +296,40 @@ describe('Admin session-guard middleware', () => {
     expect(sidCookie, 'connect.sid should be present in Set-Cookie').toBeDefined();
     expect(sidCookie).toMatch(/expires=Thu, 01 Jan 1970|Max-Age=0/i);
   });
+
+  // ── 5. /session-status polling does NOT extend the idle timer ────────────────
+  // Verifies the `req.path !== '/session-status'` guard in the session
+  // middleware: a client that polls /session-status to read its countdown must
+  // not inadvertently keep the idle timer from firing.
+  it('polling /session-status does not extend the idle timer', async () => {
+    // Inject a session whose lastActivity will expire ~400 ms from now.
+    // If the /session-status exclusion were absent the poll below would reset
+    // lastActivity to `now`, and the subsequent real request would succeed
+    // instead of returning 401.
+    const lastActivity = Date.now() - IDLE_TIMEOUT_MS + 400;
+    const loginTime    = Date.now() - 30 * 60 * 1000; // 30 min ago – within max
+
+    const cookie = await injectSession(app, { loginTime, lastActivity });
+
+    // Poll /session-status while the session is still technically valid.
+    // This must NOT update lastActivity.
+    const pollRes = await request(app)
+      .get('/api/admin/session-status')
+      .set('Cookie', cookie);
+
+    // The session is still alive at this point so the poll should not return 401.
+    expect(pollRes.status).not.toBe(401);
+
+    // Wait for the original idle window to expire naturally.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // A real admin request must now be rejected – the idle timer fired because
+    // /session-status did not extend lastActivity.
+    const realRes = await request(app)
+      .get('/api/admin/diagnostics')
+      .set('Cookie', cookie);
+
+    expect(realRes.status).toBe(401);
+    expect(realRes.body.message).toMatch(/timed out|inactivity/i);
+  }, 10_000); // generous timeout to accommodate the setTimeout wait
 });
