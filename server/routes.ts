@@ -3420,9 +3420,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const tvl           = Number(db?.tvl)            || 0;
           const securityScore = Number(db?.security_score) || 0;
 
-          // Logo: prefer DB record, then construct DeFiLlama URL from llamaId
+          // Logo: prefer DB record, then CDN via logoSlug (canonical name) or llamaId
+          const cdnSlug = prog.logoSlug ?? prog.llamaId;
           const logo = db?.logo
-            ?? `https://icons.llamao.fi/icons/protocols/${prog.llamaId}?w=48&h=48`;
+            ?? `https://icons.llamao.fi/icons/protocols/${cdnSlug}?w=48&h=48`;
 
           return {
             id:            prog.llamaId,
