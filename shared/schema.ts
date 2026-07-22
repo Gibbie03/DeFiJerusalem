@@ -367,6 +367,9 @@ export const bountyTasks = pgTable('bounty_tasks', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   submissionCount: integer('submission_count').notNull().default(0),
   maxSubmissions: integer('max_submissions'),
+  // Data-enrichment bounties: which protocol field this task is filling
+  targetField: text('target_field'),   // e.g. 'audit_links', 'github', 'defi_has_multisig'
+  dataType: text('data_type'),         // 'url' | 'url_list' | 'address' | 'boolean' | 'text'
 });
 
 export const bountySubmissions = pgTable('bounty_submissions', {
@@ -386,6 +389,8 @@ export const bountySubmissions = pgTable('bounty_submissions', {
   reviewNote: text('review_note'),
   reviewedAt: timestamp('reviewed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+  // Data-enrichment submissions: the actual value being proposed
+  submittedValue: text('submitted_value'),  // JSON-encoded for url_list/boolean
 });
 
 export const pointsLedger = pgTable('points_ledger', {
