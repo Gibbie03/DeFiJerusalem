@@ -3383,97 +3383,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/bug-bounties - Bug bounty programs from protocols DB
+  // GET /api/bug-bounties - Immunefi programs enriched with live DB data
   {
-    const BOUNTIES_DB_CACHE_KEY = 'bug-bounties-db';
-    const BOUNTIES_DB_TTL_MS = 5 * 60 * 1000; // 5 minutes
-    const bountiesDbCache = new Map<string, { data: unknown; expiresAt: number }>();
+    const BOUNTIES_CACHE_KEY = 'bug-bounties-v2';
+    const BOUNTIES_TTL_MS    = 10 * 60 * 1000; // 10 minutes
+    const bountiesCache = new Map<string, { data: unknown; expiresAt: number }>();
 
     app.get("/api/bug-bounties", apiLimiter, async (req: Request, res: Response) => {
       try {
-        const cached = bountiesDbCache.get(BOUNTIES_DB_CACHE_KEY);
+        const cached = bountiesCache.get(BOUNTIES_CACHE_KEY);
         if (cached && Date.now() < cached.expiresAt) {
           return res.json(cached.data);
         }
 
-        // Query protocols that have bug bounty signals in audit_note or audit_links
-        const rows = await db.execute(sql`
-          SELECT
-            id, name, logo, category, tvl, security_score,
-            audit_note, audit_links
-          FROM protocols
-          WHERE
-            (audit_note ILIKE '%immunefi%'
-              OR audit_note ILIKE '%hackerone%'
-              OR audit_note ILIKE '%bug bounty%'
-              OR audit_links::text ILIKE '%immunefi.com%'
-              OR audit_links::text ILIKE '%hackerone.com%')
-          ORDER BY tvl DESC
-        `);
+        const { IMMUNEFI_PROGRAMS } = await import('./lib/immunefi-programs');
 
-        interface BountyRow {
-          id: string;
-          name: string;
-          logo: string | null;
-          category: string;
-          tvl: number;
-          security_score: number;
-          audit_note: string | null;
-          audit_links: string | null;
+        // Fetch all protocols in one query and build lookup maps
+        interface DbRow { id: string; name: string; logo: string | null; tvl: string | number; security_score: string | number; }
+        const allProtocols = await db.execute(sql`
+          SELECT id, name, logo, tvl, security_score FROM protocols
+          WHERE tvl > 0 ORDER BY tvl DESC LIMIT 5000
+        `);
+        const dbMap  = new Map<string, DbRow>();
+        const nameMap = new Map<string, DbRow>();
+        for (const row of allProtocols.rows as DbRow[]) {
+          dbMap.set(row.id, row);
+          nameMap.set(row.name.toLowerCase().trim(), row);
         }
 
-        const bounties = (rows.rows as BountyRow[]).map((row) => {
-          const note = (row.audit_note ?? '').toLowerCase();
-          const links: string[] = (() => {
-            try {
-              return Array.isArray(row.audit_links)
-                ? row.audit_links
-                : JSON.parse(row.audit_links ?? '[]');
-            } catch { return []; }
-          })();
-          const linksText = links.join(' ').toLowerCase();
+        const bounties = IMMUNEFI_PROGRAMS.map(prog => {
+          // 1. Exact llamaId match
+          let db = dbMap.get(prog.llamaId);
+          // 2. Name match fallback
+          if (!db) db = nameMap.get(prog.name.toLowerCase().trim());
 
-          // Parse max bounty dollar amount from audit_note
-          const amountMatch = note.match(/\$([0-9,]+(?:\.[0-9]+)?)\s*(m(?:illion)?|k(?:ilo)?)?/);
-          let maxBounty = 0;
-          if (amountMatch) {
-            const num = parseFloat(amountMatch[1].replace(/,/g, ''));
-            const suffix = (amountMatch[2] ?? '').toLowerCase();
-            maxBounty = suffix.startsWith('m') ? num * 1_000_000
-                      : suffix.startsWith('k') ? num * 1_000
-                      : num;
-          }
+          const tvl           = Number(db?.tvl)            || 0;
+          const securityScore = Number(db?.security_score) || 0;
 
-          // Determine platform and bountyUrl
-          const immunefiUrl = links.find(u => /immunefi\.com/i.test(u));
-          const hackeroneUrl = links.find(u => /hackerone\.com/i.test(u));
-          const bountyUrl = immunefiUrl ?? hackeroneUrl ?? '';
-          const platform = immunefiUrl ? 'Immunefi'
-                         : hackeroneUrl ? 'HackerOne'
-                         : linksText.includes('immunefi') || note.includes('immunefi') ? 'Immunefi'
-                         : note.includes('hackerone') ? 'HackerOne'
-                         : 'Other';
+          // Logo: prefer DB record, then construct DeFiLlama URL from llamaId
+          const logo = db?.logo
+            ?? `https://icons.llamao.fi/icons/protocols/${prog.llamaId}?w=48&h=48`;
 
           return {
-            id: row.id,
-            name: row.name,
-            logo: row.logo,
-            category: row.category,
-            tvl: row.tvl,
-            securityScore: row.security_score,
-            maxBounty,
-            bountyUrl,
-            platform,
+            id:            prog.llamaId,
+            name:          prog.name,
+            slug:          prog.slug,
+            logo,
+            category:      prog.category,
+            tvl,
+            securityScore,
+            maxBounty:     prog.maxBounty,
+            bountyUrl:     `https://immunefi.com/bounty/${prog.slug}/`,
+            platform:      'Immunefi' as const,
+            hasDbRecord:   !!db,
           };
         });
 
-        // Sort by maxBounty desc, then tvl desc
-        bounties.sort((a, b) => {
-          if (b.maxBounty !== a.maxBounty) return b.maxBounty - a.maxBounty;
-          return b.tvl - a.tvl;
-        });
+        // Sort by maxBounty desc, then TVL desc
+        bounties.sort((a, b) =>
+          b.maxBounty !== a.maxBounty ? b.maxBounty - a.maxBounty : b.tvl - a.tvl
+        );
 
-        bountiesDbCache.set(BOUNTIES_DB_CACHE_KEY, { data: bounties, expiresAt: Date.now() + BOUNTIES_DB_TTL_MS });
+        bountiesCache.set(BOUNTIES_CACHE_KEY, { data: bounties, expiresAt: Date.now() + BOUNTIES_TTL_MS });
         res.json(bounties);
       } catch (error) {
         console.error("[BOUNTIES] Error:", error);
