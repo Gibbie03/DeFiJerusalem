@@ -759,6 +759,16 @@ function BlacklistReviewPanel({ session }: { session: AdminSession | undefined }
   );
 }
 
+// ── Draft persistence key (edit dialog state saved before session-expiry redirect) ──
+const EDIT_DRAFT_KEY = 'admin_edit_draft';
+
+interface EditDraft {
+  protocolId: string;
+  protocolName: string;
+  formData: EditProtocolData;
+  savedAt: number;
+}
+
 // ── Session expiry warning ────────────────────────────────────────────────────
 const WARN_BEFORE_MS = 5 * 60 * 1000; // show banner when < 5 min remain
 
@@ -773,12 +783,24 @@ interface SessionStatusResponse {
   };
 }
 
-function SessionExpiryWarning() {
+interface SessionExpiryWarningProps {
+  editingProtocol: Protocol | null;
+  editFormData: EditProtocolData | null;
+}
+
+function SessionExpiryWarning({ editingProtocol, editFormData }: SessionExpiryWarningProps) {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep a ref so the redirect effect always sees the latest edit state
+  // without needing to re-register the effect.
+  const editingProtocolRef = useRef(editingProtocol);
+  const editFormDataRef = useRef(editFormData);
+  useEffect(() => { editingProtocolRef.current = editingProtocol; }, [editingProtocol]);
+  useEffect(() => { editFormDataRef.current = editFormData; }, [editFormData]);
 
   // Poll the READ-ONLY status endpoint every 60 s.
   // This endpoint does NOT bump lastActivity, so the idle countdown is accurate.
@@ -817,8 +839,25 @@ function SessionExpiryWarning() {
   });
 
   // Redirect ONLY on a confirmed auth expiry, not on transient errors.
+  // Before redirecting, save any open edit-dialog state to localStorage so
+  // the admin can restore their work after logging back in.
   useEffect(() => {
     if (data?.expired) {
+      const protocol = editingProtocolRef.current;
+      const formData = editFormDataRef.current;
+      if (protocol && formData) {
+        const draft: EditDraft = {
+          protocolId: protocol.id,
+          protocolName: protocol.name,
+          formData,
+          savedAt: Date.now(),
+        };
+        try {
+          localStorage.setItem(EDIT_DRAFT_KEY, JSON.stringify(draft));
+        } catch {
+          // localStorage may be unavailable; proceed with redirect anyway
+        }
+      }
       setLocation('/admin/login?expired=true');
     }
   }, [data, setLocation]);
@@ -903,6 +942,7 @@ export default function AdminDashboard() {
   const [editFormData, setEditFormData] = useState<EditProtocolData | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<ProtocolSubmission | null>(null);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pendingDraft, setPendingDraft] = useState<EditDraft | null>(null);
 
   const { data: session, isLoading: sessionLoading } = useQuery<AdminSession>({
     queryKey: ['/api/admin/session'],
@@ -938,6 +978,26 @@ export default function AdminDashboard() {
       setLocation('/admin/login');
     }
   }, [session, sessionLoading, setLocation]);
+
+  // On mount, check for a draft saved by the session-expiry redirect.
+  // Only surface it once the session is confirmed authenticated.
+  useEffect(() => {
+    if (!session?.authenticated) return;
+    try {
+      const raw = localStorage.getItem(EDIT_DRAFT_KEY);
+      if (!raw) return;
+      const draft: EditDraft = JSON.parse(raw);
+      // Discard stale drafts older than 24 hours
+      if (Date.now() - draft.savedAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(EDIT_DRAFT_KEY);
+        return;
+      }
+      setPendingDraft(draft);
+    } catch {
+      localStorage.removeItem(EDIT_DRAFT_KEY);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.authenticated]);
 
   const refreshProtocolsMutation = useMutation({
     mutationFn: async () => {
@@ -1134,9 +1194,58 @@ export default function AdminDashboard() {
     return null;
   }
 
+  const handleRestoreDraft = () => {
+    if (!pendingDraft) return;
+    // Reconstruct the minimal protocol object needed by handleSaveProtocol
+    // (only id and name are used in the edit dialog and save mutation).
+    setEditingProtocol({ id: pendingDraft.protocolId, name: pendingDraft.protocolName } as Protocol);
+    setEditFormData(pendingDraft.formData);
+    localStorage.removeItem(EDIT_DRAFT_KEY);
+    setPendingDraft(null);
+    toast({
+      title: 'Draft restored',
+      description: `Your unsaved edits to "${pendingDraft.protocolName}" have been restored.`,
+    });
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem(EDIT_DRAFT_KEY);
+    setPendingDraft(null);
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <SessionExpiryWarning />
+      <SessionExpiryWarning editingProtocol={editingProtocol} editFormData={editFormData} />
+
+      {/* Draft restore dialog — shown after re-login when an edit was in progress */}
+      <Dialog open={!!pendingDraft} onOpenChange={(open) => { if (!open) handleDiscardDraft(); }}>
+        <DialogContent data-testid="dialog-restore-draft">
+          <DialogHeader>
+            <DialogTitle>Restore unsaved edits?</DialogTitle>
+            <DialogDescription>
+              Your session expired while you were editing{' '}
+              <strong>&ldquo;{pendingDraft?.protocolName}&rdquo;</strong>. Would you like to
+              restore your unsaved changes?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              variant="outline"
+              onClick={handleDiscardDraft}
+              data-testid="button-discard-draft"
+            >
+              Discard
+            </Button>
+            <Button
+              onClick={handleRestoreDraft}
+              data-testid="button-restore-draft"
+            >
+              Restore edits
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
