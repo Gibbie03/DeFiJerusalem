@@ -4,7 +4,15 @@ import { storage } from "../storage";
 
 // ─── Response cache ───────────────────────────────────────────────────────────
 // Keyed on SHA-256(userMessage + JSON-serialised history).
-// TTL is controlled by CHAT_CACHE_TTL_SECONDS (default 120 s).
+// TTL is controlled by CHAT_CACHE_TTL_SECONDS env var (default 30 s).
+//
+// A 30-second default keeps staleness risk low: protocol scores, TVL figures,
+// and blacklist entries that change in the DB are visible in AI answers within
+// 30 s even without an explicit invalidation call.
+//
+// For immediate consistency, call invalidateAICache() after any data mutation.
+// Storage mutation methods (updateProtocol, addToBlacklist, etc.) do this
+// automatically so callers don't need to think about it.
 
 interface CacheEntry {
   response: string;
@@ -16,8 +24,25 @@ const responseCache = new Map<string, CacheEntry>();
 function getCacheTtlMs(): number {
   const raw = process.env.CHAT_CACHE_TTL_SECONDS;
   const parsed = raw ? parseInt(raw, 10) : NaN;
-  const seconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 120;
+  const seconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
   return seconds * 1000;
+}
+
+/**
+ * Immediately clears all cached AI responses.
+ *
+ * Call this after any mutation that changes protocol data, security scores,
+ * blacklist entries, or security scans so that the next AI request fetches
+ * fresh data instead of serving a stale cached answer.
+ *
+ * Storage mutation methods already call this automatically.
+ */
+export function invalidateAICache(): void {
+  const size = responseCache.size;
+  responseCache.clear();
+  if (size > 0) {
+    console.log(`[AI-CHAT] Cache invalidated — cleared ${size} entr${size === 1 ? "y" : "ies"}`);
+  }
 }
 
 function buildCacheKey(userMessage: string, history: ChatMessage[]): string {

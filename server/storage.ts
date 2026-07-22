@@ -2,6 +2,7 @@ import type { Protocol, BlacklistEntry, SecurityScan, TutorialVideo, InsertProto
 import { protocols, securityScans, blacklistEntries, tutorialVideos, adminUsers, protocolCustomizations, protocolWhitelist, certikAudits, protocolSubmissions, aiLearnedPatterns, aiScanHistory, userReports, reportVotes, userReputation, scammerAddresses, alertSubscriptions, webhookEndpoints, chatSessions } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gt, sql, and, gte, or, isNull } from "drizzle-orm";
+import { invalidateAICache } from "./lib/ai-chat-agent";
 
 export interface IStorage {
   getProtocols(filters?: { category?: string; chain?: string; minTvl?: number }): Promise<Protocol[]>;
@@ -235,7 +236,8 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    
+
+    invalidateAICache();
     return this.mapProtocol(result);
   }
 
@@ -278,6 +280,7 @@ export class DatabaseStorage implements IStorage {
           },
         });
     }
+    invalidateAICache();
   }
 
   async getBlacklist(): Promise<BlacklistEntry[]> {
@@ -333,7 +336,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     
-    return {
+    const mapped: BlacklistEntry = {
       id: result.id,
       dappId: result.dappId,
       dappName: result.dappName,
@@ -353,10 +356,13 @@ export class DatabaseStorage implements IStorage {
       securityMetrics: result.securityMetrics,
       lastVetted: result.lastVetted?.toISOString() || null,
     };
+    invalidateAICache();
+    return mapped;
   }
 
   async deleteBlacklistEntry(entryId: string): Promise<void> {
     await db.delete(blacklistEntries).where(eq(blacklistEntries.id, entryId));
+    invalidateAICache();
   }
 
   async updateBlacklistLegitimacy(entryId: string, updates: {
@@ -377,6 +383,7 @@ export class DatabaseStorage implements IStorage {
         lastVetted: new Date(updates.lastVetted)
       })
       .where(eq(blacklistEntries.id, entryId));
+    invalidateAICache();
   }
 
   async getSecurityScan(protocolId: string): Promise<SecurityScan | undefined> {
@@ -455,6 +462,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(protocols)
       .set({ securityScore: scan.score })
       .where(eq(protocols.id, protocolId));
+    invalidateAICache();
   }
 
   async getTutorials(): Promise<TutorialVideo[]> {
@@ -550,6 +558,7 @@ export class DatabaseStorage implements IStorage {
         lastUpdated: new Date(),
       })
       .where(eq(protocols.id, protocolId));
+    invalidateAICache();
   }
 
   async getAdminByUsername(username: string): Promise<AdminUser | undefined> {
@@ -629,6 +638,7 @@ export class DatabaseStorage implements IStorage {
       .update(protocols)
       .set(dbUpdates)
       .where(eq(protocols.id, protocolId));
+    invalidateAICache();
   }
 
   async createCustomizationRequest(data: InsertProtocolCustomization): Promise<ProtocolCustomization> {
@@ -986,7 +996,8 @@ export class DatabaseStorage implements IStorage {
         set: protocol as any,
       })
       .returning();
-    
+
+    invalidateAICache();
     return this.mapProtocol(result);
   }
 
