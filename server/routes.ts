@@ -92,11 +92,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enforces idle-timeout (2 h) and absolute max-age (24 h) for every
   // /api/admin/* request except the login endpoint itself.
   app.use('/api/admin', (req: Request, res: Response, next) => {
-    // Login establishes the session – let it through unconditionally.
-    if (req.path === '/login') return next();
+    // These paths are intentionally accessible without an admin session.
+    const publicAdminPaths = ['/login', '/session', '/session-status', '/init', '/reset-password'];
+    if (publicAdminPaths.includes(req.path)) return next();
 
-    // If there is no session, individual route handlers return 401 themselves.
-    if (!req.session.adminId) return next();
+    // C-2: Reject unauthenticated requests centrally so individual route handlers
+    // cannot accidentally omit the check.
+    if (!req.session.adminId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
 
     const now = Date.now();
 
@@ -1411,6 +1415,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // DELETE /api/blacklist/:id - Remove a blacklist entry (Admin only)
   app.delete("/api/blacklist/:id", async (req, res) => {
+    if (!req.session.adminId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     try {
       const { id } = req.params;
       
@@ -1439,6 +1446,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // POST /api/blacklist/vet - Re-vet blacklisted protocols and remove legitimate ones (Admin only)
   app.post("/api/blacklist/vet", async (req, res) => {
+    if (!req.session.adminId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     try {
       const blacklist = await storage.getBlacklist();
       const protocols = await storage.getProtocols();
@@ -1706,8 +1716,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/tutorials - Upload a new tutorial video
+  // POST /api/tutorials - Upload a new tutorial video (Admin only)
   app.post("/api/tutorials", async (req, res) => {
+    if (!req.session.adminId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     try {
       const validatedData = insertTutorialVideoSchema.parse(req.body);
       
@@ -1752,8 +1765,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/protocol-submissions - Get all protocol submissions (admin only)
   app.get("/api/protocol-submissions", async (req, res) => {
     try {
-      if (!req.session?.user?.id) {
-        return res.status(401).json({ error: "Unauthorized" });
+      if (!req.session.adminId) {
+        return res.status(401).json({ error: "Authentication required" });
       }
 
       const status = req.query.status as string | undefined;
@@ -1772,8 +1785,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PATCH /api/protocol-submissions/:id - Update submission status (admin only)
   app.patch("/api/protocol-submissions/:id", async (req, res) => {
     try {
-      if (!req.session?.user?.id) {
-        return res.status(401).json({ error: "Unauthorized" });
+      if (!req.session.adminId) {
+        return res.status(401).json({ error: "Authentication required" });
       }
 
       const { id } = req.params;
@@ -1786,7 +1799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await storage.updateProtocolSubmission(id, {
         status,
         adminNotes,
-        reviewedBy: req.session.user.username,
+        reviewedBy: req.session.adminUsername ?? 'admin',
         reviewedAt: new Date().toISOString(),
       });
 
@@ -3066,8 +3079,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update report status (admin only)
   app.patch('/api/reports/:id/status', async (req: Request, res: Response) => {
     try {
-      if (!req.session?.user?.isAdmin) {
-        return res.status(403).json({ error: 'Unauthorized' });
+      if (!req.session.adminId) {
+        return res.status(401).json({ error: 'Authentication required' });
       }
       
       const { status, adminNotes } = req.body;
@@ -3080,8 +3093,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       auditLogger.log({
         action: 'user_report_status_updated',
-        adminId: req.session.user.id,
-        adminUsername: req.session.user.username,
+        adminId: req.session.adminId,
+        adminUsername: req.session.adminUsername ?? 'admin',
         details: `Report ${req.params.id} status updated to ${status}`,
         severity: 'info',
       });
@@ -3096,8 +3109,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Verify a report (admin only)
   app.patch('/api/reports/:id/verify', async (req: Request, res: Response) => {
     try {
-      if (!req.session?.user?.isAdmin) {
-        return res.status(403).json({ error: 'Unauthorized' });
+      if (!req.session.adminId) {
+        return res.status(401).json({ error: 'Authentication required' });
       }
       
       const report = await storage.getUserReportById(req.params.id);
@@ -3106,7 +3119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Report not found' });
       }
       
-      await storage.verifyUserReport(req.params.id, req.session.user.username);
+      await storage.verifyUserReport(req.params.id, req.session.adminUsername ?? 'admin');
       
       // Update reporter reputation
       if (report.reporterEmail) {
@@ -3119,8 +3132,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       auditLogger.log({
         action: 'user_report_verified',
-        adminId: req.session.user.id,
-        adminUsername: req.session.user.username,
+        adminId: req.session.adminId,
+        adminUsername: req.session.adminUsername ?? 'admin',
         details: `Report ${req.params.id} verified`,
         severity: 'info',
       });

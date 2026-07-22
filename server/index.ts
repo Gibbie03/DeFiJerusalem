@@ -59,8 +59,18 @@ const createSessionStore = () => {
   }
 };
 
+// H-1: Crash on startup if SESSION_SECRET is absent — never fall back to a
+// hardcoded value that anyone with repo access can use to forge session cookies.
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+  throw new Error(
+    'SESSION_SECRET environment variable is required (minimum 32 characters). ' +
+    'Set it in your Replit Secrets before starting the server.'
+  );
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'jerusalem-defi-security-secret-key-change-in-production',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: createSessionStore(),
